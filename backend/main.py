@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from backend.data import properties
+from backend.models import Property
 
 app = FastAPI()
 
@@ -17,7 +18,13 @@ def get_properties():
 @app.get("/properties/{property_id}")
 def get_property(property_id: int):
     for property in properties:
-        if property["id"] == property_id:
+        if property.id == property_id:
             return property
 
     return {"message": "Property not found"}
+
+
+@app.post("/properties")
+def create_property(property: Property):
+    properties.append(property)
+    return property
