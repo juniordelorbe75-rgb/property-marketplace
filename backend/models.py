@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 
 class Property(BaseModel):
@@ -6,3 +6,8 @@ class Property(BaseModel):
     title: str
     price: float
     location: str
+
+    @field_validator("location")
+    @classmethod
+    def normalize_location(cls, value):
+        return value.title()
