@@ -10,6 +10,21 @@ jobs:
   test:
     runs-on: ubuntu-latest
 
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: marketplace
+          POSTGRES_PASSWORD: marketplace
+          POSTGRES_DB: property_marketplace_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U marketplace -d property_marketplace_test"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -25,6 +40,6 @@ jobs:
 
       - name: Run backend tests
         env:
-          DATABASE_URL: sqlite:///./test_property_marketplace.db
+          DATABASE_URL: postgresql+psycopg://marketplace:marketplace@127.0.0.1:5432/property_marketplace_test
           SECRET_KEY: test-secret-key-for-ci-only
         run: python -m pytest -q
