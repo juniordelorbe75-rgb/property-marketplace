@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom"
 import { useAuth } from "../context/AuthContext"
 import { getApiError } from "../utils/apiError"
 import { readApiResponse } from "../utils/apiResponse"
-import "./Account.css"
+import "./account.css"
 import { apiFetch } from "../utils/apiFetch"
 
 function Account() {

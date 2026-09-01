@@ -4,7 +4,7 @@ import PropertyCard from "../components/propertyCard"
 import { useAuth } from "../context/AuthContext"
 import { getApiError } from "../utils/apiError"
 import { readApiResponse } from "../utils/apiResponse"
-import "./Properties.css"
+import "./properties.css"
 import "./favorites.css"
 import { apiFetch } from "../utils/apiFetch"
 

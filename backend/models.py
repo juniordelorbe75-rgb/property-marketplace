@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 EMAIL_PATTERN = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+BCRYPT_MAX_PASSWORD_BYTES = 72
 Amenity = Literal[
     "Garage",
     "Pool",
@@ -35,6 +36,12 @@ def normalize_name(value: str) -> str:
         raise ValueError("Name must be at least 2 characters")
 
     return normalized
+
+
+def validate_new_password(value: str) -> str:
+    if len(value.encode("utf-8")) > BCRYPT_MAX_PASSWORD_BYTES:
+        raise ValueError("Password must be at most 72 UTF-8 bytes")
+    return value
 
 
 def normalize_property_text(
@@ -248,6 +255,11 @@ class UserCreate(BaseModel):
     def validate_email(cls, value: str) -> str:
         return normalize_email(value)
 
+    @field_validator("password")
+    @classmethod
+    def validate_password(cls, value: str) -> str:
+        return validate_new_password(value)
+
 
 class UserLogin(BaseModel):
     email: str = Field(min_length=3, max_length=255)
@@ -287,6 +299,11 @@ class UserUpdate(BaseModel):
 class PasswordChange(BaseModel):
     current_password: str = Field(min_length=1, max_length=128)
     new_password: str = Field(min_length=8, max_length=128)
+
+    @field_validator("new_password")
+    @classmethod
+    def validate_password(cls, value: str) -> str:
+        return validate_new_password(value)
 
 
 class AccountDeletionConfirmation(BaseModel):

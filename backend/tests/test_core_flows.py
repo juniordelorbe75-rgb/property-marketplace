@@ -15,7 +15,7 @@ from sqlalchemy import create_engine, event, select
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
 
-from backend.auth.security import verify_password
+from backend.auth.security import hash_password, verify_password
 from backend.auth.token import ALGORITHM, SECRET_KEY, verify_access_token
 from backend.auth.dependencies import get_current_user_id
 from backend.db_models.base import Base
@@ -102,6 +102,21 @@ class CoreFlowTests(unittest.TestCase):
         self.assertEqual(user.role, "buyer")
         self.assertNotEqual(user.password, "secure-password")
         self.assertTrue(verify_password("secure-password", user.password))
+
+    def test_password_hashing_enforces_bcrypt_byte_limit_without_truncation(self):
+        maximum_password = "a" * 72
+        password_hash = hash_password(maximum_password)
+
+        self.assertTrue(verify_password(maximum_password, password_hash))
+        self.assertFalse(verify_password("a" * 73, password_hash))
+        with self.assertRaises(ValueError):
+            hash_password("a" * 73)
+        with self.assertRaises(ValueError):
+            UserCreate(
+                name="Unicode Password User",
+                email="unicode-password@example.com",
+                password="é" * 40,
+            )
 
     def test_login_returns_a_token_for_the_registered_user(self):
         user = self.create_test_user()

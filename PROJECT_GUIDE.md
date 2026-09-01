@@ -113,6 +113,11 @@ Authentication has three responsibilities:
 - Create and verify access tokens.
 - Confirm protected requests belong to an existing user.
 
+Password hashes use bcrypt directly and remain compatible with existing bcrypt
+hashes. Registration and password changes enforce bcrypt's 72-byte UTF-8 limit;
+verification rejects oversized input safely instead of truncating it or raising
+an application error.
+
 The browser sends a token in this header:
 
 ```text

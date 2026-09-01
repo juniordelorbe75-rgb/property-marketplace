@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { Link } from "react-router-dom"
 
-import PropertyCard from "../components/PropertyCard"
+import PropertyCard from "../components/propertyCard"
 import { useAuth } from "../context/AuthContext"
 import { getApiError } from "../utils/apiError"
 import { readApiResponse } from "../utils/apiResponse"

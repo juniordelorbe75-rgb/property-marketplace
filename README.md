@@ -94,7 +94,7 @@ npm run lint
 npm run build
 ```
 
-Current baseline: 74 backend tests and 68 frontend tests.
+Current baseline: 75 backend tests and 68 frontend tests.
 
 GitHub Actions runs the same backend suite plus frontend tests, lint, and production build for every pull request and every push to `main`. Runs use read-only repository permissions, locked npm dependencies, bounded execution times, and cancellation of superseded work.
 
@@ -109,3 +109,5 @@ GitHub Actions runs the same backend suite plus frontend tests, lint, and produc
 ## Security notes
 
 Never commit `.env`, database dumps, uploaded images, private keys, or access tokens. The repository ignores these local files. Use `.env.example` only as a template, and rotate `SECRET_KEY` between environments.
+
+Passwords are hashed directly with bcrypt. New passwords are limited to 72 UTF-8 bytes so bcrypt never silently treats two different long passwords as equivalent.
