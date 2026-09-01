@@ -19,6 +19,12 @@ import {
   moveImageToCover,
   removeImageAt,
 } from "../utils/imageOrder"
+import { getDraftOwnerId } from "../utils/listingDraft"
+import {
+  clearContactInquiryDraft,
+  readContactInquiryDraft,
+  saveContactInquiryDraft,
+} from "../utils/contactInquiryDraft"
 
 const INQUIRY_PROMPTS = [
   "Is this property still available?",
@@ -28,6 +34,7 @@ const INQUIRY_PROMPTS = [
 
 function PropertyDetails() {
   const { id } = useParams()
+  const inquiryDraftOwnerId = getDraftOwnerId(localStorage.getItem("access_token"))
   const navigate = useNavigate()
   const routeLocation = useLocation()
 
@@ -61,9 +68,13 @@ function PropertyDetails() {
 
   const [error, setError] = useState("")
   const [showInquiry, setShowInquiry] = useState(false)
-  const [inquiryMessage, setInquiryMessage] = useState("")
+  const [inquiryMessage, setInquiryMessage] = useState(
+    () => readContactInquiryDraft(inquiryDraftOwnerId, id)?.message || "",
+  )
   const [inquiryLoading, setInquiryLoading] = useState(false)
-  const [inquiryKey, setInquiryKey] = useState(() => crypto.randomUUID())
+  const [inquiryKey, setInquiryKey] = useState(
+    () => readContactInquiryDraft(inquiryDraftOwnerId, id)?.idempotencyKey || crypto.randomUUID(),
+  )
   const [inquirySuccess, setInquirySuccess] = useState(null)
 
   const [isFavorite, setIsFavorite] = useState(false)
@@ -79,6 +90,13 @@ function PropertyDetails() {
     () => localStorage.getItem("access_token") ? "loading" : "guest",
   )
   const [identityAttempt, setIdentityAttempt] = useState(0)
+
+  useEffect(() => {
+    saveContactInquiryDraft(inquiryDraftOwnerId, id, {
+      message: inquiryMessage,
+      idempotencyKey: inquiryKey,
+    })
+  }, [id, inquiryDraftOwnerId, inquiryKey, inquiryMessage])
 
   const fetchCurrentUser = useCallback(async (signal) => {
     const token = localStorage.getItem("access_token")
@@ -310,6 +328,7 @@ function PropertyDetails() {
       }
 
       setInquirySuccess({ inquiryId: data.id, propertyId: data.property_id })
+      clearContactInquiryDraft(inquiryDraftOwnerId, id)
       setInquiryMessage("")
       setInquiryKey(crypto.randomUUID())
       setShowInquiry(false)
@@ -1184,7 +1203,14 @@ function PropertyDetails() {
 
                   <div className="inquiry-quick-prompts" aria-label="Suggested messages">
                     {INQUIRY_PROMPTS.map((prompt) => (
-                      <button type="button" key={prompt} onClick={() => setInquiryMessage(prompt)}>
+                      <button
+                        type="button"
+                        key={prompt}
+                        onClick={() => setInquiryMessage((current) => {
+                          if (current.includes(prompt)) return current
+                          return `${current.trim()}${current.trim() ? "\n" : ""}${prompt}`.slice(0, 1000)
+                        })}
+                      >
                         {prompt}
                       </button>
                     ))}
@@ -1212,7 +1238,7 @@ function PropertyDetails() {
 
                   <div className="inquiry-form-footer">
 
-                    <span>{inquiryMessage.length}/1000 · Ctrl/⌘ + Enter to send</span>
+                    <span>Session draft saved · {inquiryMessage.length}/1000 · Ctrl/⌘ + Enter to send</span>
 
                     <div className="inquiry-form-actions">
 
@@ -1223,6 +1249,18 @@ function PropertyDetails() {
                       {inquiryLoading
                         ? "Sending..."
                         : "Send Inquiry"}
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled={!inquiryMessage || inquiryLoading}
+                      onClick={() => {
+                        clearContactInquiryDraft(inquiryDraftOwnerId, id)
+                        setInquiryMessage("")
+                        setInquiryKey(crypto.randomUUID())
+                      }}
+                    >
+                      Clear
                     </button>
 
                     <button

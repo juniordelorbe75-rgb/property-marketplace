@@ -1,4 +1,7 @@
 from fastapi import HTTPException
+from datetime import datetime
+
+from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -124,21 +127,22 @@ def update_inquiry_status(
             detail="You can only update inquiries you received"
         )
 
+    if status not in {"accepted", "rejected"}:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid inquiry status"
+        )
+
+    if inquiry.status == status:
+        return inquiry
+
     if inquiry.status != "pending":
         raise HTTPException(
             status_code=400,
             detail="Only pending inquiries can be updated"
         )
 
-    if status not in [
-        "pending",
-        "accepted",
-        "rejected"
-    ]:
-        raise HTTPException(
-            status_code=400,
-            detail="Invalid inquiry status"
-        )
+    inquiry.seller_last_read_at = func.now()
 
     return inquiry_repository.update_inquiry_status(
         session=session,
@@ -159,6 +163,39 @@ def get_received_inquiry_page(session: Session, current_user_id: int, **filters)
     )
 
 
+def get_unread_inquiry_count(session: Session, current_user_id: int) -> int:
+    return inquiry_repository.get_inquiry_unread_count(session, current_user_id)
+
+
+def mark_inquiries_read(
+    session: Session,
+    current_user_id: int,
+    receipts: list[tuple[int, datetime]],
+) -> None:
+    read_through_by_id: dict[int, datetime] = {}
+    for inquiry_id, read_through_at in receipts:
+        previous = read_through_by_id.get(inquiry_id)
+        if previous is None or read_through_at > previous:
+            read_through_by_id[inquiry_id] = read_through_at
+
+    unique_ids = list(read_through_by_id)
+    inquiries = inquiry_repository.get_inquiries_for_participant(
+        session, unique_ids, current_user_id
+    )
+    if len(inquiries) != len(unique_ids):
+        raise HTTPException(
+            status_code=403,
+            detail="One or more inquiries are not available to this account",
+        )
+
+    inquiry_repository.mark_inquiries_read(
+        session,
+        inquiries,
+        current_user_id,
+        read_through_by_id,
+    )
+
+
 def cancel_inquiry(
     session: Session,
     inquiry_id: int,
@@ -175,11 +212,16 @@ def cancel_inquiry(
             detail="You can only cancel inquiries you sent"
         )
 
+    if inquiry.status == "cancelled":
+        return inquiry
+
     if inquiry.status != "pending":
         raise HTTPException(
             status_code=400,
             detail="Only pending inquiries can be cancelled"
         )
+
+    inquiry.buyer_last_read_at = func.now()
 
     return inquiry_repository.update_inquiry_status(
         session=session,

@@ -7,7 +7,14 @@ import "./Inquiry.css"
 import { apiFetch } from "../utils/apiFetch"
 import { formatPropertyReference, normalizePropertyReference } from "../utils/propertyReference"
 import { notifyInquiriesChanged } from "../utils/inquiryEvents"
-import { buildInquiryPageUrl, EMPTY_INQUIRY_COUNTS, normalizeInquiryPage } from "../utils/inquiryPage"
+import {
+  buildInquiryPageUrl,
+  buildInquiryReadReceipts,
+  EMPTY_INQUIRY_COUNTS,
+  normalizeInquiryPage,
+} from "../utils/inquiryPage"
+import { getDraftOwnerId } from "../utils/listingDraft"
+import { readInquiryDrafts, saveInquiryDrafts } from "../utils/inquiryDrafts"
 
 const INQUIRY_STATUSES = ["pending", "accepted", "rejected", "cancelled"]
 const INQUIRIES_PER_PAGE = 6
@@ -121,7 +128,8 @@ function InquiryReplyComposer({ inquiry, value, sending, notice, onChange, onSen
 }
 
 function Inquiries() {
-  const { logout } = useAuth()
+  const { token, logout } = useAuth()
+  const accountId = getDraftOwnerId(token)
   const [searchParams, setSearchParams] = useSearchParams()
   const [sentInquiries, setSentInquiries] = useState([])
   const [receivedInquiries, setReceivedInquiries] = useState([])
@@ -133,17 +141,23 @@ function Inquiries() {
   const [receivedMeta, setReceivedMeta] = useState({ total: 0, totalPages: 1, counts: EMPTY_INQUIRY_COUNTS })
 
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState("")
   const [loadError, setLoadError] = useState("")
+  const [syncWarning, setSyncWarning] = useState("")
+  const [lastUpdatedAt, setLastUpdatedAt] = useState(null)
 
   const [updatingInquiry, setUpdatingInquiry] = useState(null)
   const [cancellingInquiry, setCancellingInquiry] = useState(null)
 
-  const [replyMessages, setReplyMessages] = useState({})
+  const [replyMessages, setReplyMessages] = useState(
+    () => readInquiryDrafts(getDraftOwnerId(localStorage.getItem("access_token"))),
+  )
   const [replyKeys, setReplyKeys] = useState({})
   const [replyNotices, setReplyNotices] = useState({})
   const [replyingInquiry, setReplyingInquiry] = useState(null)
   const loadControllerRef = useRef(null)
+  const autoRefreshPausedRef = useRef(false)
 
   const propertyReference = normalizePropertyReference(searchParams.get("property"))
 
@@ -168,8 +182,10 @@ function Inquiries() {
     loadControllerRef.current?.abort()
     const controller = new AbortController()
     loadControllerRef.current = controller
-    if (!background) setLoading(true)
-    setLoadError("")
+    if (background) setRefreshing(true)
+    else setLoading(true)
+    if (background) setSyncWarning("")
+    else setLoadError("")
 
     try {
       const sentUrl = buildInquiryPageUrl("sent", {
@@ -241,17 +257,43 @@ function Inquiries() {
       setReceivedMeta(normalizedReceived)
       if (normalizedSent.page !== sentPage) setSentPage(normalizedSent.page)
       if (normalizedReceived.page !== receivedPage) setReceivedPage(normalizedReceived.page)
+      setLastUpdatedAt(new Date())
+
+      const readReceipts = buildInquiryReadReceipts([
+        ...normalizedSent.items,
+        ...normalizedReceived.items,
+      ])
+      if (readReceipts.length > 0) {
+        try {
+          const readResponse = await apiFetch("/inquiries/read", {
+            method: "PATCH",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({ receipts: readReceipts }),
+          })
+          if (readResponse.ok) notifyInquiriesChanged()
+        } catch {
+          console.warn("Visible inquiries could not be marked as read")
+        }
+      }
 
     } catch (error) {
       if (error.name === "AbortError") return
 
       console.error("Inquiries error:", error)
-      setLoadError(error.message)
+      if (background) {
+        setSyncWarning("New messages could not be refreshed. Your loaded conversations are still available.")
+      } else {
+        setLoadError(error.message)
+      }
 
     } finally {
       if (loadControllerRef.current === controller) {
         loadControllerRef.current = null
         setLoading(false)
+        setRefreshing(false)
       }
     }
   }, [logout, propertyReference, receivedFilter, receivedPage, sentFilter, sentPage])
@@ -265,10 +307,52 @@ function Inquiries() {
     }
   }, [fetchInquiries])
 
+  const hasReplyDraft = Object.values(replyMessages).some((message) => message.trim())
+  const autoRefreshPaused = hasReplyDraft || Boolean(
+    replyingInquiry || updatingInquiry || cancellingInquiry,
+  )
+
+  useEffect(() => {
+    autoRefreshPausedRef.current = autoRefreshPaused
+  }, [autoRefreshPaused])
+
+  useEffect(() => {
+    saveInquiryDrafts(accountId, replyMessages)
+  }, [accountId, replyMessages])
+
+  useEffect(() => {
+    const refreshWhenVisible = () => {
+      if (
+        !autoRefreshPausedRef.current
+        && document.visibilityState === "visible"
+        && navigator.onLine !== false
+      ) {
+        fetchInquiries({ background: true })
+      }
+    }
+    const intervalId = window.setInterval(refreshWhenVisible, 30000)
+    document.addEventListener("visibilitychange", refreshWhenVisible)
+    window.addEventListener("focus", refreshWhenVisible)
+    window.addEventListener("online", refreshWhenVisible)
+    return () => {
+      window.clearInterval(intervalId)
+      document.removeEventListener("visibilitychange", refreshWhenVisible)
+      window.removeEventListener("focus", refreshWhenVisible)
+      window.removeEventListener("online", refreshWhenVisible)
+    }
+  }, [fetchInquiries])
+
   async function updateInquiryStatus(
     inquiryId,
     status
   ) {
+    if (
+      status === "rejected"
+      && !window.confirm("Reject and close this inquiry? The conversation cannot be reopened.")
+    ) {
+      return
+    }
+
     const token =
       localStorage.getItem("access_token")
 
@@ -388,6 +472,9 @@ function Inquiries() {
           [inquiryId]: "",
         })
       )
+      setReplyKeys((current) => ({ ...current, [inquiryId]: crypto.randomUUID() }))
+      setReplyNotices((current) => ({ ...current, [inquiryId]: "Reply sent." }))
+      await fetchInquiries({ background: true })
 
     } catch (error) {
       console.error(
@@ -427,10 +514,6 @@ function Inquiries() {
           },
         }
       )
-      setReplyKeys((current) => ({ ...current, [inquiryId]: crypto.randomUUID() }))
-      setReplyNotices((current) => ({ ...current, [inquiryId]: "Reply sent." }))
-      await fetchInquiries({ background: true })
-      await fetchInquiries({ background: true })
       const data = await readApiResponse(response)
 
       if (response.status === 401) {
@@ -466,11 +549,20 @@ function Inquiries() {
 
       <div className="inquiries-header">
 
-        <h1>My Inquiries</h1>
+        <div>
+          <h1>My Inquiries</h1>
+          <p>Manage your property inquiries.</p>
+          {lastUpdatedAt && <span>Updated {formatInquiryDate(lastUpdatedAt)}</span>}
+          {autoRefreshPaused && <span className="inquiry-refresh-paused">Auto-refresh paused while you finish this action.</span>}
+        </div>
 
-        <p>
-          Manage your property inquiries.
-        </p>
+        <button
+          type="button"
+          onClick={() => fetchInquiries({ background: true })}
+          disabled={refreshing}
+        >
+          {refreshing ? "Refreshing..." : "Refresh messages"}
+        </button>
 
       </div>
 
@@ -483,6 +575,13 @@ function Inquiries() {
 
       {error && (
         <p className="inquiry-error" role="alert">{error}</p>
+      )}
+
+      {syncWarning && (
+        <div className="inquiry-sync-warning" role="status">
+          <span>{syncWarning}</span>
+          <button type="button" onClick={() => fetchInquiries({ background: true })}>Try again</button>
+        </div>
       )}
 
       {propertyReference && (
@@ -530,9 +629,10 @@ function Inquiries() {
                   key={inquiry.id}
                 >
 
-                  <h3>
-                    Inquiry #{inquiry.id}
-                  </h3>
+                  <div className="inquiry-card-heading">
+                    <h3>Inquiry #{inquiry.id}</h3>
+                    {inquiry.unread_count > 0 && <span>{inquiry.unread_count} new</span>}
+                  </div>
 
                   <p>
                     To: {inquiry.seller_name}
@@ -659,9 +759,10 @@ function Inquiries() {
                   key={inquiry.id}
                 >
 
-                  <h3>
-                    Inquiry #{inquiry.id}
-                  </h3>
+                  <div className="inquiry-card-heading">
+                    <h3>Inquiry #{inquiry.id}</h3>
+                    {inquiry.unread_count > 0 && <span>{inquiry.unread_count} new</span>}
+                  </div>
 
                   <p>
                     From: {inquiry.buyer_name}

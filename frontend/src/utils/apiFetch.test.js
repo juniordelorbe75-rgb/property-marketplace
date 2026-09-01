@@ -3,6 +3,7 @@ import assert from "node:assert/strict"
 
 import {
   apiFetch,
+  getRequestFailureMessage,
   getRetryDelayMs,
   isRetryableRequest,
   isRetryableStatus,
@@ -73,6 +74,89 @@ test("retries temporary reads but never replays writes", async () => {
     const writeResponse = await apiFetch("/inquiries/", { method: "POST" })
     assert.equal(writeResponse.status, 503)
     assert.equal(writeCalls, 1)
+  } finally {
+    globalThis.window = originalWindow
+    globalThis.fetch = originalFetch
+  }
+})
+
+test("explains offline, read, and unconfirmed write failures differently", () => {
+  assert.match(getRequestFailureMessage({ isOnline: false }), /offline/i)
+  assert.match(getRequestFailureMessage(), /could not reach/i)
+  assert.match(
+    getRequestFailureMessage({ isWrite: true }),
+    /before confirmation.*check the latest information/i,
+  )
+  assert.match(
+    getRequestFailureMessage({ isWrite: true, timedOut: true }),
+    /timed out before confirmation/i,
+  )
+})
+
+test("does not send a request while the browser reports offline", async () => {
+  const originalNavigator = Object.getOwnPropertyDescriptor(globalThis, "navigator")
+  const originalFetch = globalThis.fetch
+  let fetchCalls = 0
+  Object.defineProperty(globalThis, "navigator", {
+    configurable: true,
+    value: { onLine: false },
+  })
+  globalThis.fetch = async () => {
+    fetchCalls += 1
+  }
+
+  try {
+    await assert.rejects(apiFetch("/properties/"), /offline/i)
+    assert.equal(fetchCalls, 0)
+  } finally {
+    globalThis.fetch = originalFetch
+    if (originalNavigator) {
+      Object.defineProperty(globalThis, "navigator", originalNavigator)
+    } else {
+      delete globalThis.navigator
+    }
+  }
+})
+
+test("preserves navigation cancellation even when the browser is offline", async () => {
+  const originalNavigator = Object.getOwnPropertyDescriptor(globalThis, "navigator")
+  Object.defineProperty(globalThis, "navigator", {
+    configurable: true,
+    value: { onLine: false },
+  })
+  const controller = new AbortController()
+  controller.abort()
+
+  try {
+    await assert.rejects(
+      apiFetch("/properties/", { signal: controller.signal }),
+      { name: "AbortError" },
+    )
+  } finally {
+    if (originalNavigator) {
+      Object.defineProperty(globalThis, "navigator", originalNavigator)
+    } else {
+      delete globalThis.navigator
+    }
+  }
+})
+
+test("does not replay an interrupted write and warns about missing confirmation", async () => {
+  const originalWindow = globalThis.window
+  const originalFetch = globalThis.fetch
+  globalThis.window = { setTimeout, clearTimeout }
+  let fetchCalls = 0
+  globalThis.fetch = async () => {
+    fetchCalls += 1
+    throw new TypeError("Failed to fetch")
+  }
+
+  try {
+    await assert.rejects(
+      apiFetch("/inquiries/1/messages", { method: "POST" }),
+      /before confirmation.*check the latest information/i,
+    )
+    assert.equal(fetchCalls, 1)
   } finally {
     globalThis.window = originalWindow
     globalThis.fetch = originalFetch

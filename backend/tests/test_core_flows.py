@@ -594,9 +594,16 @@ class CoreFlowTests(unittest.TestCase):
             seller.id,
             "accepted",
         )
+        accepted_retry = update_inquiry_status(
+            self.session,
+            inquiry.id,
+            seller.id,
+            "accepted",
+        )
 
         self.assertEqual(replied.reply, "Yes, it is available.")
         self.assertEqual(accepted.status, "accepted")
+        self.assertEqual(accepted_retry.id, accepted.id)
 
         with self.assertRaises(HTTPException) as reopen_error:
             update_inquiry_status(
@@ -609,7 +616,7 @@ class CoreFlowTests(unittest.TestCase):
         self.assertEqual(reopen_error.exception.status_code, 400)
         self.assertEqual(
             reopen_error.exception.detail,
-            "Only pending inquiries can be updated",
+            "Invalid inquiry status",
         )
 
     def test_buyer_cannot_reply_to_or_accept_an_inquiry(self):
@@ -721,8 +728,7 @@ class CoreFlowTests(unittest.TestCase):
         self.assertIsNotNone(cancelled.created_at)
         self.assertIsNotNone(cancelled.updated_at)
 
-        with self.assertRaises(HTTPException) as repeat_error:
-            cancel_inquiry(self.session, inquiry.id, buyer.id)
+        repeated_cancel = cancel_inquiry(self.session, inquiry.id, buyer.id)
         with self.assertRaises(HTTPException) as update_error:
             update_inquiry_status(
                 self.session, inquiry.id, seller.id, "accepted"
@@ -732,7 +738,8 @@ class CoreFlowTests(unittest.TestCase):
                 self.session, inquiry.id, seller.id, "Too late."
             )
 
-        self.assertEqual(repeat_error.exception.status_code, 400)
+        self.assertEqual(repeated_cancel.id, cancelled.id)
+        self.assertEqual(repeated_cancel.status, "cancelled")
         self.assertEqual(update_error.exception.status_code, 400)
         self.assertEqual(reply_error.exception.status_code, 400)
 

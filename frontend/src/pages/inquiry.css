@@ -5,6 +5,10 @@
 }
 
 .inquiries-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
   margin-bottom: 35px;
 }
 
@@ -15,9 +19,19 @@
 }
 
 .inquiries-header p {
+  margin-bottom: 5px;
   color: #64748b;
   font-size: 18px;
 }
+
+.inquiries-header span { color: #64748b; font-size: 12px; }
+.inquiries-header .inquiry-refresh-paused { display: block; margin-top: 4px; color: #92400e; font-weight: 700; }
+.inquiries-header > button { min-height: 42px; padding: 0 15px; border: 1px solid #2563eb; border-radius: 8px; background: white; color: #1d4ed8; cursor: pointer; font-weight: 700; white-space: nowrap; }
+.inquiries-header > button:hover:not(:disabled) { background: #eff6ff; }
+.inquiries-header > button:disabled { cursor: wait; opacity: 0.6; }
+
+.inquiry-sync-warning { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-bottom: 20px; padding: 12px 14px; border: 1px solid #fde68a; border-radius: 9px; background: #fffbeb; color: #92400e; }
+.inquiry-sync-warning button { border: 0; background: transparent; color: #92400e; cursor: pointer; font-weight: 800; text-decoration: underline; }
 
 .inquiries-section {
   margin-bottom: 45px;
@@ -70,6 +84,10 @@
 .inquiry-status .rejected {
   color: #dc2626;
 }
+
+.inquiry-card-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.inquiry-card-heading h3 { margin-bottom: 15px; }
+.inquiry-card-heading > span { align-self: flex-start; padding: 4px 8px; border-radius: 999px; background: #b45309; color: white; font-size: 11px; font-weight: 800; white-space: nowrap; }
 
 .inquiry-conversation {
   display: flex;
@@ -302,6 +320,10 @@
   .inquiries-grid {
     grid-template-columns: 1fr;
   }
+
+  .inquiries-header { align-items: stretch; flex-direction: column; }
+  .inquiries-header > button { width: 100%; }
+  .inquiry-sync-warning { align-items: flex-start; flex-direction: column; }
 
   .inquiry-property-filter { align-items: flex-start; flex-direction: column; }
   .inquiry-load-error { align-items: flex-start; flex-direction: column; }

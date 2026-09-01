@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom"
 import Navbar from "./components/Navbar"
+import ConnectionStatus from "./components/ConnectionStatus"
 import { AuthProvider } from "./context/AuthContext"
 
 import Register from "./pages/Register"
@@ -27,6 +28,7 @@ function App() {
     <AuthProvider>
       <BrowserRouter>
         <Navbar />
+        <ConnectionStatus />
 
         <Routes>
           <Route

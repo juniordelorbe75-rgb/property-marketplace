@@ -217,6 +217,26 @@ def ensure_schema_safety():
                 )
             )
 
+        if "buyer_last_read_at" not in inquiry_columns:
+            connection.execute(
+                text(
+                    """
+                    ALTER TABLE inquiries
+                    ADD COLUMN buyer_last_read_at TIMESTAMP WITH TIME ZONE
+                    """
+                )
+            )
+
+        if "seller_last_read_at" not in inquiry_columns:
+            connection.execute(
+                text(
+                    """
+                    ALTER TABLE inquiries
+                    ADD COLUMN seller_last_read_at TIMESTAMP WITH TIME ZONE
+                    """
+                )
+            )
+
         inquiry_message_columns = {
             column["name"]
             for column in inspect(connection).get_columns("inquiry_messages")

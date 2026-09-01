@@ -72,6 +72,11 @@ class SchemaSafetyTests(unittest.TestCase):
             "creation_key",
             {column["name"] for column in inspector.get_columns("inquiry_messages")},
         )
+        inquiry_columns = {
+            column["name"] for column in inspector.get_columns("inquiries")
+        }
+        self.assertIn("buyer_last_read_at", inquiry_columns)
+        self.assertIn("seller_last_read_at", inquiry_columns)
         for table_name, expected_names in expected.items():
             actual_names = {
                 index["name"] for index in inspector.get_indexes(table_name)

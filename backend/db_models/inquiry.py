@@ -1,5 +1,5 @@
 import builtins
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import DateTime, ForeignKey, Index, String, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -75,6 +75,16 @@ class InquiryDB(Base):
         onupdate=func.now(),
     )
 
+    buyer_last_read_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+
+    seller_last_read_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+
     property: Mapped["PropertyDB"] = relationship(
         "PropertyDB",
         back_populates="inquiries"
@@ -146,6 +156,20 @@ class InquiryDB(Base):
                 for item in self.messages
             )
         return conversation
+
+    @builtins.property
+    def read_through_at(self) -> datetime:
+        delivered_times = [self.created_at]
+        if self.reply:
+            delivered_times.append(self.updated_at)
+        delivered_times.extend(item.created_at for item in self.messages)
+        delivered_at = max(
+            delivered_times,
+            key=lambda value: value.replace(tzinfo=None),
+        )
+        if delivered_at.tzinfo is None:
+            return delivered_at.replace(tzinfo=timezone.utc)
+        return delivered_at.astimezone(timezone.utc)
 
 
 class InquiryMessageDB(Base):

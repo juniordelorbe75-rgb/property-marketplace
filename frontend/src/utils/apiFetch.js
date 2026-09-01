@@ -13,6 +13,26 @@ export function isRetryableStatus(status) {
   return RETRYABLE_STATUSES.has(status)
 }
 
+export function getRequestFailureMessage({
+  isOnline = true,
+  isWrite = false,
+  timedOut = false,
+} = {}) {
+  if (!isOnline) {
+    return "You appear to be offline. Reconnect and try again."
+  }
+
+  if (isWrite) {
+    return timedOut
+      ? "The request timed out before confirmation. Check the latest information before trying again."
+      : "The connection was interrupted before confirmation. Check the latest information before trying again."
+  }
+
+  return timedOut
+    ? "The request timed out. Please check your connection and the servers, then try again."
+    : "Could not reach the marketplace. Please check your connection and the servers, then try again."
+}
+
 export function getRetryDelayMs(response, retryIndex) {
   const retryAfter = response?.headers?.get?.("retry-after")
   if (retryAfter) {
@@ -59,6 +79,14 @@ export async function apiFetch(url, options = {}, timeoutMs = DEFAULT_TIMEOUT_MS
   const externalSignal = options.signal
   const canRetry = isRetryableRequest(options)
 
+  if (externalSignal?.aborted) {
+    throw externalSignal.reason || new DOMException("Request cancelled", "AbortError")
+  }
+
+  if (globalThis.navigator?.onLine === false) {
+    throw new Error(getRequestFailureMessage({ isOnline: false }))
+  }
+
   for (let attempt = 0; ; attempt += 1) {
     const controller = new AbortController()
     let timedOut = false
@@ -98,9 +126,21 @@ export async function apiFetch(url, options = {}, timeoutMs = DEFAULT_TIMEOUT_MS
 
       return response
     } catch (error) {
+      if (externalSignal?.aborted) {
+        throw error
+      }
+
+      const isOnline = globalThis.navigator?.onLine !== false
+      if (!isOnline) {
+        throw new Error(
+          getRequestFailureMessage({ isOnline: false }),
+          { cause: error },
+        )
+      }
+
       if (timedOut) {
         throw new Error(
-          "The request timed out. Please check the servers and try again.",
+          getRequestFailureMessage({ isWrite: !canRetry, timedOut: true }),
           { cause: error },
         )
       }
@@ -112,7 +152,10 @@ export async function apiFetch(url, options = {}, timeoutMs = DEFAULT_TIMEOUT_MS
         await waitForRetry(250 * (2 ** attempt), externalSignal)
         continue
       }
-      throw error
+      throw new Error(
+        getRequestFailureMessage({ isWrite: !canRetry }),
+        { cause: error },
+      )
     } finally {
       window.clearTimeout(timeout)
       externalSignal?.removeEventListener("abort", handleExternalAbort)

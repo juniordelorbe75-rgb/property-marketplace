@@ -4,7 +4,7 @@ import { useAuth } from "../context/AuthContext"
 import { apiFetch } from "../utils/apiFetch"
 import { readApiResponse } from "../utils/apiResponse"
 import { INQUIRIES_CHANGED_EVENT } from "../utils/inquiryEvents"
-import { normalizePendingInquiryCount } from "../utils/navbarStats"
+import { normalizeUnreadInquiryCount } from "../utils/navbarStats"
 import "./Navbar.css"
 
 function NavigationLink({ to, children, end = false, onNavigate }) {
@@ -14,27 +14,42 @@ function NavigationLink({ to, children, end = false, onNavigate }) {
 function Navbar() {
   const navigate = useNavigate()
   const { token, logout } = useAuth()
-  const [pendingInquiries, setPendingInquiries] = useState(0)
+  const [unreadInquiries, setUnreadInquiries] = useState(0)
   const [menuOpen, setMenuOpen] = useState(false)
 
-  const loadPendingInquiries = useCallback(async (signal) => {
-    if (!token) { setPendingInquiries(0); return }
+  const loadUnreadInquiries = useCallback(async (signal) => {
+    if (!token) { setUnreadInquiries(0); return }
     try {
-      const response = await apiFetch("/properties/my/stats", { headers: { Authorization: `Bearer ${token}` }, signal })
+      const response = await apiFetch("/inquiries/unread-count", { headers: { Authorization: `Bearer ${token}` }, signal })
       const data = await readApiResponse(response)
-      if (response.ok) setPendingInquiries(normalizePendingInquiryCount(data))
+      if (response.ok) setUnreadInquiries(normalizeUnreadInquiryCount(data))
     } catch (error) {
-      if (error.name !== "AbortError") console.warn("Pending inquiry count is temporarily unavailable")
+      if (error.name !== "AbortError") console.warn("Unread inquiry count is temporarily unavailable")
     }
   }, [token])
 
   useEffect(() => {
     const controller = new AbortController()
-    const refresh = () => loadPendingInquiries(controller.signal)
+    const refresh = () => {
+      if (document.visibilityState === "visible" && navigator.onLine !== false) {
+        loadUnreadInquiries(controller.signal)
+      }
+    }
     refresh()
+    const intervalId = window.setInterval(refresh, 45000)
     window.addEventListener(INQUIRIES_CHANGED_EVENT, refresh)
-    return () => { controller.abort(); window.removeEventListener(INQUIRIES_CHANGED_EVENT, refresh) }
-  }, [loadPendingInquiries])
+    window.addEventListener("focus", refresh)
+    window.addEventListener("online", refresh)
+    document.addEventListener("visibilitychange", refresh)
+    return () => {
+      controller.abort()
+      window.clearInterval(intervalId)
+      window.removeEventListener(INQUIRIES_CHANGED_EVENT, refresh)
+      window.removeEventListener("focus", refresh)
+      window.removeEventListener("online", refresh)
+      document.removeEventListener("visibilitychange", refresh)
+    }
+  }, [loadUnreadInquiries])
 
   useEffect(() => {
     if (!menuOpen) return undefined
@@ -71,7 +86,7 @@ function Navbar() {
           {token ? <>
             <NavigationLink to="/favorites" onNavigate={closeMenu}>Favorites</NavigationLink>
             <NavigationLink to="/my-properties" onNavigate={closeMenu}>My Listings</NavigationLink>
-            <NavigationLink to="/inquiries" onNavigate={closeMenu}>Inquiries{pendingInquiries > 0 && <span className="inquiry-badge" aria-label={`${pendingInquiries} pending inquiries`}>{pendingInquiries > 99 ? "99+" : pendingInquiries}</span>}</NavigationLink>
+            <NavigationLink to="/inquiries" onNavigate={closeMenu}>Inquiries{unreadInquiries > 0 && <span className="inquiry-badge" aria-label={`${unreadInquiries} unread inquiry messages`}>{unreadInquiries > 99 ? "99+" : unreadInquiries}</span>}</NavigationLink>
             <NavigationLink to="/create-property" onNavigate={closeMenu}>Create Listing</NavigationLink>
             <NavigationLink to="/account" onNavigate={closeMenu}>Account</NavigationLink>
             <button className="logout-button" type="button" onClick={handleLogout}>Log out</button>

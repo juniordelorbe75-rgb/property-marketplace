@@ -1,6 +1,10 @@
 import test from "node:test"
 import assert from "node:assert/strict"
-import { buildInquiryPageUrl, normalizeInquiryPage } from "./inquiryPage.js"
+import {
+  buildInquiryPageUrl,
+  buildInquiryReadReceipts,
+  normalizeInquiryPage,
+} from "./inquiryPage.js"
 
 test("builds bounded server inquiry pagination and filters", () => {
   assert.equal(
@@ -21,4 +25,26 @@ test("normalizes an authoritative inquiry page and rejects malformed data", () =
   assert.equal(page.counts.pending, 1)
   assert.equal(page.pageSize, 6)
   assert.throws(() => normalizeInquiryPage({ items: [] }), /invalid page/)
+})
+
+test("builds read receipts only for valid unread inquiry snapshots", () => {
+  assert.deepEqual(buildInquiryReadReceipts([
+    { id: 7, unread_count: 2, read_through_at: "2026-08-31T10:00:00Z" },
+    { id: 8, unread_count: 0, read_through_at: "2026-08-31T10:00:00Z" },
+    { id: -1, unread_count: 1, read_through_at: "2026-08-31T10:00:00Z" },
+    { id: 9, unread_count: 1, read_through_at: "not-a-date" },
+  ]), [{
+    inquiry_id: 7,
+    read_through_at: "2026-08-31T10:00:00Z",
+  }])
+})
+
+test("deduplicates receipts at the newest delivered boundary", () => {
+  assert.deepEqual(buildInquiryReadReceipts([
+    { id: 12, unread_count: 1, read_through_at: "2026-08-31T10:00:00Z" },
+    { id: 12, unread_count: 1, read_through_at: "2026-08-31T10:05:00Z" },
+  ]), [{
+    inquiry_id: 12,
+    read_through_at: "2026-08-31T10:05:00Z",
+  }])
 })

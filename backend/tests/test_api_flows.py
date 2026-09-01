@@ -1483,6 +1483,172 @@ class ApiFlowTests(unittest.TestCase):
         self.assertEqual(old_login_status, 401)
         self.assertEqual(new_login_status, 200)
 
+    def test_inquiry_unread_counts_are_participant_scoped_and_markable(self):
+        seller, seller_token = self.register_and_login(
+            "Unread Seller", "unread-seller@example.com"
+        )
+        _buyer, buyer_token = self.register_and_login(
+            "Unread Buyer", "unread-buyer@example.com"
+        )
+        _outsider, outsider_token = self.register_and_login(
+            "Unread Outsider", "unread-outsider@example.com"
+        )
+        _property_status, property_item = self.call(
+            "POST",
+            "/properties/",
+            {
+                "title": "Unread Conversation Home",
+                "price": 195000,
+                "location": "Santiago",
+                "property_type": "Apartment",
+                "bedrooms": 2,
+                "status": "available",
+            },
+            seller_token,
+        )
+        _inquiry_status, inquiry = self.call(
+            "POST",
+            f"/inquiries/{property_item['id']}",
+            {"message": "Can I see it this week?"},
+            buyer_token,
+        )
+
+        _buyer_zero_status, buyer_zero = self.call(
+            "GET", "/inquiries/unread-count", token=buyer_token
+        )
+        seller_one_status, seller_one = self.call(
+            "GET", "/inquiries/unread-count", token=seller_token
+        )
+        page_status, received_page = self.call(
+            "GET", "/inquiries/received/page", token=seller_token
+        )
+        mark_status, _mark_body = self.call(
+            "PATCH",
+            "/inquiries/read",
+            {"receipts": [{
+                "inquiry_id": inquiry["id"],
+                "read_through_at": received_page["items"][0]["read_through_at"],
+            }]},
+            seller_token,
+        )
+        _seller_zero_status, seller_zero = self.call(
+            "GET", "/inquiries/unread-count", token=seller_token
+        )
+        self.call(
+            "POST",
+            f"/inquiries/{inquiry['id']}/messages",
+            {"message": "Thursday afternoon would work."},
+            buyer_token,
+        )
+        _seller_reply_status, seller_after_buyer_message = self.call(
+            "GET", "/inquiries/unread-count", token=seller_token
+        )
+        self.call(
+            "POST",
+            f"/inquiries/{inquiry['id']}/messages",
+            {"message": "Thursday at 2 PM is available."},
+            seller_token,
+        )
+        buyer_unread_status, buyer_unread = self.call(
+            "GET", "/inquiries/unread-count", token=buyer_token
+        )
+        sent_page_status, sent_page = self.call(
+            "GET", "/inquiries/sent/page", token=buyer_token
+        )
+        outsider_mark_status, _outsider_mark = self.call(
+            "PATCH",
+            "/inquiries/read",
+            {"receipts": [{
+                "inquiry_id": inquiry["id"],
+                "read_through_at": sent_page["items"][0]["read_through_at"],
+            }]},
+            outsider_token,
+        )
+
+        self.assertEqual(buyer_zero["unread_count"], 0)
+        self.assertEqual(seller_one_status, 200)
+        self.assertEqual(seller_one["unread_count"], 1)
+        self.assertEqual(page_status, 200)
+        self.assertEqual(received_page["items"][0]["unread_count"], 1)
+        self.assertEqual(mark_status, 204)
+        self.assertEqual(seller_zero["unread_count"], 0)
+        self.assertEqual(seller_after_buyer_message["unread_count"], 1)
+        self.assertEqual(buyer_unread_status, 200)
+        self.assertEqual(buyer_unread["unread_count"], 1)
+        self.assertEqual(sent_page_status, 200)
+        self.assertEqual(sent_page["items"][0]["unread_count"], 1)
+        self.assertEqual(outsider_mark_status, 403)
+
+    def test_read_receipt_does_not_clear_a_message_newer_than_the_delivered_page(self):
+        _seller, seller_token = self.register_and_login(
+            "Receipt Seller", "receipt-seller@example.com"
+        )
+        _buyer, buyer_token = self.register_and_login(
+            "Receipt Buyer", "receipt-buyer@example.com"
+        )
+        _property_status, property_item = self.call(
+            "POST",
+            "/properties/",
+            {
+                "title": "Receipt Boundary Home",
+                "price": 225000,
+                "location": "La Vega",
+                "property_type": "House",
+                "bedrooms": 3,
+                "status": "available",
+            },
+            seller_token,
+        )
+        _inquiry_status, inquiry = self.call(
+            "POST",
+            f"/inquiries/{property_item['id']}",
+            {"message": "May I arrange a viewing?"},
+            buyer_token,
+        )
+        _page_status, delivered_page = self.call(
+            "GET", "/inquiries/received/page", token=seller_token
+        )
+        delivered_boundary = delivered_page["items"][0]["read_through_at"]
+
+        self.call(
+            "POST",
+            f"/inquiries/{inquiry['id']}/messages",
+            {"message": "I can also visit Saturday morning."},
+            buyer_token,
+        )
+        stale_receipt_status, _stale_receipt = self.call(
+            "PATCH",
+            "/inquiries/read",
+            {"receipts": [{
+                "inquiry_id": inquiry["id"],
+                "read_through_at": delivered_boundary,
+            }]},
+            seller_token,
+        )
+        _still_unread_status, still_unread = self.call(
+            "GET", "/inquiries/unread-count", token=seller_token
+        )
+        _fresh_page_status, fresh_page = self.call(
+            "GET", "/inquiries/received/page", token=seller_token
+        )
+        fresh_receipt_status, _fresh_receipt = self.call(
+            "PATCH",
+            "/inquiries/read",
+            {"receipts": [{
+                "inquiry_id": inquiry["id"],
+                "read_through_at": fresh_page["items"][0]["read_through_at"],
+            }]},
+            seller_token,
+        )
+        _cleared_status, cleared = self.call(
+            "GET", "/inquiries/unread-count", token=seller_token
+        )
+
+        self.assertEqual(stale_receipt_status, 204)
+        self.assertEqual(still_unread["unread_count"], 1)
+        self.assertEqual(fresh_receipt_status, 204)
+        self.assertEqual(cleared["unread_count"], 0)
+
     def test_buyer_and_seller_can_message_from_the_inquiry_thread(self):
         seller, seller_token = self.register_and_login(
             "Thread Seller", "thread-seller@example.com"
@@ -1754,6 +1920,11 @@ class ApiFlowTests(unittest.TestCase):
             f"/inquiries/{inquiry['id']}/cancel",
             token=buyer_token,
         )
+        retry_cancel_status, retry_cancelled = self.call(
+            "PATCH",
+            f"/inquiries/{inquiry['id']}/cancel",
+            token=buyer_token,
+        )
         accept_status, _accept_error = self.call(
             "PATCH",
             f"/inquiries/{inquiry['id']}/status",
@@ -1775,6 +1946,8 @@ class ApiFlowTests(unittest.TestCase):
         self.assertEqual(forbidden_status, 403)
         self.assertEqual(cancel_status, 200)
         self.assertEqual(cancelled["status"], "cancelled")
+        self.assertEqual(retry_cancel_status, 200)
+        self.assertEqual(retry_cancelled["id"], cancelled["id"])
         self.assertTrue(cancelled["updated_at"])
         self.assertEqual(accept_status, 400)
         self.assertEqual(received_status, 200)

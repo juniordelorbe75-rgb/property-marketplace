@@ -1,0 +1,37 @@
+.connection-status {
+  display: flex;
+  width: 100%;
+  min-height: 42px;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  padding: 9px 20px;
+  border-bottom: 1px solid transparent;
+  font-size: 0.9rem;
+  font-weight: 650;
+  text-align: center;
+}
+
+.connection-status.offline {
+  border-color: #f1c27d;
+  background: #fff7e8;
+  color: #7c3d0b;
+}
+
+.connection-status.restored {
+  border-color: #b8dfc7;
+  background: #edf9f1;
+  color: #1f5b3a;
+}
+
+.connection-status > span:first-child {
+  flex: 0 0 auto;
+}
+
+@media (max-width: 520px) {
+  .connection-status {
+    align-items: flex-start;
+    padding: 9px 12px;
+    font-size: 0.84rem;
+  }
+}

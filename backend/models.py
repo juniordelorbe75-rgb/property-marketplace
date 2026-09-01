@@ -339,6 +339,8 @@ class Inquiry(BaseModel):
     buyer_name: str
     seller_name: str
     conversation_messages: list[InquiryMessage] = Field(default_factory=list)
+    unread_count: int = 0
+    read_through_at: datetime
 
     model_config = {
         "from_attributes": True
@@ -360,3 +362,7 @@ class InquiryPage(BaseModel):
     page_size: int
     total_pages: int
     counts: InquiryStatusCounts
+
+
+class InquiryUnreadCount(BaseModel):
+    unread_count: int

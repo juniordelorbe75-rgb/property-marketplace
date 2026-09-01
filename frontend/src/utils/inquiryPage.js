@@ -32,3 +32,31 @@ export function normalizeInquiryPage(data) {
     counts: { ...EMPTY_INQUIRY_COUNTS, ...data.counts },
   }
 }
+
+export function buildInquiryReadReceipts(inquiries) {
+  const receiptsByInquiry = new Map()
+
+  for (const inquiry of Array.isArray(inquiries) ? inquiries : []) {
+    const inquiryId = Number(inquiry?.id)
+    const readThroughAt = inquiry?.read_through_at
+    const readThroughTime = Date.parse(readThroughAt)
+    if (
+      !Number.isSafeInteger(inquiryId)
+      || inquiryId < 1
+      || Number(inquiry?.unread_count) < 1
+      || !Number.isFinite(readThroughTime)
+    ) {
+      continue
+    }
+
+    const previous = receiptsByInquiry.get(inquiryId)
+    if (!previous || readThroughTime > previous.readThroughTime) {
+      receiptsByInquiry.set(inquiryId, { readThroughAt, readThroughTime })
+    }
+  }
+
+  return [...receiptsByInquiry].map(([inquiryId, receipt]) => ({
+    inquiry_id: inquiryId,
+    read_through_at: receipt.readThroughAt,
+  }))
+}

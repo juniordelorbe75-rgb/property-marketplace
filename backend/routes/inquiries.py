@@ -1,4 +1,6 @@
 from fastapi import APIRouter, Depends, Header, Query
+from datetime import datetime
+
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.orm import Session
 from typing import Literal
@@ -6,7 +8,7 @@ from uuid import UUID
 
 from backend.auth.dependencies import get_current_user_id
 from backend.db import get_db
-from backend.models import Inquiry, InquiryPage
+from backend.models import Inquiry, InquiryPage, InquiryUnreadCount
 from backend.services.inquiry_service import (
     cancel_inquiry,
     create_inquiry,
@@ -17,6 +19,8 @@ from backend.services.inquiry_service import (
     update_inquiry_status,
     reply_to_inquiry,
     add_inquiry_message,
+    get_unread_inquiry_count,
+    mark_inquiries_read,
 )
 
 
@@ -31,7 +35,7 @@ class InquiryCreate(BaseModel):
         return value.strip()
 
 class InquiryStatusUpdate(BaseModel):
-    status: Literal["pending", "accepted", "rejected"]
+    status: Literal["accepted", "rejected"]
 
 class InquiryReply(BaseModel):
     reply: str = Field(min_length=1, max_length=1000)
@@ -53,6 +57,22 @@ class InquiryMessageCreate(BaseModel):
         if not value.strip():
             raise ValueError("Message cannot be empty")
         return value.strip()
+
+
+class InquiryReadReceipt(BaseModel):
+    inquiry_id: int = Field(ge=1)
+    read_through_at: datetime
+
+    @field_validator("read_through_at")
+    @classmethod
+    def require_timezone(cls, value: datetime) -> datetime:
+        if value.tzinfo is None or value.utcoffset() is None:
+            raise ValueError("Read receipt timestamps must include a timezone")
+        return value
+
+
+class InquiryReadRequest(BaseModel):
+    receipts: list[InquiryReadReceipt] = Field(min_length=1, max_length=50)
 
 
 router = APIRouter(
@@ -196,6 +216,30 @@ def get_received_page(
         property_id=property_id,
         page=page,
         page_size=page_size,
+    )
+
+
+@router.get("/unread-count", response_model=InquiryUnreadCount)
+def unread_count(
+    current_user_id: int = Depends(get_current_user_id),
+    session: Session = Depends(get_db),
+):
+    return {"unread_count": get_unread_inquiry_count(session, current_user_id)}
+
+
+@router.patch("/read", status_code=204)
+def mark_read(
+    read_data: InquiryReadRequest,
+    current_user_id: int = Depends(get_current_user_id),
+    session: Session = Depends(get_db),
+):
+    mark_inquiries_read(
+        session=session,
+        current_user_id=current_user_id,
+        receipts=[
+            (receipt.inquiry_id, receipt.read_through_at)
+            for receipt in read_data.receipts
+        ],
     )
 
 

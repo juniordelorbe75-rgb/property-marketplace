@@ -149,6 +149,10 @@ of exposing raw browser errors such as `Unexpected end of JSON input`.
 `apiFetch.js` gives every API request a 20-second timeout while preserving page
 navigation cancellation. A stalled connection becomes a clear timeout message
 instead of leaving a page loading forever.
+It also avoids sending requests when the browser reports that the device is
+offline. Final read failures explain that the marketplace could not be reached;
+write failures instead warn that server confirmation was not received and ask
+the user to check the latest information before repeating the action.
 
 ### Learning note: How listing maps work
 
@@ -492,6 +496,9 @@ The project currently has automated coverage for:
 - Private, authenticated, and error API responses use `Cache-Control: no-store`; all API responses include browser-safe content-type and referrer headers
 - Login attempts are throttled per client-and-email pair after five failures in fifteen minutes, with a `Retry-After` response and automatic reset after successful authentication
 - Safe frontend reads retry temporary network, timeout-status, rate-limit, and gateway failures up to two times; write requests are never automatically replayed
+- An app-wide connection notice warns when the browser reports that the device is offline, keeps loaded information usable, and briefly confirms when connectivity returns
+- Offline requests stop before transmission, while exhausted reads and interrupted writes use distinct guidance so users do not blindly repeat an unconfirmed change
+- A visible inquiry inbox and its navigation unread count refresh immediately after reconnection; editor and form pages deliberately avoid automatic reloads that could disturb typed text or selected local pictures
 - Property cards and details distinguish newly listed homes from seller-updated listings using database-backed creation and update timestamps
 - Every property must retain at least one validated picture; both creation and editing reject image-less listings in the interface and API
 - Missing or unreachable property pictures use an accessible marketplace-wide fallback; cards and thumbnails load lazily while the main detail image is prioritized
@@ -572,6 +579,11 @@ instances.
 - Sent and received inquiry histories use independent server-side status/property filtering and bounded pagination with authoritative ownership-scoped totals; existing unpaginated endpoints remain backward compatible
 - Inquiry cards contain a persistent two-way message history, so buyers and sellers can reply directly from the inquiries page without reopening the property; participant checks and row locking prevent outsiders or concurrent updates from corrupting a conversation
 - Two-way inquiry messages carry sender-scoped retry identities, preventing duplicate replies when a successful request is retried after a timeout or connection loss
+- Buyer and seller read positions are stored independently; the navigation shows ownership-scoped unread message totals, visible conversation cards identify new messages, and snapshot-bounded receipts ensure a message arriving after the delivered page cannot be marked read before it is shown
+- Inquiry data refreshes while the tab is visible and immediately after focus returns; temporary background failures preserve the already-loaded conversations, show a non-blocking retry notice, and never replace usable inbox data with an error screen
+- Accept, reject, and cancel transitions are retry-safe: repeating the same completed action returns its existing result, conflicting terminal changes remain blocked, and rejection requires explicit browser confirmation because it closes the conversation
+- Unsaved inquiry replies are bounded to the API limit and kept in account-scoped session storage, surviving accidental reloads without remaining permanently on a shared device; automatic conversation refresh pauses while a draft or inquiry action is active
+- Contact-owner drafts persist the buyer's bounded message together with its property/account-scoped retry identity for the browser session, making reloads and ambiguous connection failures safe; suggested questions append without overwriting existing text, and buyers can explicitly clear a draft
 - The property contact-owner composer provides clear labeling, suggested questions, a message limit, and keyboard submission while retaining retry-safe inquiry creation
 - Human-readable names and property titles in inquiry responses
 - Account deletion cleanup
@@ -581,3 +593,10 @@ instances.
 
 Passing tests reduce regressions, but they do not prove that bugs are impossible.
 New behavior should be added with a matching test whenever practical.
+
+The repository's GitHub Actions workflow runs backend tests and the complete
+frontend test/lint/build gate on pull requests and pushes to `main`. Its jobs use
+read-only repository permissions, dependency caches keyed by committed dependency
+manifests, explicit timeouts, and concurrency cancellation. On Windows,
+`scripts/check.ps1` runs the same local verification sequence with fail-fast exit
+handling.
