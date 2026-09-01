@@ -1,0 +1,63 @@
+.navbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  padding: 18px 40px;
+
+  background: #111827;
+  color: white;
+}
+
+.navbar-brand a {
+  color: white;
+  text-decoration: none;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.navbar-links {
+  display: flex;
+  gap: 25px;
+}
+
+.navbar-links a {
+  color: #e5e7eb;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.navbar-links a:hover {
+  color: white;
+}
+
+@media (max-width: 600px) {
+  .navbar {
+    padding: 16px 20px;
+    flex-direction: column;
+    gap: 12px;
+  }
+}
+.not-found-page {
+  width: min(680px, calc(100% - 40px));
+  margin: 0 auto;
+  padding: 96px 0;
+  text-align: center;
+}
+
+.not-found-page > p:first-child {
+  margin: 0;
+  color: #2f6f57;
+  font-size: 1rem;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+}
+
+.not-found-page h1 {
+  margin: 12px 0;
+  font-size: clamp(2.25rem, 7vw, 4rem);
+}
+
+.not-found-page div {
+  margin-top: 28px;
+}

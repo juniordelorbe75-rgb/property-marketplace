@@ -1,0 +1,146 @@
+.property-card {
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.property-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+}
+
+.property-image {
+  position: relative;
+  height: 200px;
+  background: linear-gradient(135deg, #dbeafe, #bfdbfe);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #475569;
+  font-size: 14px;
+}
+
+.property-card-content {
+  padding: 20px;
+}
+
+.property-status {
+  display: inline-block;
+  padding: 5px 10px;
+  margin-bottom: 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.property-card h2 {
+  margin: 0 0 8px;
+  font-size: 20px;
+  color: #111827;
+}
+
+.property-location {
+  color: #64748b;
+  margin-bottom: 8px;
+}
+
+.property-reference {
+  margin: -2px 0 8px;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.property-card-favorite {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.94);
+  color: #be123c;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.2);
+  cursor: pointer;
+  font-size: 25px;
+  line-height: 1;
+}
+
+.property-card-favorite:hover:not(:disabled),
+.property-card-favorite:focus-visible,
+.property-card-favorite.active {
+  background: #fff1f2;
+  border-color: #fda4af;
+}
+
+.property-card-favorite:disabled { cursor: wait; opacity: 0.7; }
+
+.property-freshness {
+  color: #64748b;
+  font-size: 13px;
+  margin: 0 0 16px;
+}
+
+.property-card-info {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+  color: #475569;
+  font-size: 14px;
+  margin-bottom: 20px;
+}
+
+.property-card-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.property-card-bottom strong {
+  font-size: 20px;
+  color: #111827;
+}
+
+.property-card-bottom a {
+  color: #2563eb;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.property-card-bottom a:hover {
+  text-decoration: underline;
+}
+
+.property-listing-type {
+  display: inline-block;
+  margin-bottom: 8px;
+  padding: 4px 9px;
+  border-radius: 999px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.property-status-available {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.property-status-unavailable {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.property-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}

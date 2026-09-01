@@ -1,0 +1,43 @@
+import warnings
+from urllib.parse import urlsplit
+
+
+KNOWN_SECRET_PLACEHOLDERS = {
+    "change-me",
+    "replace-me",
+    "replace-with-a-long-random-secret",
+    "secret",
+}
+
+
+def validate_secret_key(secret_key: str | None) -> str:
+    if not secret_key:
+        raise RuntimeError("SECRET_KEY environment variable is not set")
+    if secret_key.strip().lower() in KNOWN_SECRET_PLACEHOLDERS:
+        raise RuntimeError("SECRET_KEY still uses an unsafe placeholder value")
+    if len(secret_key) < 16:
+        raise RuntimeError("SECRET_KEY must be at least 16 characters")
+    if len(secret_key) < 32:
+        warnings.warn(
+            "SECRET_KEY should be rotated to at least 32 random characters",
+            RuntimeWarning,
+            stacklevel=2,
+        )
+    return secret_key
+
+
+def parse_cors_origins(value: str) -> list[str]:
+    origins = list(dict.fromkeys(origin.strip().rstrip("/") for origin in value.split(",") if origin.strip()))
+    if not origins:
+        raise RuntimeError("CORS_ORIGINS must contain at least one origin")
+
+    for origin in origins:
+        parsed = urlsplit(origin)
+        if origin == "*":
+            raise RuntimeError("CORS_ORIGINS cannot use * when credentials are enabled")
+        if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+            raise RuntimeError(f"Invalid CORS origin: {origin}")
+        if parsed.path or parsed.query or parsed.fragment:
+            raise RuntimeError(f"CORS origin must not include a path: {origin}")
+
+    return origins

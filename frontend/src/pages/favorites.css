@@ -1,0 +1,67 @@
+.favorites-page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 40px 20px;
+}
+
+.favorites-header {
+  margin-bottom: 30px;
+}
+
+.favorites-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 20px;
+}
+
+.favorite-card {
+  padding: 20px;
+  border: 1px solid #ddd;
+  border-radius: 12px;
+  background: white;
+}
+
+.favorite-card h2 {
+  margin-top: 0;
+}
+
+.favorite-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-top: 20px;
+}
+
+.favorite-actions button {
+  cursor: pointer;
+}
+
+.favorite-listing {
+  display: flex;
+  flex-direction: column;
+}
+
+.favorite-listing .property-card {
+  flex: 1;
+}
+
+.remove-favorite-button {
+  margin-top: 10px;
+  padding: 10px 14px;
+  border: 1px solid #fecaca;
+  border-radius: 6px;
+  background: #fff;
+  color: #b91c1c;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.remove-favorite-button:hover {
+  background: #fef2f2;
+}
+
+.remove-favorite-button:disabled { cursor: wait; opacity: 0.65; }
+.favorites-load-error { width: min(680px, calc(100% - 40px)); margin: 48px auto; padding: 32px; border-radius: 14px; background: #fff1f1; color: #9c2f2f; text-align: center; }
+.favorites-load-error h1 { margin-top: 0; }
+.favorites-load-error button { padding: 10px 16px; border: 1px solid #9c2f2f; border-radius: 8px; background: white; color: #842626; font-weight: 700; cursor: pointer; }
+.favorites-action-error { padding: 12px 16px; border-radius: 8px; background: #fff1f1; color: #9c2f2f; }
