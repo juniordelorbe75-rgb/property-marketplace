@@ -143,6 +143,13 @@
   color: #b91c1c;
 }
 
+.profile-confirmation {
+  padding: 14px;
+  border: 1px solid #fde68a;
+  border-radius: 8px;
+  background: #fffbeb;
+}
+
 .account-deletion-form { display: grid; max-width: 480px; gap: 14px; }
 .account-deletion-form label span { display: block; margin-bottom: 6px; color: #7f1d1d; font-size: 13px; font-weight: 700; }
 .account-deletion-form input { width: 100%; padding: 10px 12px; border: 1px solid #f0a7a7; border-radius: 7px; font: inherit; }

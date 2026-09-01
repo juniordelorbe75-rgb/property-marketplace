@@ -117,6 +117,9 @@ Password hashes use bcrypt directly and remain compatible with existing bcrypt
 hashes. Registration and password changes enforce bcrypt's 72-byte UTF-8 limit;
 verification rejects oversized input safely instead of truncating it or raising
 an application error.
+Changing an account's sign-in email requires the current password. Name-only
+profile edits remain convenient, while a failed or missing password leaves the
+original email unchanged even when a valid authenticated session is present.
 
 The browser sends a token in this header:
 
@@ -470,6 +473,7 @@ The project currently has automated coverage for:
 
 - Registration and login
 - Email, profile, and password-change validation
+- Password confirmation for sign-in email changes without blocking name-only edits
 - Database rollback after duplicate-email conflicts
 - Password hashing and token validation
 - Expired, malformed, and deleted-user tokens

@@ -114,7 +114,8 @@ def update_current_user(
     db,
     user_id: int,
     name: str,
-    email: str
+    email: str,
+    current_password: str | None = None,
 ):
     user = user_repository.get_user_by_id(
         db,
@@ -141,6 +142,18 @@ def update_current_user(
             status_code=400,
             detail="Email cannot be empty"
         )
+
+    if email != user.email:
+        if not current_password:
+            raise HTTPException(
+                status_code=400,
+                detail="Current password is required to change your email",
+            )
+        if not verify_password(current_password, user.password):
+            raise HTTPException(
+                status_code=400,
+                detail="Current password is incorrect",
+            )
 
     existing_user = user_repository.get_user_by_email(
         db,

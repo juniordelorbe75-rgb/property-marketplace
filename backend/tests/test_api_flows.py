@@ -1428,6 +1428,7 @@ class ApiFlowTests(unittest.TestCase):
             {
                 "name": "Updated Account User",
                 "email": "UPDATED@example.com",
+                "current_password": "secure-password",
             },
             token,
         )
@@ -1482,6 +1483,71 @@ class ApiFlowTests(unittest.TestCase):
         self.assertEqual(replacement_user["id"], user["id"])
         self.assertEqual(old_login_status, 401)
         self.assertEqual(new_login_status, 200)
+
+    def test_email_change_requires_current_password_without_blocking_name_edits(self):
+        user, token = self.register_and_login(
+            "Profile User",
+            "profile-user@example.com",
+        )
+
+        name_status, name_result = self.call(
+            "PUT",
+            "/users/me",
+            {
+                "name": "Safer Profile User",
+                "email": "profile-user@example.com",
+            },
+            token,
+        )
+        missing_status, missing_result = self.call(
+            "PUT",
+            "/users/me",
+            {
+                "name": "Safer Profile User",
+                "email": "redirected@example.com",
+            },
+            token,
+        )
+        wrong_status, wrong_result = self.call(
+            "PUT",
+            "/users/me",
+            {
+                "name": "Safer Profile User",
+                "email": "redirected@example.com",
+                "current_password": "wrong-password",
+            },
+            token,
+        )
+        unchanged_status, unchanged_user = self.call(
+            "GET",
+            "/users/me",
+            token=token,
+        )
+        changed_status, changed_user = self.call(
+            "PUT",
+            "/users/me",
+            {
+                "name": "Safer Profile User",
+                "email": "redirected@example.com",
+                "current_password": "secure-password",
+            },
+            token,
+        )
+
+        self.assertEqual(name_status, 200)
+        self.assertEqual(name_result["id"], user["id"])
+        self.assertEqual(name_result["name"], "Safer Profile User")
+        self.assertEqual(missing_status, 400)
+        self.assertEqual(
+            missing_result["detail"],
+            "Current password is required to change your email",
+        )
+        self.assertEqual(wrong_status, 400)
+        self.assertEqual(wrong_result["detail"], "Current password is incorrect")
+        self.assertEqual(unchanged_status, 200)
+        self.assertEqual(unchanged_user["email"], "profile-user@example.com")
+        self.assertEqual(changed_status, 200)
+        self.assertEqual(changed_user["email"], "redirected@example.com")
 
     def test_inquiry_unread_counts_are_participant_scoped_and_markable(self):
         seller, seller_token = self.register_and_login(

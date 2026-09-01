@@ -284,6 +284,7 @@ class UserResponse(BaseModel):
 class UserUpdate(BaseModel):
     name: str = Field(min_length=2, max_length=100)
     email: str = Field(min_length=3, max_length=255)
+    current_password: str | None = Field(default=None, min_length=1, max_length=128)
 
     @field_validator("name")
     @classmethod

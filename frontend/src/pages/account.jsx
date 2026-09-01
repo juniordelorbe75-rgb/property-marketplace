@@ -14,6 +14,7 @@ function Account() {
 
   const [name, setName] = useState("")
   const [email, setEmail] = useState("")
+  const [profilePassword, setProfilePassword] = useState("")
 
   const [currentPassword, setCurrentPassword] = useState("")
   const [newPassword, setNewPassword] = useState("")
@@ -125,6 +126,9 @@ function Account() {
           body: JSON.stringify({
             name,
             email,
+            ...(email.trim().toLowerCase() !== user?.email
+              ? { current_password: profilePassword }
+              : {}),
           }),
         }
       )
@@ -140,6 +144,7 @@ function Account() {
       setUser(data)
       setName(data.name)
       setEmail(data.email)
+      setProfilePassword("")
 
       setProfileMessage(
         "Profile updated successfully."
@@ -347,6 +352,28 @@ function Account() {
 
             </div>
 
+            {email.trim().toLowerCase() !== user?.email && (
+              <div className="form-group profile-confirmation">
+                <label htmlFor="profile-current-password">
+                  Current Password
+                </label>
+
+                <input
+                  id="profile-current-password"
+                  type="password"
+                  value={profilePassword}
+                  onChange={(event) => setProfilePassword(event.target.value)}
+                  autoComplete="current-password"
+                  maxLength={128}
+                  required
+                />
+
+                <small>
+                  Required because changing your email changes how you sign in.
+                </small>
+              </div>
+            )}
+
             {profileMessage && (
               <p className="success-message">
                 {profileMessage}
@@ -362,7 +389,10 @@ function Account() {
             <button
               type="submit"
               className="primary-button"
-              disabled={savingProfile}
+              disabled={
+                savingProfile ||
+                (email.trim().toLowerCase() !== user?.email && !profilePassword)
+              }
             >
               {savingProfile
                 ? "Saving..."

@@ -104,7 +104,8 @@ def update_me(
         db=db,
         user_id=current_user_id,
         name=user_data.name,
-        email=user_data.email
+        email=user_data.email,
+        current_password=user_data.current_password,
     )
 
 
