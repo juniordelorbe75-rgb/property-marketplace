@@ -19,9 +19,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
-      DATABASE_URL: sqlite+pysqlite:///:memory:
-      SECRET_KEY: test-only-secret-key-32-characters-long
-      CORS_ORIGINS: http://localhost:5173
+      DATABASE_URL: "sqlite+pysqlite:///:memory:"
+      SECRET_KEY: "test-only-secret-key-32-characters-long"
+      CORS_ORIGINS: "http://localhost:5173"
       PYTHONUNBUFFERED: "1"
     steps:
       - name: Check out repository
