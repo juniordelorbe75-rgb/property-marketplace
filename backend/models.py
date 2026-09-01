@@ -334,6 +334,20 @@ class FavoriteStatus(BaseModel):
     is_favorite: bool
 
 
+class ListingReport(BaseModel):
+    id: int
+    listing_id: int
+    listing_title: str
+    reason: str
+    details: str
+    status: str
+    created_at: datetime
+
+    model_config = {
+        "from_attributes": True
+    }
+
+
 class InquiryMessage(BaseModel):
     id: int | None = None
     sender_id: int

@@ -9,6 +9,7 @@ from backend.db_models.user import UserDB
 from backend.db_models.property import PropertyDB
 from backend.db_models.inquiry import InquiryDB, InquiryMessageDB
 from backend.db_models.favorite import FavoriteDB
+from backend.db_models.report import ListingReportDB
 
 load_dotenv()
 

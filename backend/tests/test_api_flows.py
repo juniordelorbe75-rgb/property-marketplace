@@ -24,6 +24,7 @@ from PIL import Image
 from backend.db import get_db
 from backend.auth.login_throttle import reset_login_throttle
 from backend.db_models.base import Base
+from backend.db_models.report import ListingReportDB
 from backend.main import app
 
 
@@ -1816,6 +1817,112 @@ class ApiFlowTests(unittest.TestCase):
         )
         self.assertEqual(conversation[-1]["sender_name"], seller["name"])
         self.assertEqual(closed_status, 400)
+
+    def test_listing_reports_are_private_retry_safe_and_keep_review_evidence(self):
+        seller, seller_token = self.register_and_login(
+            "Report Seller",
+            "report-seller@example.com",
+        )
+        _buyer, buyer_token = self.register_and_login(
+            "Report Buyer",
+            "report-buyer@example.com",
+        )
+        create_status, property_item = self.call(
+            "POST",
+            "/properties/",
+            {
+                "title": "Listing Needing Review",
+                "price": 95000,
+                "location": "Santo Domingo, Dominican Republic",
+                "property_type": "Apartment",
+                "bedrooms": 2,
+                "bathrooms": 1,
+                "status": "available",
+            },
+            seller_token,
+        )
+        property_id = property_item["id"]
+        report_key = str(uuid4())
+
+        guest_status, _guest_error = self.call(
+            "POST",
+            f"/reports/properties/{property_id}",
+            {"reason": "suspected_scam", "details": "Payment requested off platform."},
+            idempotency_key=report_key,
+        )
+        missing_key_status, _missing_key_error = self.call(
+            "POST",
+            f"/reports/properties/{property_id}",
+            {"reason": "suspected_scam", "details": "Payment requested off platform."},
+            buyer_token,
+        )
+        owner_status, owner_error = self.call(
+            "POST",
+            f"/reports/properties/{property_id}",
+            {"reason": "other", "details": "Owner report must be rejected."},
+            seller_token,
+            idempotency_key=str(uuid4()),
+        )
+        invalid_status, _invalid_error = self.call(
+            "POST",
+            f"/reports/properties/{property_id}",
+            {"reason": "not-a-valid-reason", "details": "Invalid category."},
+            buyer_token,
+            idempotency_key=str(uuid4()),
+        )
+        report_status, report = self.call(
+            "POST",
+            f"/reports/properties/{property_id}",
+            {
+                "reason": "suspected_scam",
+                "details": "  Payment requested off platform.  ",
+            },
+            buyer_token,
+            idempotency_key=report_key,
+        )
+        replay_status, replay = self.call(
+            "POST",
+            f"/reports/properties/{property_id}",
+            {"reason": "other", "details": "A retry must not replace evidence."},
+            buyer_token,
+            idempotency_key=report_key,
+        )
+        duplicate_status, duplicate = self.call(
+            "POST",
+            f"/reports/properties/{property_id}",
+            {"reason": "duplicate_listing", "details": "Second submission."},
+            buyer_token,
+            idempotency_key=str(uuid4()),
+        )
+        delete_status, _deleted_property = self.call(
+            "DELETE",
+            f"/properties/{property_id}",
+            token=seller_token,
+            property_version=property_item["version"],
+        )
+        stored_report = self.session.get(ListingReportDB, report["id"])
+
+        self.assertEqual(create_status, 200)
+        self.assertEqual(guest_status, 401)
+        self.assertEqual(missing_key_status, 422)
+        self.assertEqual(owner_status, 400)
+        self.assertEqual(owner_error["detail"], "You cannot report your own property")
+        self.assertEqual(invalid_status, 422)
+        self.assertEqual(report_status, 200)
+        self.assertEqual(report["listing_id"], property_id)
+        self.assertEqual(report["listing_title"], "Listing Needing Review")
+        self.assertEqual(report["reason"], "suspected_scam")
+        self.assertEqual(report["details"], "Payment requested off platform.")
+        self.assertEqual(report["status"], "submitted")
+        self.assertEqual(replay_status, 200)
+        self.assertEqual(replay, report)
+        self.assertEqual(duplicate_status, 200)
+        self.assertEqual(duplicate, report)
+        self.assertEqual(delete_status, 200)
+        self.assertIsNotNone(stored_report)
+        self.assertIsNone(stored_report.property_id)
+        self.assertEqual(stored_report.listing_id, property_id)
+        self.assertEqual(stored_report.listing_owner_id, seller["id"])
 
     def test_complete_buyer_seller_marketplace_flow(self):
         seller, seller_token = self.register_and_login(

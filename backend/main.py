@@ -19,6 +19,7 @@ from backend.routes.users import router as user_router
 from backend.routes.favorites import router as favorite_router
 from backend.routes.inquiries import router as inquiry_router
 from backend.routes.uploads import UPLOAD_DIRECTORY, router as upload_router
+from backend.routes.reports import router as report_router
 
 
 load_dotenv()
@@ -51,6 +52,7 @@ app.include_router(user_router)
 app.include_router(favorite_router)
 app.include_router(inquiry_router)
 app.include_router(upload_router)
+app.include_router(report_router)
 
 UPLOAD_DIRECTORY.mkdir(parents=True, exist_ok=True)
 app.mount(

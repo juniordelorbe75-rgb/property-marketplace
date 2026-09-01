@@ -64,3 +64,10 @@ class UserDB(Base):
         back_populates="seller",
         cascade="all, delete-orphan"
     )
+
+    listing_reports: Mapped[list["ListingReportDB"]] = relationship(
+        "ListingReportDB",
+        back_populates="reporter",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )

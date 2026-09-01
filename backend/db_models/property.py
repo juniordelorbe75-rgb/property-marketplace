@@ -161,6 +161,12 @@ class PropertyDB(Base):
         cascade="all, delete-orphan"
     )
 
+    reports: Mapped[list["ListingReportDB"]] = relationship(
+        "ListingReportDB",
+        back_populates="property",
+        passive_deletes=True,
+    )
+
     @property
     def owner_name(self) -> str:
         return self.owner.name

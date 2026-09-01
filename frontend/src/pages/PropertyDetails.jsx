@@ -32,6 +32,15 @@ const INQUIRY_PROMPTS = [
   "Could you share more details about this property?",
 ]
 
+const REPORT_REASONS = [
+  ["suspected_scam", "Suspected scam or fraud"],
+  ["misleading_information", "Misleading or incorrect information"],
+  ["duplicate_listing", "Duplicate listing"],
+  ["already_unavailable", "Property is no longer available"],
+  ["inappropriate_content", "Inappropriate content"],
+  ["other", "Other safety concern"],
+]
+
 function PropertyDetails() {
   const { id } = useParams()
   const inquiryDraftOwnerId = getDraftOwnerId(localStorage.getItem("access_token"))
@@ -76,6 +85,13 @@ function PropertyDetails() {
     () => readContactInquiryDraft(inquiryDraftOwnerId, id)?.idempotencyKey || crypto.randomUUID(),
   )
   const [inquirySuccess, setInquirySuccess] = useState(null)
+
+  const [showReport, setShowReport] = useState(false)
+  const [reportReason, setReportReason] = useState("")
+  const [reportDetails, setReportDetails] = useState("")
+  const [reportLoading, setReportLoading] = useState(false)
+  const [reportKey, setReportKey] = useState(() => crypto.randomUUID())
+  const [reportSuccess, setReportSuccess] = useState(null)
 
   const [isFavorite, setIsFavorite] = useState(false)
   const [favoriteLoading, setFavoriteLoading] = useState(false)
@@ -347,7 +363,70 @@ function PropertyDetails() {
     }
 
     setInquirySuccess(null)
+    setShowReport(false)
     setShowInquiry((current) => !current)
+  }
+
+  function toggleReportForm() {
+    if (!localStorage.getItem("access_token")) {
+      navigate("/login", { state: { returnTo: getReturnPath(routeLocation) } })
+      return
+    }
+
+    setShowInquiry(false)
+    setReportSuccess(null)
+    setShowReport((current) => !current)
+  }
+
+  async function handleReport(event) {
+    event.preventDefault()
+    const token = localStorage.getItem("access_token")
+
+    if (!token) {
+      navigate("/login", { state: { returnTo: getReturnPath(routeLocation) } })
+      return
+    }
+    if (!reportReason) {
+      setError("Choose why this listing should be reviewed.")
+      return
+    }
+
+    setReportLoading(true)
+    setError("")
+
+    try {
+      const response = await apiFetch(
+        `/reports/properties/${id}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+            "Idempotency-Key": reportKey,
+          },
+          body: JSON.stringify({
+            reason: reportReason,
+            details: reportDetails,
+          }),
+        }
+      )
+      const data = await readApiResponse(response)
+
+      if (!response.ok) {
+        throw new Error(getApiError(data, "Failed to submit report"))
+      }
+
+      setReportSuccess(data.id)
+      setReportReason("")
+      setReportDetails("")
+      setReportKey(crypto.randomUUID())
+      setShowReport(false)
+    } catch (reportError) {
+      console.error("Listing report error:", reportError)
+      setError(reportError.message)
+    } finally {
+      setReportLoading(false)
+    }
   }
 
   async function handleFavorite() {
@@ -1098,6 +1177,17 @@ function PropertyDetails() {
                 Share
               </button>
 
+              {canUseBuyerActions && (
+                <button
+                  type="button"
+                  className="report-button"
+                  onClick={toggleReportForm}
+                  disabled={reportLoading}
+                >
+                  {showReport ? "Close Report" : "Report Listing"}
+                </button>
+              )}
+
               {canUseBuyerActions && isAvailable && (
                 <>
                   <button
@@ -1173,6 +1263,68 @@ function PropertyDetails() {
             </div>
 
             <p className="share-message" aria-live="polite">{shareMessage}</p>
+
+            {reportSuccess && (
+              <div className="report-success" role="status">
+                <strong>Report recorded.</strong>
+                <span>Safety report #{reportSuccess} was saved. You do not need to submit it again.</span>
+              </div>
+            )}
+
+            {showReport && canUseBuyerActions && (
+              <div className="report-form">
+                <div className="report-form-heading">
+                  <div>
+                    <h2>Report this listing</h2>
+                    <p>Use this for safety, accuracy, duplicate, or availability concerns.</p>
+                  </div>
+                  <span>Reference {formatPropertyReference(property.id)}</span>
+                </div>
+
+                <form onSubmit={handleReport}>
+                  <label htmlFor="report-reason">Reason</label>
+                  <select
+                    id="report-reason"
+                    value={reportReason}
+                    onChange={(event) => setReportReason(event.target.value)}
+                    disabled={reportLoading}
+                    required
+                  >
+                    <option value="">Choose a reason</option>
+                    {REPORT_REASONS.map(([value, label]) => (
+                      <option key={value} value={value}>{label}</option>
+                    ))}
+                  </select>
+
+                  <label htmlFor="report-details">Additional details (optional)</label>
+                  <textarea
+                    id="report-details"
+                    value={reportDetails}
+                    onChange={(event) => setReportDetails(event.target.value)}
+                    placeholder="Describe what concerned you. Do not include passwords or payment information."
+                    rows="4"
+                    maxLength="1000"
+                    disabled={reportLoading}
+                  />
+
+                  <div className="report-form-footer">
+                    <span>{reportDetails.length}/1000</span>
+                    <div>
+                      <button type="submit" disabled={reportLoading || !reportReason}>
+                        {reportLoading ? "Submitting..." : "Submit Report"}
+                      </button>
+                      <button
+                        type="button"
+                        disabled={reportLoading}
+                        onClick={() => setShowReport(false)}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                </form>
+              </div>
+            )}
 
             {inquirySuccess && (
               <div className="inquiry-success" role="status">

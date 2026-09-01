@@ -86,6 +86,7 @@ These classes describe the database tables and relationships:
 - `PropertyDB` -> `properties`
 - `FavoriteDB` -> `favorites`
 - `InquiryDB` -> `inquiries`
+- `ListingReportDB` -> `listing_reports`
 
 Relationship cleanup is also configured here. For example, deleting a property
 removes its favorites and inquiries.
@@ -253,6 +254,14 @@ Buyer inquiry submissions also carry a buyer-scoped creation identity. A retry
 after an ambiguous timeout returns the original inquiry conversation, even if
 the browser payload was edited before retrying. A genuinely new inquiry with a
 different identity still respects the one-pending-inquiry-per-property rule.
+Authenticated non-owners can report a listing using a bounded reason and optional
+details. Each buyer can create only one report per listing, and a buyer-scoped
+idempotency key makes retrying after an uncertain response return the original
+record. Reports store the listing ID, title, owner ID, and owner name as review
+evidence; deleting the listing clears its live foreign-key link but retains those
+snapshots. Reports are recorded for operator review and do not automatically hide
+or remove a listing. The current project does not yet expose an administrator
+moderation console.
 
 ## Example: Creating a Property
 
@@ -474,6 +483,7 @@ The project currently has automated coverage for:
 - Registration and login
 - Email, profile, and password-change validation
 - Password confirmation for sign-in email changes without blocking name-only edits
+- Authenticated listing reports with owner protection, bounded categories/details, duplicate prevention, retry safety, and retained review snapshots
 - Database rollback after duplicate-email conflicts
 - Password hashing and token validation
 - Expired, malformed, and deleted-user tokens
