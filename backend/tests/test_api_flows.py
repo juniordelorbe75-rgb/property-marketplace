@@ -23,6 +23,7 @@ from PIL import Image
 
 from backend.db import get_db
 from backend.auth.login_throttle import reset_login_throttle
+from backend.auth.social import create_login_code
 from backend.db_models.base import Base
 from backend.db_models.property import PropertyDB
 from backend.db_models.report import ListingReportDB
@@ -435,7 +436,7 @@ class ApiFlowTests(unittest.TestCase):
         self.assertNotEqual(first_id, second_id)
 
     def test_private_responses_are_not_cached_but_public_success_can_be(self):
-        _user, token = self.register_and_login(
+        user, token = self.register_and_login(
             "Private Response User",
             "private-response@example.com",
         )
@@ -457,14 +458,28 @@ class ApiFlowTests(unittest.TestCase):
             "GET",
             "/properties/",
         )
+        exchange_status, exchange, exchange_headers = self.call_with_headers(
+            "POST",
+            "/auth/exchange",
+            {"code": create_login_code(user["id"])},
+        )
 
         self.assertEqual(login_status, 200)
         self.assertEqual(profile_status, 200)
         self.assertEqual(public_status, 200)
-        for headers in (login_headers, profile_headers, public_headers):
+        self.assertEqual(exchange_status, 200)
+        self.assertIn("access_token", exchange)
+        for headers in (login_headers, profile_headers, public_headers, exchange_headers):
             self.assertEqual(headers["x-content-type-options"], "nosniff")
+            self.assertEqual(headers["x-frame-options"], "DENY")
             self.assertEqual(headers["referrer-policy"], "no-referrer")
-        for headers in (login_headers, profile_headers):
+            self.assertEqual(headers["content-security-policy"], "frame-ancestors 'none'")
+            self.assertEqual(
+                headers["permissions-policy"],
+                "camera=(), microphone=(), geolocation=(), payment=()",
+            )
+            self.assertEqual(headers["x-permitted-cross-domain-policies"], "none")
+        for headers in (login_headers, profile_headers, exchange_headers):
             self.assertEqual(headers["cache-control"], "no-store")
             self.assertEqual(headers["pragma"], "no-cache")
         self.assertNotIn("cache-control", public_headers)

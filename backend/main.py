@@ -74,11 +74,18 @@ async def add_request_tracing(request: Request, call_next):
     duration_ms = (perf_counter() - started_at) * 1000
     response.headers["X-Request-ID"] = request_id
     response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
     response.headers["Referrer-Policy"] = "no-referrer"
+    response.headers["Content-Security-Policy"] = "frame-ancestors 'none'"
+    response.headers["Permissions-Policy"] = (
+        "camera=(), microphone=(), geolocation=(), payment=()"
+    )
+    response.headers["X-Permitted-Cross-Domain-Policies"] = "none"
 
     is_sensitive_response = (
         bool(request.headers.get("authorization"))
         or request.url.path.startswith("/users/")
+        or request.url.path.startswith("/auth/")
         or response.status_code >= 400
     )
     if is_sensitive_response:
