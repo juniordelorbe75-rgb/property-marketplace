@@ -128,6 +128,9 @@ remain backward compatible. Birth dates and biographies are returned only by
 the authenticated account endpoints; they are not added to public listings.
 My Account also shows a private summary of the saved full name, formatted birth
 date, and biography beneath the editable profile form.
+My Account opens in read-only mode. Profile fields and privacy controls become
+editable only after the user chooses the corresponding edit action; Cancel
+restores the last server-confirmed values without submitting a request.
 Public profiles are opt-in and private by default. An account separately chooses
 first-name-only or full-name display and whether its biography is visible. The
 public response model contains only account ID, chosen display name, and the

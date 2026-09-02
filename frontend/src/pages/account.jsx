@@ -20,6 +20,8 @@ function Account() {
   const [publicProfileEnabled, setPublicProfileEnabled] = useState(false)
   const [publicNameMode, setPublicNameMode] = useState("first_name")
   const [publicBioVisible, setPublicBioVisible] = useState(false)
+  const [editingProfile, setEditingProfile] = useState(false)
+  const [editingPrivacy, setEditingPrivacy] = useState(false)
   const [email, setEmail] = useState("")
   const [profilePassword, setProfilePassword] = useState("")
 
@@ -187,6 +189,8 @@ function Account() {
       setProfileMessage(
         "Profile updated successfully."
       )
+      setEditingProfile(false)
+      setEditingPrivacy(false)
 
     } catch (error) {
       console.error("Profile update error:", error)
@@ -342,17 +346,27 @@ function Account() {
 
         </div>
 
+        {profileMessage && <p className="success-message">{profileMessage}</p>}
+
         {/* PROFILE */}
 
         <section className="account-section">
 
           <h2>Profile</h2>
 
-          <p className="section-description">
-            Update your personal information.
-          </p>
+          <p className="section-description">Review your personal information. Nothing becomes editable until you choose to edit it.</p>
 
-          <form id="profile-form" onSubmit={handleProfileSubmit}>
+          {!editingProfile && <>
+            <div className="account-information profile-summary">
+              <div><span className="information-label">Full name</span><span className="information-value">{displayName}</span></div>
+              <div><span className="information-label">Date of birth</span><span className="information-value">{displayBirthDate}</span></div>
+              <div><span className="information-label">Email</span><span className="information-value">{email}</span></div>
+              <div className="profile-bio-information"><span className="information-label">About you</span><span className="information-value profile-bio-value">{bio || "Nothing added yet."}</span></div>
+            </div>
+            {!editingPrivacy && <button type="button" className="primary-button" onClick={() => { setProfileMessage(""); setProfileError(""); setEditingProfile(true) }}>Edit Profile</button>}
+          </>}
+
+          {editingProfile && <form id="profile-form" onSubmit={handleProfileSubmit}>
 
             <div className="form-group">
               <label htmlFor="first-name">First name</label>
@@ -420,32 +434,28 @@ function Account() {
               </div>
             )}
 
-            {profileMessage && (
-              <p className="success-message">
-                {profileMessage}
-              </p>
-            )}
-
             {profileError && (
               <p className="error-message">
                 {profileError}
               </p>
             )}
 
-            <button
-              type="submit"
-              className="primary-button"
-              disabled={
-                savingProfile ||
-                (email.trim().toLowerCase() !== user?.email && !profilePassword)
-              }
-            >
-              {savingProfile
-                ? "Saving..."
-                : "Save Changes"}
-            </button>
+            <div className="edit-actions">
+              <button type="submit" className="primary-button" disabled={savingProfile || (email.trim().toLowerCase() !== user?.email && !profilePassword)}>{savingProfile ? "Saving..." : "Save Changes"}</button>
+              <button type="button" className="secondary-button" disabled={savingProfile} onClick={() => {
+                setFirstName(user?.first_name || user?.name || "")
+                setMiddleName(user?.middle_name || "")
+                setLastName(user?.last_name || "")
+                setDateOfBirth(user?.date_of_birth || "")
+                setBio(user?.bio || "")
+                setEmail(user?.email || "")
+                setProfilePassword("")
+                setProfileError("")
+                setEditingProfile(false)
+              }}>Cancel</button>
+            </div>
 
-          </form>
+          </form>}
 
         </section>
 
@@ -455,7 +465,18 @@ function Account() {
             Your email and date of birth are always private. Choose whether other people can open your profile and what they may see.
           </p>
 
-          <div className="privacy-controls">
+          {!editingPrivacy && <div className="account-information privacy-summary">
+            <div><span className="information-label">Profile visibility</span><span className="information-value">{user?.public_profile_enabled ? "Public" : "Private"}</span></div>
+            <div><span className="information-label">Public name</span><span className="information-value">{user?.public_name_mode === "full_name" ? "Full name" : "First name only"}</span></div>
+            <div><span className="information-label">Biography</span><span className="information-value">{user?.public_bio_visible ? "Shared" : "Hidden"}</span></div>
+          </div>}
+
+          {!editingPrivacy && !editingProfile && <div className="edit-actions">
+            <button type="button" className="primary-button" onClick={() => { setProfileMessage(""); setEditingPrivacy(true) }}>Change Privacy Settings</button>
+            {user?.public_profile_enabled && user?.id && <Link className="secondary-button profile-preview-link" to={`/profiles/${user.id}`}>View Public Profile</Link>}
+          </div>}
+
+          {editingPrivacy && <div className="privacy-controls">
             <label className="privacy-option">
               <input type="checkbox" checked={publicProfileEnabled} onChange={(event) => setPublicProfileEnabled(event.target.checked)} />
               <span><strong>Allow people to view my profile</strong><small>Off by default. When off, no public profile page is available.</small></span>
@@ -474,9 +495,16 @@ function Account() {
               <span><strong>Show my “About you” text</strong><small>Your biography stays hidden unless you enable this option.</small></span>
             </label>
 
-            {user?.public_profile_enabled && user?.id && <Link className="primary-button profile-preview-link" to={`/profiles/${user.id}`}>Preview public profile</Link>}
-            <button className="primary-button" type="submit" form="profile-form" disabled={savingProfile}>{savingProfile ? "Saving…" : "Save Privacy Choices"}</button>
-          </div>
+            <div className="edit-actions">
+              <button className="primary-button" type="button" disabled={savingProfile} onClick={handleProfileSubmit}>{savingProfile ? "Saving…" : "Save Privacy Choices"}</button>
+              <button className="secondary-button" type="button" disabled={savingProfile} onClick={() => {
+                setPublicProfileEnabled(user?.public_profile_enabled === true)
+                setPublicNameMode(user?.public_name_mode === "full_name" ? "full_name" : "first_name")
+                setPublicBioVisible(user?.public_bio_visible === true)
+                setEditingPrivacy(false)
+              }}>Cancel</button>
+            </div>
+          </div>}
         </section>
 
         {/* ACCOUNT INFORMATION */}
@@ -486,23 +514,6 @@ function Account() {
           <h2>Account Information</h2>
 
           <div className="account-information">
-
-            <div>
-              <span className="information-label">Full name</span>
-              <span className="information-value">{displayName}</span>
-            </div>
-
-            <div>
-              <span className="information-label">Date of birth</span>
-              <span className="information-value">{displayBirthDate}</span>
-            </div>
-
-            <div className="profile-bio-information">
-              <span className="information-label">About you</span>
-              <span className="information-value profile-bio-value">
-                {bio || "Nothing added yet."}
-              </span>
-            </div>
 
             <div>
               <span className="information-label">

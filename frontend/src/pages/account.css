@@ -161,6 +161,11 @@
 .privacy-option small, .privacy-save-note { color: #64748b; }
 .privacy-controls select { width: 100%; padding: 11px 13px; border: 1px solid #d1d5db; border-radius: 7px; background: white; font: inherit; }
 .profile-preview-link { width: fit-content; text-decoration: none; }
+.profile-summary, .privacy-summary { margin-bottom: 20px; }
+.edit-actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.secondary-button { display: inline-flex; align-items: center; justify-content: center; border: 1px solid #cbd5e1; border-radius: 7px; padding: 10px 17px; background: white; color: #334155; font: inherit; font-weight: 600; text-decoration: none; cursor: pointer; }
+.secondary-button:hover { background: #f8fafc; }
+.secondary-button:disabled { opacity: 0.6; cursor: not-allowed; }
 
 .information-link { color: #1d4ed8; }
 
