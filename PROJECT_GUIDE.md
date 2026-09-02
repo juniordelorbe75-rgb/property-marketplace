@@ -126,6 +126,8 @@ and an optional 1,000-character biography. The structured name is combined into
 the existing public display name so listing, inquiry, and moderation snapshots
 remain backward compatible. Birth dates and biographies are returned only by
 the authenticated account endpoints; they are not added to public listings.
+My Account also shows a private summary of the saved full name, formatted birth
+date, and biography beneath the editable profile form.
 
 The browser sends a token in this header:
 

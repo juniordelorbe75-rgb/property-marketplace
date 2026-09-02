@@ -145,6 +145,15 @@
   color: #b91c1c;
 }
 
+.profile-bio-information {
+  grid-column: 1 / -1;
+}
+
+.profile-bio-value {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
 .information-link { color: #1d4ed8; }
 
 .profile-confirmation {

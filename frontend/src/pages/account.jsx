@@ -40,6 +40,16 @@ function Account() {
 
   const [deleteError, setDeleteError] = useState("")
 
+  const displayName = [firstName, middleName, lastName].filter(Boolean).join(" ") || user?.name || "Not provided"
+  const displayBirthDate = dateOfBirth
+    ? new Intl.DateTimeFormat(undefined, {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+        timeZone: "UTC",
+      }).format(new Date(`${dateOfBirth}T00:00:00Z`))
+    : "Not provided"
+
   const fetchAccount = useCallback(async (signal) => {
     const token = localStorage.getItem("access_token")
     let response
@@ -434,6 +444,23 @@ function Account() {
           <h2>Account Information</h2>
 
           <div className="account-information">
+
+            <div>
+              <span className="information-label">Full name</span>
+              <span className="information-value">{displayName}</span>
+            </div>
+
+            <div>
+              <span className="information-label">Date of birth</span>
+              <span className="information-value">{displayBirthDate}</span>
+            </div>
+
+            <div className="profile-bio-information">
+              <span className="information-label">About you</span>
+              <span className="information-value profile-bio-value">
+                {bio || "Nothing added yet."}
+              </span>
+            </div>
 
             <div>
               <span className="information-label">
