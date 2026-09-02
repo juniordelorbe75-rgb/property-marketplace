@@ -152,6 +152,11 @@ verified by the provider, and links it to the matching marketplace account or
 creates an account on first use. The browser receives a short-lived, single-use
 marketplace code and exchanges it for the normal access token, keeping provider
 tokens and marketplace tokens out of redirect URLs.
+Social-created accounts are explicitly marked as not having a marketplace
+password instead of treating their internal random credential as user-owned.
+The authenticated account page offers a one-time Create Password flow. Once set,
+normal current-password checks apply, the token generation increments to revoke
+older sessions, and password confirmation is required in the interface.
 
 ## Frontend Folders
 

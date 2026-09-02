@@ -47,6 +47,11 @@ def ensure_schema_safety():
                 )
             )
 
+        if "has_password" not in user_columns:
+            connection.execute(text(
+                "ALTER TABLE users ADD COLUMN has_password BOOLEAN NOT NULL DEFAULT TRUE"
+            ))
+
         user_profile_columns = (
             ("first_name", "VARCHAR(100) NOT NULL DEFAULT ''"),
             ("middle_name", "VARCHAR(100) NOT NULL DEFAULT ''"),

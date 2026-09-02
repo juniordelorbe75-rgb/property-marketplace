@@ -232,14 +232,10 @@ def change_password(
             detail="User not found"
         )
 
-    if not verify_password(
-        current_password,
-        user.password
-    ):
-        raise HTTPException(
-            status_code=400,
-            detail="Current password is incorrect"
-        )
+    had_password = user.has_password
+    if had_password:
+        if not current_password or not verify_password(current_password, user.password):
+            raise HTTPException(status_code=400, detail="Current password is incorrect")
 
     if len(new_password) < 8:
         raise HTTPException(
@@ -247,13 +243,14 @@ def change_password(
             detail="New password must be at least 8 characters"
         )
 
-    if current_password == new_password:
+    if current_password and current_password == new_password:
         raise HTTPException(
             status_code=400,
             detail="New password must be different from current password"
         )
 
     user.password = hash_password(new_password)
+    user.has_password = True
     user.token_generation += 1
 
     user_repository.update_user(
@@ -262,7 +259,7 @@ def change_password(
     )
 
     return {
-        "message": "Password changed successfully",
+        "message": "Password changed successfully" if had_password else "Password created successfully",
         "access_token": create_access_token({
             "sub": str(user.id),
             "gen": user.token_generation,
@@ -285,6 +282,12 @@ def delete_current_user(
         raise HTTPException(
             status_code=404,
             detail="User not found"
+        )
+
+    if not user.has_password:
+        raise HTTPException(
+            status_code=400,
+            detail="Create an account password before deleting your account",
         )
 
     if current_password is not None and not verify_password(current_password, user.password):

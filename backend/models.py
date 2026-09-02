@@ -343,6 +343,7 @@ class UserResponse(BaseModel):
     public_profile_enabled: bool = False
     public_name_mode: Literal["first_name", "full_name"] = "first_name"
     public_bio_visible: bool = False
+    has_password: bool = True
 
     model_config = {
         "from_attributes": True
@@ -409,7 +410,7 @@ class UserUpdate(BaseModel):
 
 
 class PasswordChange(BaseModel):
-    current_password: str = Field(min_length=1, max_length=128)
+    current_password: str | None = Field(default=None, min_length=1, max_length=128)
     new_password: str = Field(min_length=8, max_length=128)
 
     @field_validator("new_password")

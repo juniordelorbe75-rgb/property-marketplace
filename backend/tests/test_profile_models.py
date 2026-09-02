@@ -7,7 +7,7 @@ from fastapi import HTTPException
 from pydantic import ValidationError
 
 from backend.models import UserCreate, UserUpdate
-from backend.services.user_service import get_public_profile
+from backend.services.user_service import change_password, get_public_profile
 
 
 class ProfileModelTests(unittest.TestCase):
@@ -66,6 +66,21 @@ class ProfileModelTests(unittest.TestCase):
             with self.assertRaises(HTTPException) as raised:
                 get_public_profile(object(), 12)
         self.assertEqual(raised.exception.status_code, 404)
+
+    def test_social_account_can_create_its_first_password(self):
+        user = SimpleNamespace(id=12, has_password=False, password="unused", token_generation=1)
+        with patch("backend.services.user_service.user_repository.get_user_by_id", return_value=user), patch("backend.services.user_service.user_repository.update_user"):
+            result = change_password(object(), user.id, None, "new-password-123")
+        self.assertTrue(user.has_password)
+        self.assertEqual(user.token_generation, 2)
+        self.assertEqual(result["message"], "Password created successfully")
+
+    def test_password_account_still_requires_current_password(self):
+        user = SimpleNamespace(id=12, has_password=True, password="stored", token_generation=1)
+        with patch("backend.services.user_service.user_repository.get_user_by_id", return_value=user):
+            with self.assertRaises(HTTPException) as raised:
+                change_password(object(), user.id, None, "new-password-123")
+        self.assertEqual(raised.exception.status_code, 400)
 
 
 if __name__ == "__main__":

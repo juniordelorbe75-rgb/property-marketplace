@@ -27,6 +27,7 @@ function Account() {
 
   const [currentPassword, setCurrentPassword] = useState("")
   const [newPassword, setNewPassword] = useState("")
+  const [confirmNewPassword, setConfirmNewPassword] = useState("")
   const [deletionPassword, setDeletionPassword] = useState("")
   const [deletionConfirmation, setDeletionConfirmation] = useState("")
 
@@ -203,6 +204,12 @@ function Account() {
   async function handlePasswordSubmit(event) {
     event.preventDefault()
 
+    if (newPassword !== confirmNewPassword) {
+      setPasswordMessage("")
+      setPasswordError("New passwords do not match.")
+      return
+    }
+
     const token = localStorage.getItem("access_token")
 
     if (!token) {
@@ -224,7 +231,7 @@ function Account() {
             Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({
-            current_password: currentPassword,
+            ...(user?.has_password ? { current_password: currentPassword } : {}),
             new_password: newPassword,
           }),
         }
@@ -240,7 +247,9 @@ function Account() {
 
       setCurrentPassword("")
       setNewPassword("")
+      setConfirmNewPassword("")
       login(data.access_token)
+      setUser((current) => ({ ...current, has_password: true }))
 
       setPasswordMessage(
         "Password changed successfully."
@@ -543,15 +552,17 @@ function Account() {
 
         <section className="account-section">
 
-          <h2>Security</h2>
+          <h2>{user?.has_password ? "Security" : "Create an Account Password"}</h2>
 
           <p className="section-description">
-            Change your password to keep your account secure.
+            {user?.has_password
+              ? "Change your password to keep your account secure. This signs out tokens on other devices."
+              : "Your social sign-in is active. Create a marketplace password for password-protected account actions."}
           </p>
 
           <form onSubmit={handlePasswordSubmit}>
 
-            <div className="form-group">
+            {user?.has_password && <div className="form-group">
 
               <label htmlFor="current-password">
                 Current Password
@@ -567,7 +578,7 @@ function Account() {
                 required
               />
 
-            </div>
+            </div>}
 
             <div className="form-group">
 
@@ -592,6 +603,12 @@ function Account() {
 
             </div>
 
+            <div className="form-group">
+              <label htmlFor="confirm-new-password">Confirm new password</label>
+              <input id="confirm-new-password" type="password" value={confirmNewPassword} onChange={(event) => setConfirmNewPassword(event.target.value)} minLength="8" maxLength="128" autoComplete="new-password" required />
+              {confirmNewPassword && newPassword !== confirmNewPassword && <small className="password-mismatch">Passwords do not match.</small>}
+            </div>
+
             {passwordMessage && (
               <p className="success-message">
                 {passwordMessage}
@@ -607,11 +624,11 @@ function Account() {
             <button
               type="submit"
               className="primary-button"
-              disabled={changingPassword}
+              disabled={changingPassword || !confirmNewPassword || newPassword !== confirmNewPassword}
             >
               {changingPassword
                 ? "Changing..."
-                : "Change Password"}
+                : user?.has_password ? "Change Password" : "Create Password"}
             </button>
 
           </form>
@@ -634,7 +651,9 @@ function Account() {
             </p>
           )}
 
-          <form className="account-deletion-form" onSubmit={handleDeleteAccount}>
+          {!user?.has_password && <p className="profile-confirmation">Create an account password in the Security section before deleting this account.</p>}
+
+          {user?.has_password && <form className="account-deletion-form" onSubmit={handleDeleteAccount}>
             <label>
               <span>Current password</span>
               <input
@@ -663,7 +682,7 @@ function Account() {
             >
               {deletingAccount ? "Deleting..." : "Permanently Delete Account"}
             </button>
-          </form>
+          </form>}
 
         </section>
 
