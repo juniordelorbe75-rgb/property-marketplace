@@ -121,6 +121,11 @@ an application error.
 Changing an account's sign-in email requires the current password. Name-only
 profile edits remain convenient, while a failed or missing password leaves the
 original email unchanged even when a valid authenticated session is present.
+New profiles collect first name, optional middle name, last name, date of birth,
+and an optional 1,000-character biography. The structured name is combined into
+the existing public display name so listing, inquiry, and moderation snapshots
+remain backward compatible. Birth dates and biographies are returned only by
+the authenticated account endpoints; they are not added to public listings.
 
 The browser sends a token in this header:
 

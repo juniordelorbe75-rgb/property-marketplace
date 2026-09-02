@@ -12,7 +12,11 @@ function Register() {
   const { login } = useAuth()
   const returnTo = getSafeReturnPath(location.state?.returnTo)
 
-  const [name, setName] = useState("")
+  const [firstName, setFirstName] = useState("")
+  const [middleName, setMiddleName] = useState("")
+  const [lastName, setLastName] = useState("")
+  const [dateOfBirth, setDateOfBirth] = useState("")
+  const [bio, setBio] = useState("")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
 
@@ -34,7 +38,11 @@ function Register() {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            name,
+            first_name: firstName,
+            middle_name: middleName,
+            last_name: lastName,
+            date_of_birth: dateOfBirth,
+            bio,
             email,
             password,
           }),
@@ -95,17 +103,45 @@ function Register() {
       <form onSubmit={handleRegister}>
 
         <div>
-          <label>Name</label>
+          <label htmlFor="register-first-name">First name</label>
           <br />
 
           <input
             type="text"
-            value={name}
+            id="register-first-name"
+            value={firstName}
             onChange={(event) =>
-              setName(event.target.value)
+              setFirstName(event.target.value)
             }
+            autoComplete="given-name"
+            maxLength={100}
             required
           />
+        </div>
+
+        <div>
+          <label htmlFor="register-middle-name">Middle name <span>(optional)</span></label>
+          <br />
+          <input id="register-middle-name" type="text" value={middleName} onChange={(event) => setMiddleName(event.target.value)} autoComplete="additional-name" maxLength={100} />
+        </div>
+
+        <div>
+          <label htmlFor="register-last-name">Last name</label>
+          <br />
+          <input id="register-last-name" type="text" value={lastName} onChange={(event) => setLastName(event.target.value)} autoComplete="family-name" maxLength={100} required />
+        </div>
+
+        <div>
+          <label htmlFor="register-date-of-birth">Date of birth</label>
+          <br />
+          <input id="register-date-of-birth" type="date" value={dateOfBirth} onChange={(event) => setDateOfBirth(event.target.value)} max={new Date().toISOString().slice(0, 10)} autoComplete="bday" required />
+        </div>
+
+        <div>
+          <label htmlFor="register-bio">About you <span>(optional)</span></label>
+          <br />
+          <textarea id="register-bio" value={bio} onChange={(event) => setBio(event.target.value)} maxLength={1000} rows={5} placeholder="Tell other marketplace members a little about yourself." />
+          <small>{bio.length}/1000 characters</small>
         </div>
 
         <div>

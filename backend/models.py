@@ -1,5 +1,5 @@
 import re
-from datetime import datetime
+from datetime import date, datetime, timezone
 from typing import Literal
 from urllib.parse import urlsplit
 
@@ -36,6 +36,24 @@ def normalize_name(value: str) -> str:
         raise ValueError("Name must be at least 2 characters")
 
     return normalized
+
+
+def normalize_name_part(value: str, label: str, required: bool = True) -> str:
+    normalized = " ".join(value.strip().split())
+    if required and len(normalized) < 1:
+        raise ValueError(f"{label} is required")
+    if len(normalized) > 100:
+        raise ValueError(f"{label} must be at most 100 characters")
+    return normalized
+
+
+def validate_birth_date(value: date) -> date:
+    today = datetime.now(timezone.utc).date()
+    if value > today:
+        raise ValueError("Date of birth cannot be in the future")
+    if value.year < today.year - 120:
+        raise ValueError("Enter a valid date of birth")
+    return value
 
 
 def validate_new_password(value: str) -> str:
@@ -242,14 +260,54 @@ class User(BaseModel):
 
 
 class UserCreate(BaseModel):
-    name: str = Field(min_length=2, max_length=100)
+    name: str | None = Field(default=None, min_length=2, max_length=300)
+    first_name: str | None = Field(default=None, max_length=100)
+    middle_name: str = Field(default="", max_length=100)
+    last_name: str | None = Field(default=None, max_length=100)
+    date_of_birth: date | None = None
+    bio: str = Field(default="", max_length=1000)
     email: str = Field(min_length=3, max_length=255)
     password: str = Field(min_length=8, max_length=128)
 
     @field_validator("name")
     @classmethod
-    def strip_name(cls, value: str) -> str:
-        return normalize_name(value)
+    def strip_name(cls, value: str | None) -> str | None:
+        return normalize_name(value) if value is not None else None
+
+    @field_validator("first_name", "last_name")
+    @classmethod
+    def strip_required_name_part(cls, value: str | None, info) -> str | None:
+        if value is None:
+            return None
+        return normalize_name_part(value, info.field_name.replace("_", " ").title())
+
+    @field_validator("middle_name")
+    @classmethod
+    def strip_middle_name(cls, value: str) -> str:
+        return normalize_name_part(value, "Middle name", required=False)
+
+    @field_validator("date_of_birth")
+    @classmethod
+    def validate_date_of_birth(cls, value: date | None) -> date | None:
+        return validate_birth_date(value) if value else None
+
+    @field_validator("bio")
+    @classmethod
+    def strip_bio(cls, value: str) -> str:
+        return value.strip()
+
+    @model_validator(mode="after")
+    def build_display_name(self):
+        uses_structured_name = self.first_name is not None or self.last_name is not None
+        if uses_structured_name:
+            if not self.first_name or not self.last_name:
+                raise ValueError("First name and last name are required")
+            if self.date_of_birth is None:
+                raise ValueError("Date of birth is required")
+            self.name = " ".join(part for part in (self.first_name, self.middle_name, self.last_name) if part)
+        elif not self.name:
+            raise ValueError("First name and last name are required")
+        return self
 
     @field_validator("email")
     @classmethod
@@ -276,6 +334,11 @@ class UserResponse(BaseModel):
     id: int
     name: str
     email: str
+    first_name: str = ""
+    middle_name: str = ""
+    last_name: str = ""
+    date_of_birth: date | None = None
+    bio: str = ""
 
     model_config = {
         "from_attributes": True
@@ -283,14 +346,54 @@ class UserResponse(BaseModel):
 
 
 class UserUpdate(BaseModel):
-    name: str = Field(min_length=2, max_length=100)
+    name: str | None = Field(default=None, min_length=2, max_length=300)
+    first_name: str | None = Field(default=None, max_length=100)
+    middle_name: str = Field(default="", max_length=100)
+    last_name: str | None = Field(default=None, max_length=100)
+    date_of_birth: date | None = None
+    bio: str = Field(default="", max_length=1000)
     email: str = Field(min_length=3, max_length=255)
     current_password: str | None = Field(default=None, min_length=1, max_length=128)
 
     @field_validator("name")
     @classmethod
-    def strip_name(cls, value: str) -> str:
-        return normalize_name(value)
+    def strip_name(cls, value: str | None) -> str | None:
+        return normalize_name(value) if value is not None else None
+
+    @field_validator("first_name", "last_name")
+    @classmethod
+    def strip_required_name_part(cls, value: str | None, info) -> str | None:
+        if value is None:
+            return None
+        return normalize_name_part(value, info.field_name.replace("_", " ").title())
+
+    @field_validator("middle_name")
+    @classmethod
+    def strip_middle_name(cls, value: str) -> str:
+        return normalize_name_part(value, "Middle name", required=False)
+
+    @field_validator("date_of_birth")
+    @classmethod
+    def validate_date_of_birth(cls, value: date | None) -> date | None:
+        return validate_birth_date(value) if value else None
+
+    @field_validator("bio")
+    @classmethod
+    def strip_bio(cls, value: str) -> str:
+        return value.strip()
+
+    @model_validator(mode="after")
+    def build_display_name(self):
+        uses_structured_name = self.first_name is not None or self.last_name is not None
+        if uses_structured_name:
+            if not self.first_name or not self.last_name:
+                raise ValueError("First name and last name are required")
+            if self.date_of_birth is None:
+                raise ValueError("Date of birth is required")
+            self.name = " ".join(part for part in (self.first_name, self.middle_name, self.last_name) if part)
+        elif not self.name:
+            raise ValueError("First name and last name are required")
+        return self
 
     @field_validator("email")
     @classmethod

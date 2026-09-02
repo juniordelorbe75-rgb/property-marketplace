@@ -47,6 +47,19 @@ def ensure_schema_safety():
                 )
             )
 
+        user_profile_columns = (
+            ("first_name", "VARCHAR(100) NOT NULL DEFAULT ''"),
+            ("middle_name", "VARCHAR(100) NOT NULL DEFAULT ''"),
+            ("last_name", "VARCHAR(100) NOT NULL DEFAULT ''"),
+            ("date_of_birth", "DATE"),
+            ("bio", "VARCHAR(1000) NOT NULL DEFAULT ''"),
+        )
+        for column_name, column_definition in user_profile_columns:
+            if column_name not in user_columns:
+                connection.execute(text(
+                    f"ALTER TABLE users ADD COLUMN {column_name} {column_definition}"
+                ))
+
         property_columns = {
             column["name"]
             for column in inspect(connection).get_columns("properties")

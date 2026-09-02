@@ -93,6 +93,11 @@ def create_user(
 
     new_user = UserDB(
         name=user_data.name.strip(),
+        first_name=user_data.first_name or "",
+        middle_name=user_data.middle_name,
+        last_name=user_data.last_name or "",
+        date_of_birth=user_data.date_of_birth,
+        bio=user_data.bio,
         email=email,
         password=hash_password(user_data.password),
         role="buyer"
@@ -113,8 +118,13 @@ def create_user(
 def update_current_user(
     db,
     user_id: int,
-    name: str,
+    name: str | None,
     email: str,
+    first_name: str | None = None,
+    middle_name: str = "",
+    last_name: str | None = None,
+    date_of_birth=None,
+    bio: str = "",
     current_password: str | None = None,
 ):
     user = user_repository.get_user_by_id(
@@ -129,7 +139,7 @@ def update_current_user(
         )
 
     email = email.strip().lower()
-    name = name.strip()
+    name = name.strip() if name else ""
 
     if not name:
         raise HTTPException(
@@ -167,6 +177,12 @@ def update_current_user(
         )
 
     user.name = name
+    if first_name is not None or last_name is not None:
+        user.first_name = first_name or ""
+        user.middle_name = middle_name
+        user.last_name = last_name or ""
+        user.date_of_birth = date_of_birth
+        user.bio = bio
     user.email = email
 
     try:

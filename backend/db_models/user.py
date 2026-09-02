@@ -1,4 +1,6 @@
-from sqlalchemy import String
+from datetime import date
+
+from sqlalchemy import Date, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from backend.db_models.base import Base
@@ -38,6 +40,12 @@ class UserDB(Base):
         back_populates="owner",
         cascade="all, delete-orphan"
     )
+
+    first_name: Mapped[str] = mapped_column(String(100), nullable=False, default="", server_default="")
+    middle_name: Mapped[str] = mapped_column(String(100), nullable=False, default="", server_default="")
+    last_name: Mapped[str] = mapped_column(String(100), nullable=False, default="", server_default="")
+    date_of_birth: Mapped[date | None] = mapped_column(Date, nullable=True)
+    bio: Mapped[str] = mapped_column(String(1000), nullable=False, default="", server_default="")
 
     token_generation: Mapped[int] = mapped_column(
         nullable=False,

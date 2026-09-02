@@ -104,6 +104,11 @@ def update_me(
         db=db,
         user_id=current_user_id,
         name=user_data.name,
+        first_name=user_data.first_name,
+        middle_name=user_data.middle_name,
+        last_name=user_data.last_name,
+        date_of_birth=user_data.date_of_birth,
+        bio=user_data.bio,
         email=user_data.email,
         current_password=user_data.current_password,
     )

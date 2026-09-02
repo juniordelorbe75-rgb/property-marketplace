@@ -12,7 +12,11 @@ function Account() {
 
   const [user, setUser] = useState(null)
 
-  const [name, setName] = useState("")
+  const [firstName, setFirstName] = useState("")
+  const [middleName, setMiddleName] = useState("")
+  const [lastName, setLastName] = useState("")
+  const [dateOfBirth, setDateOfBirth] = useState("")
+  const [bio, setBio] = useState("")
   const [email, setEmail] = useState("")
   const [profilePassword, setProfilePassword] = useState("")
 
@@ -68,7 +72,11 @@ function Account() {
       }
 
       setUser(data)
-      setName(data.name)
+      setFirstName(data.first_name || data.name || "")
+      setMiddleName(data.middle_name || "")
+      setLastName(data.last_name || "")
+      setDateOfBirth(data.date_of_birth || "")
+      setBio(data.bio || "")
       setEmail(data.email)
 
     } catch (error) {
@@ -124,7 +132,11 @@ function Account() {
             Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({
-            name,
+            first_name: firstName,
+            middle_name: middleName,
+            last_name: lastName,
+            date_of_birth: dateOfBirth,
+            bio,
             email,
             ...(email.trim().toLowerCase() !== user?.email
               ? { current_password: profilePassword }
@@ -142,7 +154,11 @@ function Account() {
       }
 
       setUser(data)
-      setName(data.name)
+      setFirstName(data.first_name || data.name || "")
+      setMiddleName(data.middle_name || "")
+      setLastName(data.last_name || "")
+      setDateOfBirth(data.date_of_birth || "")
+      setBio(data.bio || "")
       setEmail(data.email)
       setProfilePassword("")
 
@@ -317,21 +333,29 @@ function Account() {
           <form onSubmit={handleProfileSubmit}>
 
             <div className="form-group">
+              <label htmlFor="first-name">First name</label>
+              <input id="first-name" type="text" value={firstName} onChange={(event) => setFirstName(event.target.value)} autoComplete="given-name" maxLength={100} required />
+            </div>
 
-              <label htmlFor="name">
-                Name
-              </label>
+            <div className="form-group">
+              <label htmlFor="middle-name">Middle name <span>(optional)</span></label>
+              <input id="middle-name" type="text" value={middleName} onChange={(event) => setMiddleName(event.target.value)} autoComplete="additional-name" maxLength={100} />
+            </div>
 
-              <input
-                id="name"
-                type="text"
-                value={name}
-                onChange={(event) =>
-                  setName(event.target.value)
-                }
-                required
-              />
+            <div className="form-group">
+              <label htmlFor="last-name">Last name</label>
+              <input id="last-name" type="text" value={lastName} onChange={(event) => setLastName(event.target.value)} autoComplete="family-name" maxLength={100} required />
+            </div>
 
+            <div className="form-group">
+              <label htmlFor="date-of-birth">Date of birth</label>
+              <input id="date-of-birth" type="date" value={dateOfBirth} onChange={(event) => setDateOfBirth(event.target.value)} max={new Date().toISOString().slice(0, 10)} autoComplete="bday" required />
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="bio">About you <span>(optional)</span></label>
+              <textarea id="bio" value={bio} onChange={(event) => setBio(event.target.value)} maxLength={1000} rows={5} placeholder="Tell other marketplace members a little about yourself." />
+              <small>{bio.length}/1000 characters</small>
             </div>
 
             <div className="form-group">
