@@ -118,7 +118,7 @@ npm run lint
 npm run build
 ```
 
-Current baseline: 87 backend tests and 72 frontend tests.
+Current baseline: 87 backend tests and 73 frontend tests.
 
 GitHub Actions runs the same backend suite plus frontend tests, lint, and production build for every pull request and every push to `main`. Runs use read-only repository permissions, locked npm dependencies, bounded execution times, and cancellation of superseded work.
 

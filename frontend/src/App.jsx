@@ -17,6 +17,7 @@ import NotFound from "./pages/NotFound"
 import SafetyReports from "./pages/SafetyReports"
 import MySafetyReports from "./pages/MySafetyReports"
 import OAuthCallback from "./pages/OAuthCallback"
+import LoginWelcome from "./components/LoginWelcome"
 
 function protectedPage(page) {
   return (
@@ -32,6 +33,7 @@ function App() {
       <BrowserRouter>
         <Navbar />
         <ConnectionStatus />
+        <LoginWelcome />
 
         <Routes>
           <Route

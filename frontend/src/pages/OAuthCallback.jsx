@@ -5,6 +5,7 @@ import { apiFetch } from "../utils/apiFetch"
 import { getApiError } from "../utils/apiError"
 import { readApiResponse } from "../utils/apiResponse"
 import { getSafeReturnPath } from "../utils/authRedirect"
+import { queueLoginWelcome } from "../utils/loginWelcomeSession"
 
 function OAuthCallback() {
   const [params] = useSearchParams()
@@ -30,6 +31,7 @@ function OAuthCallback() {
       })
       .then((data) => {
         login(data.access_token)
+        queueLoginWelcome("returning")
         navigate(getSafeReturnPath(params.get("return_to")), { replace: true })
       })
       .catch((requestError) => setError(requestError.message))

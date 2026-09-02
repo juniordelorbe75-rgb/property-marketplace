@@ -1,0 +1,23 @@
+.login-welcome {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  max-width: 1152px;
+  margin: 18px auto 0;
+  padding: 16px 20px;
+  border: 1px solid #a7f3d0;
+  border-radius: 12px;
+  background: linear-gradient(90deg, #ecfdf5, #eff6ff);
+  color: #0f172a;
+  box-shadow: 0 8px 22px rgba(15, 118, 110, 0.08);
+}
+
+.login-welcome div { display: grid; gap: 4px; }
+.login-welcome strong { color: #065f46; font-size: 1.05rem; }
+.login-welcome span { color: #475569; }
+.login-welcome button { flex: 0 0 auto; width: 36px; height: 36px; border: 0; border-radius: 50%; background: rgba(255, 255, 255, 0.8); color: #475569; cursor: pointer; font-size: 1.4rem; }
+
+@media (max-width: 600px) {
+  .login-welcome { margin: 12px 16px 0; align-items: flex-start; }
+}

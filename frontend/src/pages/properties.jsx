@@ -280,13 +280,6 @@ function Properties() {
         <div className="home-hero-copy">
           <p className="home-hero-eyebrow">Your next chapter starts here</p>
           <h1 id="home-hero-title">Move forward with confidence.</h1>
-          <p className="home-hero-lead">
-            Discover places that fit your plans, compare the details that matter,
-            and start a direct conversation when a property feels right.
-          </p>
-          <blockquote>
-            “A great move begins with one clear step. Take yours today.”
-          </blockquote>
           <div className="home-hero-actions">
             <a className="hero-search-link" href="#property-search">Start your search</a>
             <button type="button" className="share-search-page" onClick={handleSharePage}>

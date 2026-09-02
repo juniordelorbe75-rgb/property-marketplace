@@ -209,6 +209,10 @@ authenticated request returns `401`. It checks that the rejected request used
 the current token, preventing a delayed request from an older session from
 logging out a newly signed-in user. Login and logout state stays synchronized
 between browser tabs, while network failures and `503` outages preserve login.
+Immediately after password or social sign-in, the app shows a dismissible,
+first-name welcome message on the destination page. New registrations receive a
+distinct first-time greeting. A session-scoped flag ties the message to the
+completed sign-in so it does not appear during ordinary page loads.
 Access tokens carry an account token generation. Password changes increment that
 generation, immediately revoking tokens issued on other devices and returning a
 replacement token so the active browser remains signed in. Generation-less
@@ -251,9 +255,9 @@ The home page also shows up to six recently viewed listings so buyers can resume
 browsing without an account. Only validated public listing-card fields are kept
 in browser storage, repeated visits move a listing to the front, corrupt or
 blocked storage never breaks navigation, and the buyer can clear the history.
-The home page opens with a confidence-focused hero, an original motivational
-message, a direct jump to the search filters, and factual marketplace benefits
-without making unsupported safety or inventory claims.
+The home page opens with a concise confidence-focused headline, a direct jump to
+the search filters, and a compact row of factual marketplace benefits without
+making unsupported safety or inventory claims.
 Every property detail page can share a canonical listing URL. Supported devices
 open their native share sheet; other browsers copy the link to the clipboard or
 show a selectable manual-copy link. Search parameters and fragments are omitted

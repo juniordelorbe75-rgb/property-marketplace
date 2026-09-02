@@ -5,6 +5,7 @@ import { getApiError } from "../utils/apiError"
 import { readApiResponse } from "../utils/apiResponse"
 import { apiFetch } from "../utils/apiFetch"
 import { getSafeReturnPath } from "../utils/authRedirect"
+import { queueLoginWelcome } from "../utils/loginWelcomeSession"
 
 function Register() {
   const navigate = useNavigate()
@@ -90,6 +91,7 @@ function Register() {
     }
 
     login(loginData.access_token)
+    queueLoginWelcome("new")
 
     navigate(returnTo, { replace: true })
 

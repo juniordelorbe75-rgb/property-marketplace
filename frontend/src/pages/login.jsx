@@ -5,6 +5,7 @@ import { getApiError } from "../utils/apiError"
 import { readApiResponse } from "../utils/apiResponse"
 import { apiFetch } from "../utils/apiFetch"
 import { getSafeReturnPath } from "../utils/authRedirect"
+import { queueLoginWelcome } from "../utils/loginWelcomeSession"
 
 function Login() {
   const navigate = useNavigate()
@@ -57,6 +58,7 @@ function Login() {
       })
       .then((data) => {
         login(data.access_token)
+        queueLoginWelcome("returning")
 
         setLoading(false)
 

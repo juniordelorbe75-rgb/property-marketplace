@@ -14,8 +14,7 @@
 
 .home-hero {
   display: grid;
-  grid-template-columns: minmax(0, 1.35fr) minmax(260px, 0.65fr);
-  gap: 36px;
+  gap: 24px;
   align-items: center;
   margin-bottom: 30px;
   padding: 42px;
@@ -41,24 +40,6 @@
   font-size: clamp(2.25rem, 5vw, 4rem);
   line-height: 1.02;
   letter-spacing: -0.04em;
-}
-
-.home-hero-lead {
-  max-width: 650px;
-  margin: 20px 0 0;
-  color: #475569;
-  font-size: 1.1rem;
-  line-height: 1.7;
-}
-
-.home-hero blockquote {
-  margin: 24px 0 0;
-  padding-left: 16px;
-  border-left: 4px solid #10b981;
-  color: #0f766e;
-  font-size: 1.05rem;
-  font-weight: 700;
-  line-height: 1.5;
 }
 
 .home-hero-actions {
@@ -89,6 +70,7 @@
 
 .home-confidence-list {
   display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
   margin: 0;
   padding: 0;
@@ -341,7 +323,6 @@
 }
 
 @media (max-width: 900px) {
-  .home-hero { grid-template-columns: 1fr; }
   .properties-grid {
     grid-template-columns: repeat(2, 1fr);
   }
@@ -359,6 +340,7 @@
   .home-hero { padding: 28px 22px; }
   .home-hero-actions { align-items: stretch; flex-direction: column; }
   .home-hero-actions > * { width: 100%; }
+  .home-confidence-list { grid-template-columns: 1fr; }
   .properties-grid {
     grid-template-columns: 1fr;
   }
