@@ -16,6 +16,7 @@ import ProtectedRoute from "./components/ProtectedRoute"
 import NotFound from "./pages/NotFound"
 import SafetyReports from "./pages/SafetyReports"
 import MySafetyReports from "./pages/MySafetyReports"
+import OAuthCallback from "./pages/OAuthCallback"
 
 function protectedPage(page) {
   return (
@@ -51,6 +52,11 @@ function App() {
           <Route
             path="/login"
             element={<Login />}
+          />
+
+          <Route
+            path="/auth/callback"
+            element={<OAuthCallback />}
           />
 
           <Route

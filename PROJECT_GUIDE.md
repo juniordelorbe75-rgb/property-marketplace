@@ -128,6 +128,14 @@ The browser sends a token in this header:
 Authorization: Bearer <access-token>
 ```
 
+Optional Google, Facebook, and Yahoo sign-in uses the server-side OAuth
+authorization-code flow. Provider credentials stay in environment variables.
+The callback resolves a stable provider identity, requires an email supplied as
+verified by the provider, and links it to the matching marketplace account or
+creates an account on first use. The browser receives a short-lived, single-use
+marketplace code and exchanges it for the normal access token, keeping provider
+tokens and marketplace tokens out of redirect URLs.
+
 ## Frontend Folders
 
 ### `frontend/src/pages/`

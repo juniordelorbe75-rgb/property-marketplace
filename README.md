@@ -19,6 +19,7 @@ A full-stack marketplace for discovering, listing, saving, and discussing proper
 - Immediate message and unread-count refresh when a visible browser reconnects
 - Snapshot-bounded read receipts that never clear a message newer than the conversation displayed
 - Profile management with password-confirmed email changes, password rotation, session invalidation, and verified account deletion
+- Optional Google, Facebook, and Yahoo sign-in with verified-email account linking and one-time callback codes
 - Readiness checks, image maintenance, backup/restore scripts, and sanitized errors
 
 Detailed architecture and reliability notes are in [PROJECT_GUIDE.md](PROJECT_GUIDE.md).
@@ -47,6 +48,22 @@ Edit `.env` and replace every placeholder. `DATABASE_URL` must point to an exist
 ```powershell
 .\scripts\generate-secret-key.ps1
 ```
+
+### Social sign-in
+
+Social buttons appear only for providers whose client ID and secret are set. Create
+an OAuth web application with each provider, then copy its credentials into `.env`.
+For local development, register these exact callback URLs:
+
+- Google: `http://127.0.0.1:8000/auth/google/callback`
+- Facebook: `http://127.0.0.1:8000/auth/facebook/callback`
+- Yahoo: `http://127.0.0.1:8000/auth/yahoo/callback`
+
+Set `FRONTEND_URL` to the browser-facing marketplace origin and
+`OAUTH_REDIRECT_BASE_URL` to the public API origin. Production values must use
+HTTPS. Request only the profile and email permissions shown on the provider's
+consent screen. Existing accounts are linked only when the provider returns the
+same verified email address; otherwise a new marketplace account is created.
 
 To grant moderation access, copy the stable Account ID shown on the Account page into the comma-separated `ADMIN_USER_IDS` setting, then restart the backend. Leave it empty when no account should have administrator access; registration cannot choose or reuse an Account ID.
 
@@ -100,7 +117,7 @@ npm run lint
 npm run build
 ```
 
-Current baseline: 81 backend tests and 72 frontend tests.
+Current baseline: 84 backend tests and 72 frontend tests.
 
 GitHub Actions runs the same backend suite plus frontend tests, lint, and production build for every pull request and every push to `main`. Runs use read-only repository permissions, locked npm dependencies, bounded execution times, and cancellation of superseded work.
 

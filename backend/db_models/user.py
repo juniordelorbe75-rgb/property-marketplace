@@ -79,3 +79,10 @@ class UserDB(Base):
         back_populates="reviewer",
         passive_deletes=True,
     )
+
+    social_identities: Mapped[list["SocialIdentityDB"]] = relationship(
+        "SocialIdentityDB",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )

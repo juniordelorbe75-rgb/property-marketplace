@@ -10,6 +10,7 @@ from backend.db_models.property import PropertyDB
 from backend.db_models.inquiry import InquiryDB, InquiryMessageDB
 from backend.db_models.favorite import FavoriteDB
 from backend.db_models.report import ListingReportDB
+from backend.db_models.social_identity import SocialIdentityDB
 
 load_dotenv()
 

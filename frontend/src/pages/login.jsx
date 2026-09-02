@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Link, useLocation, useNavigate } from "react-router-dom"
 import { useAuth } from "../context/AuthContext"
 import { getApiError } from "../utils/apiError"
@@ -16,6 +16,19 @@ function Login() {
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
+  const [providers, setProviders] = useState([])
+
+  useEffect(() => {
+    apiFetch("/auth/providers")
+      .then((response) => response.ok ? response.json() : { providers: [] })
+      .then((data) => setProviders(data.providers || []))
+      .catch(() => setProviders([]))
+  }, [])
+
+  function socialLogin(provider) {
+    const query = new URLSearchParams({ return_to: returnTo })
+    window.location.assign(`/auth/${provider}/start?${query}`)
+  }
 
   function handleLogin(event) {
     event.preventDefault()
@@ -61,6 +74,17 @@ function Login() {
       <h1>Login</h1>
 
       <p>Login to your account.</p>
+
+      {providers.length > 0 && (
+        <section className="social-login" aria-label="Social sign-in options">
+          {providers.map((provider) => (
+            <button key={provider.id} type="button" onClick={() => socialLogin(provider.id)}>
+              Continue with {provider.name}
+            </button>
+          ))}
+          <p><span>or use your email and password</span></p>
+        </section>
+      )}
 
       {returnTo !== "/" && <p>After login, you will return to where you left off.</p>}
 

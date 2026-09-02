@@ -7,6 +7,15 @@ export default defineConfig({
   server: {
     proxy: {
       "/users": "http://127.0.0.1:8000",
+      "/auth": {
+        target: "http://127.0.0.1:8000",
+        bypass(request) {
+          if (request.method === "GET" && request.url?.startsWith("/auth/callback") && request.headers.accept?.includes("text/html")) {
+            return "/index.html"
+          }
+          return undefined
+        },
+      },
       "/properties": {
         target: "http://127.0.0.1:8000",
         bypass(request) {
