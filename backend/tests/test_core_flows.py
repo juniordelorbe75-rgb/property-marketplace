@@ -16,7 +16,15 @@ from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
 
 from backend.auth.security import hash_password, verify_password
-from backend.auth.token import ALGORITHM, SECRET_KEY, verify_access_token
+from backend.auth.token import (
+    ALGORITHM,
+    SECRET_KEY,
+    TOKEN_AUDIENCE,
+    TOKEN_ISSUER,
+    create_access_token,
+    decode_access_token,
+    verify_access_token,
+)
 from backend.auth.dependencies import get_current_user_id
 from backend.db_models.base import Base
 from backend.db_models.favorite import FavoriteDB  # noqa: F401
@@ -189,6 +197,36 @@ class CoreFlowTests(unittest.TestCase):
 
         self.assertIsNone(verify_access_token("not-a-valid-token"))
         self.assertIsNone(verify_access_token(expired_token))
+
+    def test_access_tokens_require_marketplace_scope_and_type(self):
+        valid_token = create_access_token({"sub": "1", "gen": 1})
+        valid_payload = decode_access_token(valid_token)
+        issued_at = datetime.now(timezone.utc)
+
+        self.assertEqual(valid_payload["iss"], TOKEN_ISSUER)
+        self.assertEqual(valid_payload["aud"], TOKEN_AUDIENCE)
+        self.assertEqual(valid_payload["token_type"], "access")
+
+        base_payload = {
+            "sub": "1",
+            "gen": 1,
+            "iat": issued_at,
+            "exp": issued_at + timedelta(minutes=5),
+            "iss": TOKEN_ISSUER,
+            "aud": TOKEN_AUDIENCE,
+            "token_type": "access",
+        }
+        invalid_payloads = (
+            {**base_payload, "iss": "another-service"},
+            {**base_payload, "aud": "another-client"},
+            {**base_payload, "token_type": "password-reset"},
+            {key: value for key, value in base_payload.items() if key != "iat"},
+        )
+
+        for payload in invalid_payloads:
+            with self.subTest(payload=payload):
+                token = jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
+                self.assertIsNone(decode_access_token(token))
 
     def test_token_is_rejected_after_account_is_deleted(self):
         user = self.create_test_user()

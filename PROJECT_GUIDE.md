@@ -580,6 +580,7 @@ The project currently has automated coverage for:
 - Sanitized, request-correlated responses for unexpected application failures
 - Unique request IDs and timing/status logs for API troubleshooting
 - Private, authenticated, OAuth, and error API responses use `Cache-Control: no-store`; all API responses include anti-framing, browser-capability, content-type, cross-domain-policy, and referrer protections
+- Login sessions expire after two hours and tokens are accepted only when their signed issuer, audience, issued-at time, expiry, subject, and access-token type match this marketplace
 - Login attempts are throttled per client-and-email pair after five failures in fifteen minutes, with a `Retry-After` response and automatic reset after successful authentication
 - Safe frontend reads retry temporary network, timeout-status, rate-limit, and gateway failures up to two times; write requests are never automatically replayed
 - An app-wide connection notice warns when the browser reports that the device is offline, keeps loaded information usable, and briefly confirms when connectivity returns
