@@ -12,6 +12,7 @@ from backend.models import (
     UserLogin,
     UserResponse,
     UserUpdate,
+    PublicProfile,
     PasswordChange,
     AccountDeletionConfirmation,
 )
@@ -19,6 +20,7 @@ from backend.services.user_service import (
     create_user,
     login_user,
     get_user_by_id,
+    get_public_profile,
     update_current_user,
     change_password,
     delete_current_user,
@@ -109,9 +111,17 @@ def update_me(
         last_name=user_data.last_name,
         date_of_birth=user_data.date_of_birth,
         bio=user_data.bio,
+        public_profile_enabled=user_data.public_profile_enabled,
+        public_name_mode=user_data.public_name_mode,
+        public_bio_visible=user_data.public_bio_visible,
         email=user_data.email,
         current_password=user_data.current_password,
     )
+
+
+@router.get("/{user_id}/profile", response_model=PublicProfile)
+def view_public_profile(user_id: int, db: Session = Depends(get_db)):
+    return get_public_profile(db, user_id)
 
 
 @router.patch("/me/password")

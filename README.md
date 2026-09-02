@@ -20,6 +20,7 @@ A full-stack marketplace for discovering, listing, saving, and discussing proper
 - Snapshot-bounded read receipts that never clear a message newer than the conversation displayed
 - Profile management with password-confirmed email changes, password rotation, session invalidation, and verified account deletion
 - Structured profiles with first, optional middle, and last names, date of birth, and a private editable biography
+- Opt-in public profiles with first-name-only defaults and separate full-name and biography visibility controls
 - Optional Google, Facebook, and Yahoo sign-in with verified-email account linking and one-time callback codes
 - Readiness checks, image maintenance, backup/restore scripts, and sanitized errors
 
@@ -118,7 +119,7 @@ npm run lint
 npm run build
 ```
 
-Current baseline: 87 backend tests and 73 frontend tests.
+Current baseline: 89 backend tests and 73 frontend tests.
 
 GitHub Actions runs the same backend suite plus frontend tests, lint, and production build for every pull request and every push to `main`. Runs use read-only repository permissions, locked npm dependencies, bounded execution times, and cancellation of superseded work.
 

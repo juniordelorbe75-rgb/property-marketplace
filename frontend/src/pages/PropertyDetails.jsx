@@ -1102,6 +1102,9 @@ function PropertyDetails() {
 
             <p className="property-owner">
               Listed by {property.owner_name}
+              {property.owner_profile_public && (
+                <> · <Link to={`/profiles/${property.owner_id}`}>View profile</Link></>
+              )}
             </p>
 
             {getListingFreshness(property.created_at, property.updated_at) && (

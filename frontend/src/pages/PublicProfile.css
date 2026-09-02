@@ -1,0 +1,9 @@
+.public-profile-page { min-height: calc(100vh - 70px); padding: 48px 20px; background: #f8fafc; }
+.public-profile-card { max-width: 680px; margin: 0 auto; padding: 34px; border: 1px solid #dbe4ee; border-radius: 16px; background: white; box-shadow: 0 16px 35px rgba(15, 23, 42, 0.07); }
+.public-profile-label { margin: 0 0 8px; color: #1d4ed8; font-size: 0.8rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
+.public-profile-card h1 { margin: 0 0 22px; color: #0f172a; }
+.public-profile-bio { white-space: pre-wrap; overflow-wrap: anywhere; color: #334155; line-height: 1.7; }
+.public-profile-empty { color: #64748b; font-style: italic; }
+.public-profile-privacy { margin: 28px 0 20px; padding: 12px 14px; border-radius: 8px; background: #ecfdf5; color: #065f46; font-size: 0.9rem; }
+.public-profile-card a { color: #1d4ed8; font-weight: 700; }
+.public-profile-card button { margin-right: 14px; padding: 9px 13px; border: 1px solid #2563eb; border-radius: 7px; background: white; color: #1d4ed8; cursor: pointer; }

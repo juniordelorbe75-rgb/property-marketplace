@@ -1,6 +1,6 @@
 from datetime import date
 
-from sqlalchemy import Date, String
+from sqlalchemy import Boolean, Date, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from backend.db_models.base import Base
@@ -46,6 +46,9 @@ class UserDB(Base):
     last_name: Mapped[str] = mapped_column(String(100), nullable=False, default="", server_default="")
     date_of_birth: Mapped[date | None] = mapped_column(Date, nullable=True)
     bio: Mapped[str] = mapped_column(String(1000), nullable=False, default="", server_default="")
+    public_profile_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
+    public_name_mode: Mapped[str] = mapped_column(String(20), nullable=False, default="first_name", server_default="first_name")
+    public_bio_visible: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
 
     token_generation: Mapped[int] = mapped_column(
         nullable=False,
@@ -94,3 +97,10 @@ class UserDB(Base):
         cascade="all, delete-orphan",
         passive_deletes=True,
     )
+
+    @property
+    def public_display_name(self) -> str:
+        first_name = self.first_name or self.name.strip().split()[0]
+        if self.public_profile_enabled and self.public_name_mode == "full_name":
+            return self.name
+        return first_name

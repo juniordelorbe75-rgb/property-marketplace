@@ -128,6 +128,11 @@ remain backward compatible. Birth dates and biographies are returned only by
 the authenticated account endpoints; they are not added to public listings.
 My Account also shows a private summary of the saved full name, formatted birth
 date, and biography beneath the editable profile form.
+Public profiles are opt-in and private by default. An account separately chooses
+first-name-only or full-name display and whether its biography is visible. The
+public response model contains only account ID, chosen display name, and the
+optional biography; email and date of birth are never included. Listings show a
+View Profile link only while the owner has enabled the public profile.
 Account creation requires the password to be entered twice; mismatched values
 are rejected in the browser before any registration request is sent.
 

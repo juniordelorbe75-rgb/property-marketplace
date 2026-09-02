@@ -154,6 +154,14 @@
   overflow-wrap: anywhere;
 }
 
+.privacy-controls { display: grid; gap: 18px; }
+.privacy-option { display: flex; align-items: flex-start; gap: 12px; cursor: pointer; }
+.privacy-option input { width: 18px; height: 18px; margin-top: 2px; }
+.privacy-option span { display: grid; gap: 4px; }
+.privacy-option small, .privacy-save-note { color: #64748b; }
+.privacy-controls select { width: 100%; padding: 11px 13px; border: 1px solid #d1d5db; border-radius: 7px; background: white; font: inherit; }
+.profile-preview-link { width: fit-content; text-decoration: none; }
+
 .information-link { color: #1d4ed8; }
 
 .profile-confirmation {

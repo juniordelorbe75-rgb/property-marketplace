@@ -53,6 +53,9 @@ def ensure_schema_safety():
             ("last_name", "VARCHAR(100) NOT NULL DEFAULT ''"),
             ("date_of_birth", "DATE"),
             ("bio", "VARCHAR(1000) NOT NULL DEFAULT ''"),
+            ("public_profile_enabled", "BOOLEAN NOT NULL DEFAULT FALSE"),
+            ("public_name_mode", "VARCHAR(20) NOT NULL DEFAULT 'first_name'"),
+            ("public_bio_visible", "BOOLEAN NOT NULL DEFAULT FALSE"),
         )
         for column_name, column_definition in user_profile_columns:
             if column_name not in user_columns:

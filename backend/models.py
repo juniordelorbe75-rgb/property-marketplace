@@ -125,6 +125,7 @@ class Property(BaseModel):
     version: int
     owner_id: int
     owner_name: str
+    owner_profile_public: bool = False
     title: str
     description: str
     image_url: str
@@ -339,6 +340,9 @@ class UserResponse(BaseModel):
     last_name: str = ""
     date_of_birth: date | None = None
     bio: str = ""
+    public_profile_enabled: bool = False
+    public_name_mode: Literal["first_name", "full_name"] = "first_name"
+    public_bio_visible: bool = False
 
     model_config = {
         "from_attributes": True
@@ -352,6 +356,9 @@ class UserUpdate(BaseModel):
     last_name: str | None = Field(default=None, max_length=100)
     date_of_birth: date | None = None
     bio: str = Field(default="", max_length=1000)
+    public_profile_enabled: bool = False
+    public_name_mode: Literal["first_name", "full_name"] = "first_name"
+    public_bio_visible: bool = False
     email: str = Field(min_length=3, max_length=255)
     current_password: str | None = Field(default=None, min_length=1, max_length=128)
 
@@ -409,6 +416,12 @@ class PasswordChange(BaseModel):
     @classmethod
     def validate_password(cls, value: str) -> str:
         return validate_new_password(value)
+
+
+class PublicProfile(BaseModel):
+    id: int
+    display_name: str
+    bio: str | None = None
 
 
 class AccountDeletionConfirmation(BaseModel):

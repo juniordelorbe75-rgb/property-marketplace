@@ -18,6 +18,7 @@ import SafetyReports from "./pages/SafetyReports"
 import MySafetyReports from "./pages/MySafetyReports"
 import OAuthCallback from "./pages/OAuthCallback"
 import LoginWelcome from "./components/LoginWelcome"
+import PublicProfile from "./pages/PublicProfile"
 
 function protectedPage(page) {
   return (
@@ -44,6 +45,11 @@ function App() {
           <Route
             path="/search"
             element={<Properties searchMode />}
+          />
+
+          <Route
+            path="/profiles/:id"
+            element={<PublicProfile />}
           />
 
           <Route

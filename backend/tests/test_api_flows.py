@@ -2469,7 +2469,7 @@ class ApiFlowTests(unittest.TestCase):
 
         self.assertEqual(create_status, 200)
         self.assertEqual(property_item["owner_id"], seller["id"])
-        self.assertEqual(property_item["owner_name"], seller["name"])
+        self.assertEqual(property_item["owner_name"], seller["name"].split()[0])
         self.assertEqual(
             property_item["description"],
             "A spacious home close to parks and schools.",

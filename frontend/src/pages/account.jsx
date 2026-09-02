@@ -17,6 +17,9 @@ function Account() {
   const [lastName, setLastName] = useState("")
   const [dateOfBirth, setDateOfBirth] = useState("")
   const [bio, setBio] = useState("")
+  const [publicProfileEnabled, setPublicProfileEnabled] = useState(false)
+  const [publicNameMode, setPublicNameMode] = useState("first_name")
+  const [publicBioVisible, setPublicBioVisible] = useState(false)
   const [email, setEmail] = useState("")
   const [profilePassword, setProfilePassword] = useState("")
 
@@ -87,6 +90,9 @@ function Account() {
       setLastName(data.last_name || "")
       setDateOfBirth(data.date_of_birth || "")
       setBio(data.bio || "")
+      setPublicProfileEnabled(data.public_profile_enabled === true)
+      setPublicNameMode(data.public_name_mode === "full_name" ? "full_name" : "first_name")
+      setPublicBioVisible(data.public_bio_visible === true)
       setEmail(data.email)
 
     } catch (error) {
@@ -147,6 +153,9 @@ function Account() {
             last_name: lastName,
             date_of_birth: dateOfBirth,
             bio,
+            public_profile_enabled: publicProfileEnabled,
+            public_name_mode: publicNameMode,
+            public_bio_visible: publicBioVisible,
             email,
             ...(email.trim().toLowerCase() !== user?.email
               ? { current_password: profilePassword }
@@ -169,6 +178,9 @@ function Account() {
       setLastName(data.last_name || "")
       setDateOfBirth(data.date_of_birth || "")
       setBio(data.bio || "")
+      setPublicProfileEnabled(data.public_profile_enabled === true)
+      setPublicNameMode(data.public_name_mode === "full_name" ? "full_name" : "first_name")
+      setPublicBioVisible(data.public_bio_visible === true)
       setEmail(data.email)
       setProfilePassword("")
 
@@ -340,7 +352,7 @@ function Account() {
             Update your personal information.
           </p>
 
-          <form onSubmit={handleProfileSubmit}>
+          <form id="profile-form" onSubmit={handleProfileSubmit}>
 
             <div className="form-group">
               <label htmlFor="first-name">First name</label>
@@ -435,6 +447,36 @@ function Account() {
 
           </form>
 
+        </section>
+
+        <section className="account-section">
+          <h2>Profile Privacy</h2>
+          <p className="section-description">
+            Your email and date of birth are always private. Choose whether other people can open your profile and what they may see.
+          </p>
+
+          <div className="privacy-controls">
+            <label className="privacy-option">
+              <input type="checkbox" checked={publicProfileEnabled} onChange={(event) => setPublicProfileEnabled(event.target.checked)} />
+              <span><strong>Allow people to view my profile</strong><small>Off by default. When off, no public profile page is available.</small></span>
+            </label>
+
+            <div className="form-group">
+              <label htmlFor="public-name-mode">Name shown publicly</label>
+              <select id="public-name-mode" value={publicNameMode} onChange={(event) => setPublicNameMode(event.target.value)} disabled={!publicProfileEnabled}>
+                <option value="first_name">First name only</option>
+                <option value="full_name">Full name</option>
+              </select>
+            </div>
+
+            <label className="privacy-option">
+              <input type="checkbox" checked={publicBioVisible} onChange={(event) => setPublicBioVisible(event.target.checked)} disabled={!publicProfileEnabled || !bio} />
+              <span><strong>Show my “About you” text</strong><small>Your biography stays hidden unless you enable this option.</small></span>
+            </label>
+
+            {user?.public_profile_enabled && user?.id && <Link className="primary-button profile-preview-link" to={`/profiles/${user.id}`}>Preview public profile</Link>}
+            <button className="primary-button" type="submit" form="profile-form" disabled={savingProfile}>{savingProfile ? "Saving…" : "Save Privacy Choices"}</button>
+          </div>
         </section>
 
         {/* ACCOUNT INFORMATION */}

@@ -1,9 +1,13 @@
 import unittest
 from datetime import date, timedelta
+from types import SimpleNamespace
+from unittest.mock import patch
 
+from fastapi import HTTPException
 from pydantic import ValidationError
 
 from backend.models import UserCreate, UserUpdate
+from backend.services.user_service import get_public_profile
 
 
 class ProfileModelTests(unittest.TestCase):
@@ -35,6 +39,33 @@ class ProfileModelTests(unittest.TestCase):
                 email="ana@example.com",
                 password="password123",
             )
+
+    def test_public_profile_returns_only_explicitly_shared_fields(self):
+        user = SimpleNamespace(
+            id=12,
+            name="Ana María Pérez",
+            first_name="Ana",
+            email="private@example.com",
+            date_of_birth=date(1994, 6, 15),
+            bio="Shared biography",
+            public_profile_enabled=True,
+            public_name_mode="first_name",
+            public_bio_visible=False,
+            public_display_name="Ana",
+        )
+        with patch("backend.services.user_service.user_repository.get_user_by_id", return_value=user):
+            profile = get_public_profile(object(), user.id)
+
+        self.assertEqual(profile, {"id": 12, "display_name": "Ana", "bio": None})
+        self.assertNotIn("email", profile)
+        self.assertNotIn("date_of_birth", profile)
+
+    def test_private_profile_is_not_discoverable(self):
+        user = SimpleNamespace(public_profile_enabled=False)
+        with patch("backend.services.user_service.user_repository.get_user_by_id", return_value=user):
+            with self.assertRaises(HTTPException) as raised:
+                get_public_profile(object(), 12)
+        self.assertEqual(raised.exception.status_code, 404)
 
 
 if __name__ == "__main__":

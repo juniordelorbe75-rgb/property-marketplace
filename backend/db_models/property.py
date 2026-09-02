@@ -190,7 +190,11 @@ class PropertyDB(Base):
 
     @property
     def owner_name(self) -> str:
-        return self.owner.name
+        return self.owner.public_display_name
+
+    @property
+    def owner_profile_public(self) -> bool:
+        return self.owner.public_profile_enabled
 
     @property
     def image_urls(self) -> list[str]:

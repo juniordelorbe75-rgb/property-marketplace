@@ -36,6 +36,18 @@ def get_user_by_id(db, user_id: int):
     return user
 
 
+def get_public_profile(db, user_id: int):
+    user = user_repository.get_user_by_id(db, user_id)
+    if user is None or not user.public_profile_enabled:
+        raise HTTPException(status_code=404, detail="Public profile not available")
+
+    return {
+        "id": user.id,
+        "display_name": user.public_display_name,
+        "bio": user.bio if user.public_bio_visible and user.bio else None,
+    }
+
+
 def login_user(
     db,
     email: str,
@@ -125,6 +137,9 @@ def update_current_user(
     last_name: str | None = None,
     date_of_birth=None,
     bio: str = "",
+    public_profile_enabled: bool = False,
+    public_name_mode: str = "first_name",
+    public_bio_visible: bool = False,
     current_password: str | None = None,
 ):
     user = user_repository.get_user_by_id(
@@ -183,6 +198,9 @@ def update_current_user(
         user.last_name = last_name or ""
         user.date_of_birth = date_of_birth
         user.bio = bio
+        user.public_profile_enabled = public_profile_enabled
+        user.public_name_mode = public_name_mode
+        user.public_bio_visible = public_bio_visible
     user.email = email
 
     try:
