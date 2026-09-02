@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react"
-import { useSearchParams } from "react-router-dom"
+import { Link, useSearchParams } from "react-router-dom"
 import "./properties.css"
 import PropertyCard from "../components/propertyCard"
 import { getApiError } from "../utils/apiError"
@@ -24,7 +24,7 @@ import DominicanLocationSuggestions from "../components/DominicanLocationSuggest
 
 const PROPERTIES_PER_PAGE = 9
 
-function Properties() {
+function Properties({ searchMode = false }) {
   const { token } = useAuth()
   const [searchParams, setSearchParams] = useSearchParams()
   const initialSearch = readPropertySearchParams(searchParams)
@@ -276,26 +276,26 @@ function Properties() {
   return (
     <div className="properties-page">
 
-      <section className="home-hero" aria-labelledby="home-hero-title">
+      {!searchMode && <section className="home-hero" aria-labelledby="home-hero-title">
         <div className="home-hero-copy">
           <p className="home-hero-eyebrow">Your next chapter starts here</p>
           <h1 id="home-hero-title">Move forward with confidence.</h1>
           <div className="home-hero-actions">
-            <a className="hero-search-link" href="#property-search">Start your search</a>
-            <button type="button" className="share-search-page" onClick={handleSharePage}>
-              Share this page
-            </button>
+            <Link className="hero-search-link" to="/search">Start your search</Link>
           </div>
         </div>
-        <ul className="home-confidence-list" aria-label="Marketplace benefits">
-          <li><strong>Search your way</strong><span>Use practical filters and save searches for later.</span></li>
-          <li><strong>Stay organized</strong><span>Stable property references make listings easy to revisit.</span></li>
-          <li><strong>Connect directly</strong><span>Keep buyer and seller conversations together.</span></li>
-        </ul>
-      </section>
+      </section>}
+
+      {searchMode && <div className="properties-header">
+        <div>
+          <h1>Search Properties</h1>
+          <p>Use any combination of filters to narrow the marketplace.</p>
+        </div>
+        <button type="button" className="share-search-page" onClick={handleSharePage}>Share this page</button>
+      </div>}
       {pageShareMessage && <p className="page-share-message" aria-live="polite">{pageShareMessage}</p>}
 
-      <div className="property-search" id="property-search">
+      {searchMode && <div className="property-search" id="property-search">
 
         <h2>Search Properties</h2>
 
@@ -513,9 +513,9 @@ function Properties() {
 
         </form>
         {savedSearchMessage && <p className="saved-search-message" aria-live="polite">{savedSearchMessage}</p>}
-      </div>
+      </div>}
 
-      {savedSearches.length > 0 && (
+      {searchMode && savedSearches.length > 0 && (
         <section className="saved-searches" aria-labelledby="saved-searches-title">
           <h2 id="saved-searches-title">Saved Searches</h2>
           <p>Quickly reopen searches saved on this device.</p>
@@ -681,6 +681,15 @@ function Properties() {
           </div>
         </section>
       )}
+
+      {!searchMode && <section className="home-benefits" aria-labelledby="home-benefits-title">
+        <h2 id="home-benefits-title">A simpler way to move forward</h2>
+        <ul className="home-confidence-list" aria-label="Marketplace benefits">
+          <li><strong>Search your way</strong><span>Use practical filters and save searches for later.</span></li>
+          <li><strong>Stay organized</strong><span>Stable property references make listings easy to revisit.</span></li>
+          <li><strong>Connect directly</strong><span>Keep buyer and seller conversations together.</span></li>
+        </ul>
+      </section>}
 
     </div>
   )

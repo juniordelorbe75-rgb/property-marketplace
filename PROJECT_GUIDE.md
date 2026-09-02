@@ -243,9 +243,11 @@ Buyer search filters, sorting, and the current result page are stored in the URL
 Searches therefore survive refreshes and browser Back/Forward navigation and can
 be bookmarked or shared. Unsupported or malformed URL values safely fall back
 to defaults instead of being forwarded to the API.
-The main navigation labels this destination “Search Properties.” Filter labels
-stay concise without repeating “optional”; empty fields and “Any” selections
-continue to mean that a filter is not applied.
+The main navigation links to a dedicated `/search` destination labeled “Search
+Properties.” Filter labels stay concise without repeating “optional”; empty
+fields and “Any” selections continue to mean that a filter is not applied. The
+home page stays focused on its headline and current property results instead of
+placing the complete filter form between them.
 The results screen requests only the nine properties shown on the current page.
 Property list and search endpoints support optional bounded `limit` and `offset`
 parameters and return the full matching count in `X-Total-Count`; callers that
@@ -255,9 +257,10 @@ The home page also shows up to six recently viewed listings so buyers can resume
 browsing without an account. Only validated public listing-card fields are kept
 in browser storage, repeated visits move a listing to the front, corrupt or
 blocked storage never breaks navigation, and the buyer can clear the history.
-The home page opens with a concise confidence-focused headline, a direct jump to
-the search filters, and a compact row of factual marketplace benefits without
-making unsupported safety or inventory claims.
+The home page opens with a concise confidence-focused headline and a direct link
+to the dedicated search page. A compact row of factual marketplace benefits
+appears after the property content at the bottom of the page without making
+unsupported safety or inventory claims.
 Every property detail page can share a canonical listing URL. Supported devices
 open their native share sheet; other browsers copy the link to the clipboard or
 show a selectable manual-copy link. Search parameters and fragments are omitted

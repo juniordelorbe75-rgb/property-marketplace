@@ -89,6 +89,18 @@
 .home-confidence-list strong { color: #0f172a; }
 .home-confidence-list span { color: #64748b; line-height: 1.45; }
 
+.home-benefits {
+  margin-top: 52px;
+  padding-top: 30px;
+  border-top: 1px solid #cbd5e1;
+}
+
+.home-benefits h2 {
+  margin: 0 0 18px;
+  color: #0f172a;
+  text-align: center;
+}
+
 #property-search { scroll-margin-top: 92px; }
 
 .properties-header h1 {

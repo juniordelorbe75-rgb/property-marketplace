@@ -105,7 +105,7 @@ function Navbar() {
           </button>
         </div>
         <div className={`navigation-links${menuOpen ? " open" : ""}`} id="primary-navigation-links">
-          <NavigationLink to="/" end onNavigate={closeMenu}>Search Properties</NavigationLink>
+          <NavigationLink to="/search" onNavigate={closeMenu}>Search Properties</NavigationLink>
           {token ? <>
             <NavigationLink to="/favorites" onNavigate={closeMenu}>Favorites</NavigationLink>
             <NavigationLink to="/my-properties" onNavigate={closeMenu}>My Listings</NavigationLink>

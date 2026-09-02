@@ -42,6 +42,11 @@ function App() {
           />
 
           <Route
+            path="/search"
+            element={<Properties searchMode />}
+          />
+
+          <Route
             path="/favorites"
             element={protectedPage(<Favorites />)}
           />
