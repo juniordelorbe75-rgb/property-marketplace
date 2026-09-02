@@ -239,6 +239,9 @@ Buyer search filters, sorting, and the current result page are stored in the URL
 Searches therefore survive refreshes and browser Back/Forward navigation and can
 be bookmarked or shared. Unsupported or malformed URL values safely fall back
 to defaults instead of being forwarded to the API.
+The main navigation labels this destination “Search Properties.” Filter labels
+stay concise without repeating “optional”; empty fields and “Any” selections
+continue to mean that a filter is not applied.
 The results screen requests only the nine properties shown on the current page.
 Property list and search endpoints support optional bounded `limit` and `offset`
 parameters and return the full matching count in `X-Total-Count`; callers that

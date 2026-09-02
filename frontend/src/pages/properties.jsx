@@ -294,7 +294,7 @@ function Properties() {
         <form onSubmit={handleSearch}>
 
           <div>
-            <label>Listing Reference (optional)</label>
+            <label>Listing Reference</label>
 
             <input
               type="text"
@@ -307,7 +307,7 @@ function Properties() {
           </div>
 
           <div>
-            <label>Location (optional)</label>
+            <label>Location</label>
 
             <input
               type="text"
@@ -321,7 +321,7 @@ function Properties() {
           </div>
 
           <div>
-            <label>Currency (optional)</label>
+            <label>Currency</label>
 
             <select
               value={currency}
@@ -342,7 +342,7 @@ function Properties() {
           </div>
 
           <div>
-            <label>Min Price (optional)</label>
+            <label>Min Price</label>
 
             <input
               type="number"
@@ -357,7 +357,7 @@ function Properties() {
           </div>
 
           <div>
-            <label>Max Price (optional)</label>
+            <label>Max Price</label>
 
             <input
               type="number"
@@ -372,7 +372,7 @@ function Properties() {
           </div>
 
           <div>
-            <label>Listing For (optional)</label>
+            <label>Listing For</label>
 
             <select value={listingType} onChange={(event) => setListingType(event.target.value)}>
               <option value="">Sale or Rent</option>
@@ -382,7 +382,7 @@ function Properties() {
           </div>
 
           <div>
-            <label>Property Type (optional)</label>
+            <label>Property Type</label>
 
             <select
               value={propertyType}
@@ -399,7 +399,7 @@ function Properties() {
           </div>
 
           <div>
-            <label>Bedrooms (optional)</label>
+            <label>Bedrooms</label>
 
             <input
               type="number"
@@ -413,7 +413,7 @@ function Properties() {
           </div>
 
           <div>
-            <label>Amenity (optional)</label>
+            <label>Amenity</label>
             <select value={amenity} onChange={(event) => setAmenity(event.target.value)}>
               <option value="">Any Amenity</option>
               {PROPERTY_AMENITIES.map((option) => <option value={option} key={option}>{option}</option>)}
@@ -421,7 +421,7 @@ function Properties() {
           </div>
 
           <div>
-            <label>Bathrooms (optional)</label>
+            <label>Bathrooms</label>
 
             <input
               type="number"
@@ -436,7 +436,7 @@ function Properties() {
           </div>
 
           <div>
-            <label>Minimum Square Feet (optional)</label>
+            <label>Minimum Square Feet</label>
 
             <input
               type="number"
@@ -451,7 +451,7 @@ function Properties() {
           </div>
 
           <div>
-            <label>Status (optional)</label>
+            <label>Status</label>
 
             <select
               value={status}
