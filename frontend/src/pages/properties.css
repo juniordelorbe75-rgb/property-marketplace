@@ -12,6 +12,103 @@
   margin-bottom: 30px;
 }
 
+.home-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(260px, 0.65fr);
+  gap: 36px;
+  align-items: center;
+  margin-bottom: 30px;
+  padding: 42px;
+  border: 1px solid #bfdbfe;
+  border-radius: 20px;
+  background: linear-gradient(135deg, #eff6ff 0%, #ffffff 55%, #ecfdf5 100%);
+  box-shadow: 0 18px 45px rgba(15, 23, 42, 0.08);
+}
+
+.home-hero-eyebrow {
+  margin: 0 0 10px;
+  color: #1d4ed8;
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.home-hero h1 {
+  max-width: 680px;
+  margin: 0;
+  color: #0f172a;
+  font-size: clamp(2.25rem, 5vw, 4rem);
+  line-height: 1.02;
+  letter-spacing: -0.04em;
+}
+
+.home-hero-lead {
+  max-width: 650px;
+  margin: 20px 0 0;
+  color: #475569;
+  font-size: 1.1rem;
+  line-height: 1.7;
+}
+
+.home-hero blockquote {
+  margin: 24px 0 0;
+  padding-left: 16px;
+  border-left: 4px solid #10b981;
+  color: #0f766e;
+  font-size: 1.05rem;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.home-hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 26px;
+}
+
+.hero-search-link,
+.home-hero .share-search-page {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.hero-search-link {
+  background: #2563eb;
+  color: white;
+}
+
+.hero-search-link:hover { background: #1d4ed8; }
+
+.home-confidence-list {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.home-confidence-list li {
+  display: grid;
+  gap: 5px;
+  padding: 16px;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.82);
+}
+
+.home-confidence-list strong { color: #0f172a; }
+.home-confidence-list span { color: #64748b; line-height: 1.45; }
+
+#property-search { scroll-margin-top: 92px; }
+
 .properties-header h1 {
   margin-bottom: 8px;
   font-size: 36px;
@@ -244,6 +341,7 @@
 }
 
 @media (max-width: 900px) {
+  .home-hero { grid-template-columns: 1fr; }
   .properties-grid {
     grid-template-columns: repeat(2, 1fr);
   }
@@ -258,6 +356,9 @@
 }
 
 @media (max-width: 600px) {
+  .home-hero { padding: 28px 22px; }
+  .home-hero-actions { align-items: stretch; flex-direction: column; }
+  .home-hero-actions > * { width: 100%; }
   .properties-grid {
     grid-template-columns: 1fr;
   }

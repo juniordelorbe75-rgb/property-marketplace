@@ -251,6 +251,9 @@ The home page also shows up to six recently viewed listings so buyers can resume
 browsing without an account. Only validated public listing-card fields are kept
 in browser storage, repeated visits move a listing to the front, corrupt or
 blocked storage never breaks navigation, and the buyer can clear the history.
+The home page opens with a confidence-focused hero, an original motivational
+message, a direct jump to the search filters, and factual marketplace benefits
+without making unsupported safety or inventory claims.
 Every property detail page can share a canonical listing URL. Supported devices
 open their native share sheet; other browsers copy the link to the clipboard or
 show a selectable manual-copy link. Search parameters and fragments are omitted

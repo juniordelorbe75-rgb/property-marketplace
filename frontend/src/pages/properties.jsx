@@ -276,18 +276,33 @@ function Properties() {
   return (
     <div className="properties-page">
 
-      <div className="properties-header">
-        <div>
-          <h1>Find Your Property</h1>
-          <p>Search available properties on the marketplace.</p>
+      <section className="home-hero" aria-labelledby="home-hero-title">
+        <div className="home-hero-copy">
+          <p className="home-hero-eyebrow">Your next chapter starts here</p>
+          <h1 id="home-hero-title">Move forward with confidence.</h1>
+          <p className="home-hero-lead">
+            Discover places that fit your plans, compare the details that matter,
+            and start a direct conversation when a property feels right.
+          </p>
+          <blockquote>
+            “A great move begins with one clear step. Take yours today.”
+          </blockquote>
+          <div className="home-hero-actions">
+            <a className="hero-search-link" href="#property-search">Start your search</a>
+            <button type="button" className="share-search-page" onClick={handleSharePage}>
+              Share this page
+            </button>
+          </div>
         </div>
-        <button type="button" className="share-search-page" onClick={handleSharePage}>
-          Share this page
-        </button>
-      </div>
+        <ul className="home-confidence-list" aria-label="Marketplace benefits">
+          <li><strong>Search your way</strong><span>Use practical filters and save searches for later.</span></li>
+          <li><strong>Stay organized</strong><span>Stable property references make listings easy to revisit.</span></li>
+          <li><strong>Connect directly</strong><span>Keep buyer and seller conversations together.</span></li>
+        </ul>
+      </section>
       {pageShareMessage && <p className="page-share-message" aria-live="polite">{pageShareMessage}</p>}
 
-      <div className="property-search">
+      <div className="property-search" id="property-search">
 
         <h2>Search Properties</h2>
 
