@@ -19,6 +19,7 @@ function Register() {
   const [bio, setBio] = useState("")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
+  const [confirmPassword, setConfirmPassword] = useState("")
 
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
@@ -27,6 +28,12 @@ function Register() {
     event.preventDefault()
 
     setError("")
+
+    if (password !== confirmPassword) {
+      setError("Passwords do not match.")
+      return
+    }
+
     setLoading(true)
 
     try {
@@ -172,11 +179,35 @@ function Register() {
           />
         </div>
 
+        <div>
+          <label htmlFor="register-confirm-password">Confirm password</label>
+          <br />
+
+          <input
+            id="register-confirm-password"
+            type="password"
+            value={confirmPassword}
+            onChange={(event) => setConfirmPassword(event.target.value)}
+            autoComplete="new-password"
+            minLength={8}
+            maxLength={128}
+            aria-invalid={Boolean(confirmPassword) && password !== confirmPassword}
+            aria-describedby="confirm-password-help"
+            required
+          />
+
+          <small id="confirm-password-help">
+            {confirmPassword && password !== confirmPassword
+              ? "Passwords do not match."
+              : "Enter the same password again."}
+          </small>
+        </div>
+
         {error && <p>{error}</p>}
 
         <button
           type="submit"
-          disabled={loading}
+          disabled={loading || !confirmPassword || password !== confirmPassword}
         >
           {loading
             ? "Creating Account..."

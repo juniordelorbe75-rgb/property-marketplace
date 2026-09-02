@@ -128,6 +128,8 @@ remain backward compatible. Birth dates and biographies are returned only by
 the authenticated account endpoints; they are not added to public listings.
 My Account also shows a private summary of the saved full name, formatted birth
 date, and biography beneath the editable profile form.
+Account creation requires the password to be entered twice; mismatched values
+are rejected in the browser before any registration request is sent.
 
 The browser sends a token in this header:
 
