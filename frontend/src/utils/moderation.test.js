@@ -1,7 +1,11 @@
 import test from "node:test"
 import assert from "node:assert/strict"
 
-import { getModerationStatusOptions, normalizeReportPage } from "./moderation.js"
+import {
+  getModerationStatusOptions,
+  normalizeMyReportPage,
+  normalizeReportPage,
+} from "./moderation.js"
 
 test("keeps closed moderation decisions terminal", () => {
   assert.deepEqual(getModerationStatusOptions("submitted"), [
@@ -34,4 +38,22 @@ test("normalizes report pages and rejects malformed report rows", () => {
   assert.equal(page.totalPages, 3)
   assert.equal(page.counts.resolved, 0)
   assert.equal(page.counts.dismissed, 0)
+})
+
+test("keeps only valid private report-history rows", () => {
+  const page = normalizeMyReportPage({
+    items: [
+      { id: 3, listing_id: 9, status: "resolved" },
+      { id: 4, listing_id: 0, status: "submitted" },
+      { id: 5, listing_id: 10, status: "unknown" },
+    ],
+    total: 3,
+    page: 1,
+    page_size: 20,
+    total_pages: 1,
+  })
+
+  assert.deepEqual(page.items, [{ id: 3, listing_id: 9, status: "resolved" }])
+  assert.equal(page.total, 3)
+  assert.equal(page.totalPages, 1)
 })

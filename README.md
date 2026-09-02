@@ -10,6 +10,7 @@ A full-stack marketplace for discovering, listing, saving, and discussing proper
 - Seller inventory, engagement statistics, availability controls, and safe updates
 - Authenticated, duplicate-safe listing reports for scams, misleading details, duplicates, availability, and inappropriate content
 - Allowlist-protected moderation queue with status filters, review notes, and stale-update protection
+- Private buyer report history with review status, retained listing references, and no exposure of internal moderator notes
 - Two-way buyer/seller inquiry conversations directly from the inbox
 - Unread counts, visibility-aware refresh, reply drafts, and retry-safe messages
 - App-wide offline and restored-connection notices that preserve access to loaded information
@@ -98,7 +99,7 @@ npm run lint
 npm run build
 ```
 
-Current baseline: 79 backend tests and 70 frontend tests.
+Current baseline: 80 backend tests and 71 frontend tests.
 
 GitHub Actions runs the same backend suite plus frontend tests, lint, and production build for every pull request and every push to `main`. Runs use read-only repository permissions, locked npm dependencies, bounded execution times, and cancellation of superseded work.
 

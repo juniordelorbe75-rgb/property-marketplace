@@ -1266,8 +1266,11 @@ function PropertyDetails() {
 
             {reportSuccess && (
               <div className="report-success" role="status">
-                <strong>Report recorded.</strong>
-                <span>Safety report #{reportSuccess} was saved. You do not need to submit it again.</span>
+                <div>
+                  <strong>Report recorded.</strong>
+                  <span>Safety report #{reportSuccess} was saved. You do not need to submit it again.</span>
+                </div>
+                <Link to="/my-reports">View my reports</Link>
               </div>
             )}
 

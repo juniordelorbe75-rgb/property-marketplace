@@ -348,6 +348,19 @@ class ListingReport(BaseModel):
     }
 
 
+class MyListingReport(ListingReport):
+    property_id: int | None
+    updated_at: datetime
+
+
+class MyListingReportPage(BaseModel):
+    items: list[MyListingReport]
+    total: int
+    page: int
+    page_size: int
+    total_pages: int
+
+
 class AdminListingReport(ListingReport):
     property_id: int | None
     listing_owner_id: int

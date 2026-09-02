@@ -217,8 +217,9 @@
 
 .report-success {
   display: flex;
-  flex-direction: column;
-  gap: 3px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
   margin-top: 12px;
   padding: 14px 16px;
   border: 1px solid #bbf7d0;
@@ -226,8 +227,10 @@
   background: #f0fdf4;
 }
 
+.report-success > div { display: flex; flex-direction: column; gap: 3px; }
 .report-success strong { color: #166534; }
 .report-success span { color: #475569; font-size: 13px; }
+.report-success a { color: #166534; font-weight: 800; white-space: nowrap; }
 
 .report-form {
   margin-top: 20px;
@@ -390,6 +393,7 @@
   .property-edit-location-preview { flex-direction: column; }
   .inquiry-form-heading, .inquiry-form-footer { align-items: flex-start; flex-direction: column; }
   .report-form-heading, .report-form-footer { align-items: flex-start; flex-direction: column; }
+  .report-success { align-items: flex-start; flex-direction: column; }
   .report-form-footer > div { width: 100%; }
   .report-form-footer button { flex: 1; }
   .inquiry-success { align-items: flex-start; flex-direction: column; }

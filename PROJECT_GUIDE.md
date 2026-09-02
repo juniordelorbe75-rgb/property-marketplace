@@ -267,6 +267,12 @@ review notes, and pagination. Review updates lock the report row and require its
 current version; exact retries return the saved decision while stale tabs receive
 `409`. Resolved and dismissed reports cannot be reopened or switched to the other
 terminal state.
+Each authenticated buyer also has a private paginated report history. It shows
+only that buyer's submitted reason, details, public review status, timestamps,
+and retained listing reference. Internal moderator notes, reviewer identity, and
+other buyers' reports are excluded by the API response model. The history remains
+useful after listing deletion and is linked from both the successful report
+confirmation and the Account page.
 
 ## Example: Creating a Property
 
@@ -491,6 +497,7 @@ The project currently has automated coverage for:
 - Password confirmation for sign-in email changes without blocking name-only edits
 - Authenticated listing reports with owner protection, bounded categories/details, duplicate prevention, retry safety, and retained review snapshots
 - Explicit immutable-account-ID moderation with private queue filters, review notes, terminal decisions, exact-retry handling, and stale-tab conflict protection
+- Ownership-isolated buyer report history with public status updates, deleted-listing snapshots, pagination, and strict exclusion of internal moderation fields
 - Database rollback after duplicate-email conflicts
 - Password hashing and token validation
 - Expired, malformed, and deleted-user tokens

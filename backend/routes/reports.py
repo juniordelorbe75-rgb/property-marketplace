@@ -7,9 +7,16 @@ from sqlalchemy.orm import Session
 
 from backend.auth.dependencies import get_current_admin_user_id, get_current_user_id
 from backend.db import get_db
-from backend.models import AdminAccess, AdminListingReport, ListingReport, ListingReportPage
+from backend.models import (
+    AdminAccess,
+    AdminListingReport,
+    ListingReport,
+    ListingReportPage,
+    MyListingReportPage,
+)
 from backend.services.report_service import (
     create_listing_report,
+    get_my_listing_report_page,
     get_listing_report_page,
     moderate_listing_report,
 )
@@ -43,6 +50,21 @@ class ListingReportUpdate(BaseModel):
 
 
 router = APIRouter(prefix="/reports", tags=["Safety Reports"])
+
+
+@router.get("/mine", response_model=MyListingReportPage)
+def get_my_reports(
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=50),
+    current_user_id: int = Depends(get_current_user_id),
+    session: Session = Depends(get_db),
+):
+    return get_my_listing_report_page(
+        session,
+        current_user_id,
+        page,
+        page_size,
+    )
 
 
 @router.get("/admin/access", response_model=AdminAccess)

@@ -77,6 +77,26 @@ def get_report_page(
     return items, total, counts
 
 
+def get_report_page_by_reporter(
+    session: Session,
+    reporter_id: int,
+    page: int,
+    page_size: int,
+):
+    reporter_filter = ListingReportDB.reporter_id == reporter_id
+    total = session.scalar(
+        select(func.count(ListingReportDB.id)).where(reporter_filter)
+    ) or 0
+    items = session.scalars(
+        select(ListingReportDB)
+        .where(reporter_filter)
+        .order_by(ListingReportDB.created_at.desc(), ListingReportDB.id.desc())
+        .offset((page - 1) * page_size)
+        .limit(page_size)
+    ).all()
+    return items, total
+
+
 def get_report_for_update(session: Session, report_id: int):
     return session.scalar(
         select(ListingReportDB)

@@ -90,6 +90,27 @@ def get_listing_report_page(
     }
 
 
+def get_my_listing_report_page(
+    session: Session,
+    reporter_id: int,
+    page: int,
+    page_size: int,
+):
+    items, total = report_repository.get_report_page_by_reporter(
+        session,
+        reporter_id,
+        page,
+        page_size,
+    )
+    return {
+        "items": items,
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "total_pages": max(1, (total + page_size - 1) // page_size),
+    }
+
+
 def moderate_listing_report(
     session: Session,
     report_id: int,

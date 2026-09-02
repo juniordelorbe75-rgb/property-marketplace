@@ -1929,6 +1929,125 @@ class ApiFlowTests(unittest.TestCase):
         self.assertEqual(stored_report.listing_id, property_id)
         self.assertEqual(stored_report.listing_owner_id, seller["id"])
 
+    def test_report_history_is_private_and_hides_internal_review_details(self):
+        _seller, seller_token = self.register_and_login(
+            "History Seller",
+            "history-seller@example.com",
+        )
+        _buyer_one, buyer_one_token = self.register_and_login(
+            "History Buyer One",
+            "history-buyer-one@example.com",
+        )
+        _buyer_two, buyer_two_token = self.register_and_login(
+            "History Buyer Two",
+            "history-buyer-two@example.com",
+        )
+        admin, admin_token = self.register_and_login(
+            "History Admin",
+            "history-admin@example.com",
+        )
+        _create_status, property_item = self.call(
+            "POST",
+            "/properties/",
+            {
+                "title": "History Listing Snapshot",
+                "price": 175000,
+                "location": "La Vega, Dominican Republic",
+                "property_type": "House",
+                "bedrooms": 3,
+                "bathrooms": 2,
+                "status": "available",
+            },
+            seller_token,
+        )
+        first_status, first_report = self.call(
+            "POST",
+            f"/reports/properties/{property_item['id']}",
+            {"reason": "suspected_scam", "details": "Unusual payment request."},
+            buyer_one_token,
+            idempotency_key=str(uuid4()),
+        )
+        second_status, second_report = self.call(
+            "POST",
+            f"/reports/properties/{property_item['id']}",
+            {"reason": "already_unavailable", "details": "Seller said it was unavailable."},
+            buyer_two_token,
+            idempotency_key=str(uuid4()),
+        )
+
+        with patch.dict(os.environ, {"ADMIN_USER_IDS": str(admin["id"])}):
+            _queue_status, queue = self.call(
+                "GET",
+                "/reports/admin?status=submitted",
+                token=admin_token,
+            )
+            first_admin_report = next(
+                item for item in queue["items"] if item["id"] == first_report["id"]
+            )
+            resolved_status, _resolved = self.call(
+                "PATCH",
+                f"/reports/admin/{first_report['id']}",
+                {
+                    "status": "resolved",
+                    "moderator_note": "Internal note must never be returned to the reporter.",
+                },
+                admin_token,
+                report_version=first_admin_report["version"],
+            )
+
+        guest_status, _guest = self.call("GET", "/reports/mine")
+        invalid_page_status, _invalid_page = self.call(
+            "GET",
+            "/reports/mine?page=0",
+            token=buyer_one_token,
+        )
+        first_history_status, first_history = self.call(
+            "GET",
+            "/reports/mine?page=1&page_size=1",
+            token=buyer_one_token,
+        )
+        second_history_status, second_history = self.call(
+            "GET",
+            "/reports/mine",
+            token=buyer_two_token,
+        )
+        delete_status, _deleted = self.call(
+            "DELETE",
+            f"/properties/{property_item['id']}",
+            token=seller_token,
+            property_version=property_item["version"],
+        )
+        removed_history_status, removed_history = self.call(
+            "GET",
+            "/reports/mine",
+            token=buyer_one_token,
+        )
+
+        self.assertEqual(first_status, 200)
+        self.assertEqual(second_status, 200)
+        self.assertEqual(resolved_status, 200)
+        self.assertEqual(guest_status, 401)
+        self.assertEqual(invalid_page_status, 422)
+        self.assertEqual(first_history_status, 200)
+        self.assertEqual(first_history["total"], 1)
+        self.assertEqual(first_history["page_size"], 1)
+        self.assertEqual(first_history["items"][0]["id"], first_report["id"])
+        self.assertEqual(first_history["items"][0]["status"], "resolved")
+        self.assertEqual(first_history["items"][0]["property_id"], property_item["id"])
+        self.assertNotIn("moderator_note", first_history["items"][0])
+        self.assertNotIn("reviewer_name", first_history["items"][0])
+        self.assertNotIn("listing_owner_id", first_history["items"][0])
+        self.assertEqual(second_history_status, 200)
+        self.assertEqual(second_history["total"], 1)
+        self.assertEqual(second_history["items"][0]["id"], second_report["id"])
+        self.assertEqual(delete_status, 200)
+        self.assertEqual(removed_history_status, 200)
+        self.assertIsNone(removed_history["items"][0]["property_id"])
+        self.assertEqual(
+            removed_history["items"][0]["listing_title"],
+            "History Listing Snapshot",
+        )
+
     def test_only_configured_admins_can_review_reports_without_stale_overwrites(self):
         seller, seller_token = self.register_and_login(
             "Moderation Seller",

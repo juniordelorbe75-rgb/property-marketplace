@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react"
-import { useNavigate } from "react-router-dom"
+import { Link, useNavigate } from "react-router-dom"
 import { useAuth } from "../context/AuthContext"
 import { getApiError } from "../utils/apiError"
 import { readApiResponse } from "../utils/apiResponse"
@@ -419,6 +419,16 @@ function Account() {
               <span className="information-value">
                 #{user?.id}
               </span>
+            </div>
+
+            <div>
+              <span className="information-label">
+                Marketplace Safety
+              </span>
+
+              <Link className="information-value information-link" to="/my-reports">
+                View My Safety Reports
+              </Link>
             </div>
 
           </div>
