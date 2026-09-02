@@ -6,6 +6,7 @@ import { readApiResponse } from "../utils/apiResponse"
 import { apiFetch } from "../utils/apiFetch"
 import { getSafeReturnPath } from "../utils/authRedirect"
 import { queueLoginWelcome } from "../utils/loginWelcomeSession"
+import "./auth.css"
 
 function Login() {
   const navigate = useNavigate()
@@ -72,10 +73,11 @@ function Login() {
   }
 
   return (
-    <div>
+    <main className="auth-page">
+      <section className="auth-card">
       <h1>Login</h1>
 
-      <p>Login to your account.</p>
+      <p className="auth-intro">Login to your account.</p>
 
       {providers.length > 0 && (
         <section className="social-login" aria-label="Social sign-in options">
@@ -88,14 +90,14 @@ function Login() {
         </section>
       )}
 
-      {returnTo !== "/" && <p>After login, you will return to where you left off.</p>}
+      {returnTo !== "/" && <p className="auth-return-note">After login, you will return to where you left off.</p>}
 
-      <form onSubmit={handleLogin}>
-        <div>
-          <label>Email</label>
-          <br />
+      <form className="auth-form" onSubmit={handleLogin}>
+        <div className="auth-field">
+          <label htmlFor="login-email">Email</label>
 
           <input
+            id="login-email"
             type="email"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
@@ -103,11 +105,11 @@ function Login() {
           />
         </div>
 
-        <div>
-          <label>Password</label>
-          <br />
+        <div className="auth-field">
+          <label htmlFor="login-password">Password</label>
 
           <input
+            id="login-password"
             type="password"
             value={password}
             onChange={(event) => setPassword(event.target.value)}
@@ -115,18 +117,19 @@ function Login() {
           />
         </div>
 
-        {error && <p>{error}</p>}
+        {error && <p className="auth-error" role="alert">{error}</p>}
 
-        <button type="submit" disabled={loading}>
+        <button className="auth-submit" type="submit" disabled={loading}>
           {loading ? "Logging in..." : "Login"}
         </button>
       </form>
 
-      <p>
+      <p className="auth-switch">
         Need an account?{" "}
         <Link to="/register" state={{ returnTo }}>Register</Link>
       </p>
-    </div>
+      </section>
+    </main>
   )
 }
 

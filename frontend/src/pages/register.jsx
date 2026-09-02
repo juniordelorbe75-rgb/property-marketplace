@@ -6,6 +6,7 @@ import { readApiResponse } from "../utils/apiResponse"
 import { apiFetch } from "../utils/apiFetch"
 import { getSafeReturnPath } from "../utils/authRedirect"
 import { queueLoginWelcome } from "../utils/loginWelcomeSession"
+import "./auth.css"
 
 function Register() {
   const navigate = useNavigate()
@@ -104,16 +105,16 @@ function Register() {
   }
 
   return (
-    <div>
+    <main className="auth-page">
+      <section className="auth-card auth-card-wide">
       <h1>Create Account</h1>
 
-      <p>Register for your property marketplace account.</p>
+      <p className="auth-intro">Register for your property marketplace account.</p>
 
-      <form onSubmit={handleRegister}>
+      <form className="auth-form" onSubmit={handleRegister}>
 
-        <div>
+        <div className="auth-field">
           <label htmlFor="register-first-name">First name</label>
-          <br />
 
           <input
             type="text"
@@ -128,36 +129,32 @@ function Register() {
           />
         </div>
 
-        <div>
+        <div className="auth-field">
           <label htmlFor="register-middle-name">Middle name <span>(optional)</span></label>
-          <br />
           <input id="register-middle-name" type="text" value={middleName} onChange={(event) => setMiddleName(event.target.value)} autoComplete="additional-name" maxLength={100} />
         </div>
 
-        <div>
+        <div className="auth-field">
           <label htmlFor="register-last-name">Last name</label>
-          <br />
           <input id="register-last-name" type="text" value={lastName} onChange={(event) => setLastName(event.target.value)} autoComplete="family-name" maxLength={100} required />
         </div>
 
-        <div>
+        <div className="auth-field">
           <label htmlFor="register-date-of-birth">Date of birth</label>
-          <br />
           <input id="register-date-of-birth" type="date" value={dateOfBirth} onChange={(event) => setDateOfBirth(event.target.value)} max={new Date().toISOString().slice(0, 10)} autoComplete="bday" required />
         </div>
 
-        <div>
+        <div className="auth-field">
           <label htmlFor="register-bio">About you <span>(optional)</span></label>
-          <br />
           <textarea id="register-bio" value={bio} onChange={(event) => setBio(event.target.value)} maxLength={1000} rows={5} placeholder="Tell other marketplace members a little about yourself." />
           <small>{bio.length}/1000 characters</small>
         </div>
 
-        <div>
-          <label>Email</label>
-          <br />
+        <div className="auth-field">
+          <label htmlFor="register-email">Email</label>
 
           <input
+            id="register-email"
             type="email"
             value={email}
             onChange={(event) =>
@@ -167,11 +164,11 @@ function Register() {
           />
         </div>
 
-        <div>
-          <label>Password</label>
-          <br />
+        <div className="auth-field">
+          <label htmlFor="register-password">Password</label>
 
           <input
+            id="register-password"
             type="password"
             value={password}
             onChange={(event) =>
@@ -181,9 +178,8 @@ function Register() {
           />
         </div>
 
-        <div>
+        <div className="auth-field">
           <label htmlFor="register-confirm-password">Confirm password</label>
-          <br />
 
           <input
             id="register-confirm-password"
@@ -205,10 +201,11 @@ function Register() {
           </small>
         </div>
 
-        {error && <p>{error}</p>}
+        {error && <p className="auth-error" role="alert">{error}</p>}
 
         <button
           type="submit"
+          className="auth-submit"
           disabled={loading || !confirmPassword || password !== confirmPassword}
         >
           {loading
@@ -218,13 +215,14 @@ function Register() {
 
       </form>
 
-      <p>
+      <p className="auth-switch">
         Already have an account?{" "}
         <Link to="/login" state={{ returnTo }}>
           Login
         </Link>
       </p>
-    </div>
+      </section>
+    </main>
   )
 }
 
