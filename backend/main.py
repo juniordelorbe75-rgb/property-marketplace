@@ -13,7 +13,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from backend.db import get_db
-from backend.config import parse_cors_origins
+from backend.config import parse_admin_user_ids, parse_cors_origins
 from backend.routes.properties import router as property_router
 from backend.routes.users import router as user_router
 from backend.routes.favorites import router as favorite_router
@@ -31,6 +31,7 @@ allowed_origins = parse_cors_origins(
         "http://localhost:5173,http://127.0.0.1:5173",
     )
 )
+parse_admin_user_ids(os.getenv("ADMIN_USER_IDS"))
 
 app = FastAPI(
     title = "Property Marketplace API",

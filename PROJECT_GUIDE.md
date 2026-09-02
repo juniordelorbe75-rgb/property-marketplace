@@ -260,8 +260,13 @@ idempotency key makes retrying after an uncertain response return the original
 record. Reports store the listing ID, title, owner ID, and owner name as review
 evidence; deleting the listing clears its live foreign-key link but retains those
 snapshots. Reports are recorded for operator review and do not automatically hide
-or remove a listing. The current project does not yet expose an administrator
-moderation console.
+or remove a listing. Administrators explicitly allowlisted by immutable account
+ID receive a private
+moderation queue with status filters, reporter and listing snapshots, bounded
+review notes, and pagination. Review updates lock the report row and require its
+current version; exact retries return the saved decision while stale tabs receive
+`409`. Resolved and dismissed reports cannot be reopened or switched to the other
+terminal state.
 
 ## Example: Creating a Property
 
@@ -387,6 +392,7 @@ The important settings are:
 - `DATABASE_URL` — PostgreSQL connection information.
 - `SECRET_KEY` — signs and verifies access tokens.
 - `CORS_ORIGINS` — frontend addresses allowed to call FastAPI.
+- `ADMIN_USER_IDS` — optional comma-separated positive Account IDs allowed to use the moderation queue.
 
 Startup rejects missing, placeholder, and very weak signing secrets. Secrets
 shorter than the recommended 32 characters produce a rotation warning without
@@ -484,6 +490,7 @@ The project currently has automated coverage for:
 - Email, profile, and password-change validation
 - Password confirmation for sign-in email changes without blocking name-only edits
 - Authenticated listing reports with owner protection, bounded categories/details, duplicate prevention, retry safety, and retained review snapshots
+- Explicit immutable-account-ID moderation with private queue filters, review notes, terminal decisions, exact-retry handling, and stale-tab conflict protection
 - Database rollback after duplicate-email conflicts
 - Password hashing and token validation
 - Expired, malformed, and deleted-user tokens

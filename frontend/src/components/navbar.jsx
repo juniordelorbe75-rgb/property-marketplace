@@ -15,6 +15,7 @@ function Navbar() {
   const navigate = useNavigate()
   const { token, logout } = useAuth()
   const [unreadInquiries, setUnreadInquiries] = useState(0)
+  const [adminToken, setAdminToken] = useState(null)
   const [menuOpen, setMenuOpen] = useState(false)
 
   const loadUnreadInquiries = useCallback(async (signal) => {
@@ -52,6 +53,27 @@ function Navbar() {
   }, [loadUnreadInquiries])
 
   useEffect(() => {
+    const controller = new AbortController()
+    if (!token) return () => controller.abort()
+
+    async function loadAdminAccess() {
+      try {
+        const response = await apiFetch("/reports/admin/access", {
+          headers: { Authorization: `Bearer ${token}` },
+          signal: controller.signal,
+        })
+        if (response.ok) setAdminToken(token)
+        else setAdminToken(null)
+      } catch (error) {
+        if (error.name !== "AbortError") setAdminToken(null)
+      }
+    }
+
+    loadAdminAccess()
+    return () => controller.abort()
+  }, [token])
+
+  useEffect(() => {
     if (!menuOpen) return undefined
 
     function closeOnEscape(event) {
@@ -64,6 +86,7 @@ function Navbar() {
 
   function closeMenu() { setMenuOpen(false) }
   function handleLogout() { closeMenu(); logout(); navigate("/login") }
+  const isAdmin = Boolean(token && adminToken === token)
 
   return (
     <header className="site-header">
@@ -89,6 +112,7 @@ function Navbar() {
             <NavigationLink to="/inquiries" onNavigate={closeMenu}>Inquiries{unreadInquiries > 0 && <span className="inquiry-badge" aria-label={`${unreadInquiries} unread inquiry messages`}>{unreadInquiries > 99 ? "99+" : unreadInquiries}</span>}</NavigationLink>
             <NavigationLink to="/create-property" onNavigate={closeMenu}>Create Listing</NavigationLink>
             <NavigationLink to="/account" onNavigate={closeMenu}>Account</NavigationLink>
+            {isAdmin && <NavigationLink to="/safety-reports" onNavigate={closeMenu}>Safety</NavigationLink>}
             <button className="logout-button" type="button" onClick={handleLogout}>Log out</button>
           </> : <>
             <NavigationLink to="/login" onNavigate={closeMenu}>Log in</NavigationLink>

@@ -67,7 +67,15 @@ class UserDB(Base):
 
     listing_reports: Mapped[list["ListingReportDB"]] = relationship(
         "ListingReportDB",
+        foreign_keys="ListingReportDB.reporter_id",
         back_populates="reporter",
         cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+
+    reviewed_listing_reports: Mapped[list["ListingReportDB"]] = relationship(
+        "ListingReportDB",
+        foreign_keys="ListingReportDB.reviewed_by_id",
+        back_populates="reviewer",
         passive_deletes=True,
     )

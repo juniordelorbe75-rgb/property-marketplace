@@ -1,7 +1,7 @@
 import unittest
 import warnings
 
-from backend.config import parse_cors_origins, validate_secret_key
+from backend.config import parse_admin_user_ids, parse_cors_origins, validate_secret_key
 
 
 class ConfigurationTests(unittest.TestCase):
@@ -38,6 +38,17 @@ class ConfigurationTests(unittest.TestCase):
             with self.subTest(value=value):
                 with self.assertRaises(RuntimeError):
                     parse_cors_origins(value)
+
+    def test_admin_user_ids_are_explicit_normalized_and_validated(self):
+        self.assertEqual(parse_admin_user_ids(None), set())
+        self.assertEqual(
+            parse_admin_user_ids(" 7,12,7 "),
+            {7, 12},
+        )
+        for value in ("not-a-number", "0", "-1"):
+            with self.subTest(value=value):
+                with self.assertRaises(RuntimeError):
+                    parse_admin_user_ids(value)
 
 
 if __name__ == "__main__":

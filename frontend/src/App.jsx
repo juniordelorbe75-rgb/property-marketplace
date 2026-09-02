@@ -14,6 +14,7 @@ import MyProperties from "./pages/MyProperties"
 import CreateProperty from "./pages/CreateProperty"
 import ProtectedRoute from "./components/ProtectedRoute"
 import NotFound from "./pages/NotFound"
+import SafetyReports from "./pages/SafetyReports"
 
 function protectedPage(page) {
   return (
@@ -79,6 +80,11 @@ function App() {
           <Route
             path="/inquiries"
             element={protectedPage(<Inquiries />)}
+          />
+
+          <Route
+            path="/safety-reports"
+            element={protectedPage(<SafetyReports />)}
           />
 
           <Route

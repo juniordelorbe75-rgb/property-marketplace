@@ -45,6 +45,25 @@ class ListingReportDB(Base):
         default="submitted",
         server_default="submitted",
     )
+    moderator_note: Mapped[str] = mapped_column(
+        Text,
+        nullable=False,
+        default="",
+        server_default="",
+    )
+    reviewed_by_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    reviewed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+    version: Mapped[int] = mapped_column(
+        nullable=False,
+        default=1,
+        server_default="1",
+    )
     creation_key: Mapped[str] = mapped_column(String(36), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
@@ -58,8 +77,25 @@ class ListingReportDB(Base):
         onupdate=func.now(),
     )
 
-    reporter: Mapped["UserDB"] = relationship("UserDB", back_populates="listing_reports")
-    property: Mapped["PropertyDB | None"] = relationship(
+    reporter: Mapped["UserDB"] = relationship(
+        "UserDB",
+        foreign_keys=[reporter_id],
+        back_populates="listing_reports",
+    )
+    reviewer: Mapped["UserDB | None"] = relationship(
+        "UserDB",
+        foreign_keys=[reviewed_by_id],
+        back_populates="reviewed_listing_reports",
+    )
+    listing: Mapped["PropertyDB | None"] = relationship(
         "PropertyDB",
         back_populates="reports",
     )
+
+    @property
+    def reporter_name(self) -> str:
+        return self.reporter.name
+
+    @property
+    def reviewer_name(self) -> str | None:
+        return self.reviewer.name if self.reviewer else None

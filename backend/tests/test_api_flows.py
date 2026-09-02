@@ -42,6 +42,7 @@ async def request(
     include_headers=False,
     idempotency_key=None,
     property_version=None,
+    report_version=None,
 ):
     parsed_url = urlsplit(path)
     if (
@@ -71,6 +72,8 @@ async def request(
         headers.append((b"idempotency-key", idempotency_key.encode()))
     if property_version is not None:
         headers.append((b"x-property-version", str(property_version).encode()))
+    if report_version is not None:
+        headers.append((b"x-report-version", str(report_version).encode()))
 
     scope = {
         "type": "http",
@@ -182,6 +185,7 @@ class ApiFlowTests(unittest.TestCase):
         token=None,
         idempotency_key=None,
         property_version=None,
+        report_version=None,
     ):
         return asyncio.run(
             request(
@@ -191,6 +195,7 @@ class ApiFlowTests(unittest.TestCase):
                 token,
                 idempotency_key=idempotency_key,
                 property_version=property_version,
+                report_version=report_version,
             )
         )
 
@@ -1923,6 +1928,154 @@ class ApiFlowTests(unittest.TestCase):
         self.assertIsNone(stored_report.property_id)
         self.assertEqual(stored_report.listing_id, property_id)
         self.assertEqual(stored_report.listing_owner_id, seller["id"])
+
+    def test_only_configured_admins_can_review_reports_without_stale_overwrites(self):
+        seller, seller_token = self.register_and_login(
+            "Moderation Seller",
+            "moderation-seller@example.com",
+        )
+        _buyer, buyer_token = self.register_and_login(
+            "Moderation Buyer",
+            "moderation-buyer@example.com",
+        )
+        admin, admin_token = self.register_and_login(
+            "Safety Admin",
+            "safety-admin@example.com",
+        )
+        _create_status, property_item = self.call(
+            "POST",
+            "/properties/",
+            {
+                "title": "Moderation Queue Listing",
+                "price": 125000,
+                "location": "Santiago, Dominican Republic",
+                "property_type": "House",
+                "bedrooms": 3,
+                "bathrooms": 2,
+                "status": "available",
+            },
+            seller_token,
+        )
+        report_status, report = self.call(
+            "POST",
+            f"/reports/properties/{property_item['id']}",
+            {"reason": "misleading_information", "details": "The location appears incorrect."},
+            buyer_token,
+            idempotency_key=str(uuid4()),
+        )
+
+        with patch.dict(
+            os.environ,
+            {"ADMIN_USER_IDS": f" {admin['id']} "},
+        ):
+            denied_status, denied = self.call(
+                "GET",
+                "/reports/admin/access",
+                token=buyer_token,
+            )
+            access_status, access = self.call(
+                "GET",
+                "/reports/admin/access",
+                token=admin_token,
+            )
+            queue_status, queue = self.call(
+                "GET",
+                "/reports/admin?status=submitted&page=1&page_size=10",
+                token=admin_token,
+            )
+            missing_version_status, _missing_version = self.call(
+                "PATCH",
+                f"/reports/admin/{report['id']}",
+                {"status": "reviewing", "moderator_note": ""},
+                admin_token,
+            )
+            missing_note_status, missing_note = self.call(
+                "PATCH",
+                f"/reports/admin/{report['id']}",
+                {"status": "resolved", "moderator_note": ""},
+                admin_token,
+                report_version=1,
+            )
+            reviewing_status, reviewing = self.call(
+                "PATCH",
+                f"/reports/admin/{report['id']}",
+                {"status": "reviewing", "moderator_note": "Checking the listing details."},
+                admin_token,
+                report_version=1,
+            )
+            retry_status, retry = self.call(
+                "PATCH",
+                f"/reports/admin/{report['id']}",
+                {"status": "reviewing", "moderator_note": "Checking the listing details."},
+                admin_token,
+                report_version=1,
+            )
+            stale_status, stale = self.call(
+                "PATCH",
+                f"/reports/admin/{report['id']}",
+                {"status": "dismissed", "moderator_note": "Stale decision."},
+                admin_token,
+                report_version=1,
+            )
+            resolved_status, resolved = self.call(
+                "PATCH",
+                f"/reports/admin/{report['id']}",
+                {
+                    "status": "resolved",
+                    "moderator_note": "Confirmed the listing needs operator follow-up.",
+                },
+                admin_token,
+                report_version=reviewing["version"],
+            )
+            reopen_status, reopen = self.call(
+                "PATCH",
+                f"/reports/admin/{report['id']}",
+                {"status": "dismissed", "moderator_note": "Conflicting terminal decision."},
+                admin_token,
+                report_version=resolved["version"],
+            )
+            resolved_queue_status, resolved_queue = self.call(
+                "GET",
+                "/reports/admin?status=resolved",
+                token=admin_token,
+            )
+
+        self.assertEqual(report_status, 200)
+        self.assertEqual(denied_status, 403)
+        self.assertEqual(denied["detail"], "Administrator access required")
+        self.assertEqual(access_status, 200)
+        self.assertEqual(access, {"is_admin": True})
+        self.assertEqual(queue_status, 200)
+        self.assertEqual(queue["total"], 1)
+        self.assertEqual(queue["counts"]["submitted"], 1)
+        self.assertEqual(queue["items"][0]["reporter_name"], "Moderation Buyer")
+        self.assertEqual(queue["items"][0]["listing_owner_id"], seller["id"])
+        self.assertEqual(missing_version_status, 422)
+        self.assertEqual(missing_note_status, 400)
+        self.assertEqual(
+            missing_note["detail"],
+            "Add a short review note before closing this report",
+        )
+        self.assertEqual(reviewing_status, 200)
+        self.assertEqual(reviewing["status"], "reviewing")
+        self.assertEqual(reviewing["version"], 2)
+        self.assertEqual(retry_status, 200)
+        self.assertEqual(retry, reviewing)
+        self.assertEqual(stale_status, 409)
+        self.assertIn("changed in another review session", stale["detail"])
+        self.assertEqual(resolved_status, 200)
+        self.assertEqual(resolved["status"], "resolved")
+        self.assertEqual(resolved["reviewer_name"], "Safety Admin")
+        self.assertEqual(resolved["version"], 3)
+        self.assertTrue(resolved["reviewed_at"])
+        self.assertEqual(reopen_status, 400)
+        self.assertEqual(
+            reopen["detail"],
+            "This safety report cannot be moved to the requested status",
+        )
+        self.assertEqual(resolved_queue_status, 200)
+        self.assertEqual(resolved_queue["total"], 1)
+        self.assertEqual(resolved_queue["counts"]["resolved"], 1)
 
     def test_complete_buyer_seller_marketplace_flow(self):
         seller, seller_token = self.register_and_login(

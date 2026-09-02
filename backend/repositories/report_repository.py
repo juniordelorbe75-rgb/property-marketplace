@@ -1,5 +1,7 @@
-from sqlalchemy import select
-from sqlalchemy.orm import Session
+from datetime import datetime, timezone
+
+from sqlalchemy import func, select
+from sqlalchemy.orm import Session, selectinload
 
 from backend.db_models.report import ListingReportDB
 from backend.repositories.transaction import commit_or_rollback
@@ -35,4 +37,71 @@ def create_report(session: Session, report: ListingReportDB):
     session.add(report)
     commit_or_rollback(session)
     session.refresh(report)
+    return report
+
+
+def get_report_page(
+    session: Session,
+    status: str | None,
+    page: int,
+    page_size: int,
+):
+    filters = [] if status is None else [ListingReportDB.status == status]
+    total = session.scalar(
+        select(func.count(ListingReportDB.id)).where(*filters)
+    ) or 0
+    items = session.scalars(
+        select(ListingReportDB)
+        .options(
+            selectinload(ListingReportDB.reporter),
+            selectinload(ListingReportDB.reviewer),
+        )
+        .where(*filters)
+        .order_by(ListingReportDB.created_at.desc(), ListingReportDB.id.desc())
+        .offset((page - 1) * page_size)
+        .limit(page_size)
+    ).all()
+    grouped_counts = dict(
+        session.execute(
+            select(ListingReportDB.status, func.count(ListingReportDB.id))
+            .group_by(ListingReportDB.status)
+        ).all()
+    )
+    counts = {
+        "all": sum(grouped_counts.values()),
+        "submitted": grouped_counts.get("submitted", 0),
+        "reviewing": grouped_counts.get("reviewing", 0),
+        "resolved": grouped_counts.get("resolved", 0),
+        "dismissed": grouped_counts.get("dismissed", 0),
+    }
+    return items, total, counts
+
+
+def get_report_for_update(session: Session, report_id: int):
+    return session.scalar(
+        select(ListingReportDB)
+        .options(
+            selectinload(ListingReportDB.reporter),
+            selectinload(ListingReportDB.reviewer),
+        )
+        .where(ListingReportDB.id == report_id)
+        .with_for_update()
+    )
+
+
+def update_report(
+    session: Session,
+    report: ListingReportDB,
+    status: str,
+    moderator_note: str,
+    reviewer_id: int,
+):
+    report.status = status
+    report.moderator_note = moderator_note
+    report.reviewed_by_id = reviewer_id
+    report.reviewed_at = datetime.now(timezone.utc)
+    report.version += 1
+    commit_or_rollback(session)
+    session.refresh(report)
+    session.expire(report, ["reviewer"])
     return report

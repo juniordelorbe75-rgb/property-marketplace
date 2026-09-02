@@ -348,6 +348,40 @@ class ListingReport(BaseModel):
     }
 
 
+class AdminListingReport(ListingReport):
+    property_id: int | None
+    listing_owner_id: int
+    listing_owner_name: str
+    reporter_id: int
+    reporter_name: str
+    moderator_note: str
+    reviewed_at: datetime | None
+    reviewer_name: str | None
+    updated_at: datetime
+    version: int
+
+
+class ListingReportStatusCounts(BaseModel):
+    all: int
+    submitted: int
+    reviewing: int
+    resolved: int
+    dismissed: int
+
+
+class ListingReportPage(BaseModel):
+    items: list[AdminListingReport]
+    total: int
+    page: int
+    page_size: int
+    total_pages: int
+    counts: ListingReportStatusCounts
+
+
+class AdminAccess(BaseModel):
+    is_admin: bool
+
+
 class InquiryMessage(BaseModel):
     id: int | None = None
     sender_id: int

@@ -9,7 +9,6 @@ KNOWN_SECRET_PLACEHOLDERS = {
     "secret",
 }
 
-
 def validate_secret_key(secret_key: str | None) -> str:
     if not secret_key:
         raise RuntimeError("SECRET_KEY environment variable is not set")
@@ -41,3 +40,19 @@ def parse_cors_origins(value: str) -> list[str]:
             raise RuntimeError(f"CORS origin must not include a path: {origin}")
 
     return origins
+
+
+def parse_admin_user_ids(value: str | None) -> set[int]:
+    user_ids = set()
+    for entry in (value or "").split(","):
+        cleaned = entry.strip()
+        if not cleaned:
+            continue
+        try:
+            user_id = int(cleaned)
+        except ValueError as error:
+            raise RuntimeError(f"Invalid ADMIN_USER_IDS entry: {cleaned}") from error
+        if user_id <= 0:
+            raise RuntimeError(f"Invalid ADMIN_USER_IDS entry: {cleaned}")
+        user_ids.add(user_id)
+    return user_ids

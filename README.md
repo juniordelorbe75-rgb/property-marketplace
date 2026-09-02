@@ -9,6 +9,7 @@ A full-stack marketplace for discovering, listing, saving, and discussing proper
 - Multiple images, amenities, map links, favorites, and recently viewed listings
 - Seller inventory, engagement statistics, availability controls, and safe updates
 - Authenticated, duplicate-safe listing reports for scams, misleading details, duplicates, availability, and inappropriate content
+- Allowlist-protected moderation queue with status filters, review notes, and stale-update protection
 - Two-way buyer/seller inquiry conversations directly from the inbox
 - Unread counts, visibility-aware refresh, reply drafts, and retry-safe messages
 - App-wide offline and restored-connection notices that preserve access to loaded information
@@ -44,6 +45,8 @@ Edit `.env` and replace every placeholder. `DATABASE_URL` must point to an exist
 ```powershell
 .\scripts\generate-secret-key.ps1
 ```
+
+To grant moderation access, copy the stable Account ID shown on the Account page into the comma-separated `ADMIN_USER_IDS` setting, then restart the backend. Leave it empty when no account should have administrator access; registration cannot choose or reuse an Account ID.
 
 Install the frontend:
 
@@ -95,7 +98,7 @@ npm run lint
 npm run build
 ```
 
-Current baseline: 77 backend tests and 68 frontend tests.
+Current baseline: 79 backend tests and 70 frontend tests.
 
 GitHub Actions runs the same backend suite plus frontend tests, lint, and production build for every pull request and every push to `main`. Runs use read-only repository permissions, locked npm dependencies, bounded execution times, and cancellation of superseded work.
 

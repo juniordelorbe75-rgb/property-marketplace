@@ -163,7 +163,7 @@ class PropertyDB(Base):
 
     reports: Mapped[list["ListingReportDB"]] = relationship(
         "ListingReportDB",
-        back_populates="property",
+        back_populates="listing",
         passive_deletes=True,
     )
 

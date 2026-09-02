@@ -252,6 +252,48 @@ def ensure_schema_safety():
                 )
             )
 
+        report_columns = {
+            column["name"]
+            for column in inspect(connection).get_columns("listing_reports")
+        }
+        if "moderator_note" not in report_columns:
+            connection.execute(
+                text(
+                    """
+                    ALTER TABLE listing_reports
+                    ADD COLUMN moderator_note TEXT NOT NULL DEFAULT ''
+                    """
+                )
+            )
+        if "reviewed_by_id" not in report_columns:
+            connection.execute(
+                text(
+                    """
+                    ALTER TABLE listing_reports
+                    ADD COLUMN reviewed_by_id INTEGER
+                    REFERENCES users(id) ON DELETE SET NULL
+                    """
+                )
+            )
+        if "reviewed_at" not in report_columns:
+            connection.execute(
+                text(
+                    """
+                    ALTER TABLE listing_reports
+                    ADD COLUMN reviewed_at TIMESTAMP WITH TIME ZONE
+                    """
+                )
+            )
+        if "version" not in report_columns:
+            connection.execute(
+                text(
+                    """
+                    ALTER TABLE listing_reports
+                    ADD COLUMN version INTEGER NOT NULL DEFAULT 1
+                    """
+                )
+            )
+
         duplicate_favorite = connection.execute(
             text(
                 """
@@ -310,6 +352,8 @@ def ensure_schema_safety():
             "ON inquiry_messages (sender_id, creation_key)",
             "CREATE INDEX IF NOT EXISTS ix_favorites_property_id "
             "ON favorites (property_id)",
+            "CREATE INDEX IF NOT EXISTS ix_listing_reports_status_created "
+            "ON listing_reports (status, created_at)",
         )
         for index_statement in performance_indexes:
             connection.execute(text(index_statement))
