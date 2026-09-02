@@ -748,7 +748,7 @@ function PropertyDetails() {
     identityStatus === "guest"
     || (identityStatus === "ready" && !isOwner)
   const isAvailable =
-    property.status?.toLowerCase() === "available"
+    property.status?.toLowerCase() === "available" && !property.safety_hold
 
   return (
     <div className="property-details-page">
@@ -974,7 +974,7 @@ function PropertyDetails() {
                   setStatus(event.target.value)
                 }
               >
-                <option value="available">
+                <option value="available" disabled={property.safety_hold}>
                   Available
                 </option>
 
@@ -1072,6 +1072,13 @@ function PropertyDetails() {
 
           <div className="property-details-content">
 
+            {property.safety_hold && (
+              <div className="property-safety-hold" role="status">
+                <strong>This listing is temporarily unavailable during a safety review.</strong>
+                <span>It is hidden from discovery and new inquiries are paused. The owner can still correct the listing details.</span>
+              </div>
+            )}
+
             <h1>{property.title}</h1>
 
             <p className="property-reference">Listing {formatPropertyReference(property.id)}</p>
@@ -1156,9 +1163,9 @@ function PropertyDetails() {
               <div>
                 <span>●</span>
                 <strong>
-                  {["available", "open"].includes(
-                    property.status?.toLowerCase()
-                  )
+                  {property.safety_hold
+                    ? "Safety Hold"
+                    : ["available", "open"].includes(property.status?.toLowerCase())
                     ? "Available"
                     : "Unavailable"}
                 </strong>

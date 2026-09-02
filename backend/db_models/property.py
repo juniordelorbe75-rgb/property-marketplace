@@ -1,7 +1,7 @@
 import json
 from datetime import datetime
 
-from sqlalchemy import DateTime, Float, ForeignKey, Index, String, Text, func
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Index, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from backend.db_models.base import Base
@@ -20,6 +20,7 @@ class PropertyDB(Base):
             "created_at",
         ),
         Index("ix_properties_owner_created", "owner_id", "created_at"),
+        Index("ix_properties_safety_created", "safety_hold", "created_at"),
         Index(
             "uq_properties_owner_creation_key",
             "owner_id",
@@ -129,6 +130,26 @@ class PropertyDB(Base):
     status: Mapped[str] = mapped_column(
         String(50),
         nullable=False
+    )
+
+    safety_hold: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=False,
+        server_default="false",
+    )
+
+    safety_version: Mapped[int] = mapped_column(
+        nullable=False,
+        default=1,
+        server_default="1",
+    )
+
+    safety_report_id: Mapped[int | None] = mapped_column(nullable=True)
+    safety_updated_by_id: Mapped[int | None] = mapped_column(nullable=True)
+    safety_updated_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
     )
 
     created_at: Mapped[datetime] = mapped_column(

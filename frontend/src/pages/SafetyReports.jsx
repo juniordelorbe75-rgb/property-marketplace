@@ -8,6 +8,7 @@ import { readApiResponse } from "../utils/apiResponse"
 import { formatPropertyReference } from "../utils/propertyReference"
 import {
   getModerationStatusOptions,
+  getSafetyHoldAction,
   normalizeReportPage,
   REPORT_REASON_LABELS,
   REPORT_STATUSES,
@@ -45,6 +46,7 @@ function SafetyReports() {
   const [error, setError] = useState("")
   const [accessDenied, setAccessDenied] = useState(false)
   const [updatingId, setUpdatingId] = useState(null)
+  const [holdingId, setHoldingId] = useState(null)
   const [loadAttempt, setLoadAttempt] = useState(0)
 
   const loadReports = useCallback(async (signal) => {
@@ -142,6 +144,37 @@ function SafetyReports() {
     }
   }
 
+  async function toggleSafetyHold(report) {
+    const action = getSafetyHoldAction(report)
+    if (!action || updatingId !== null || holdingId !== null) return
+
+    const confirmed = window.confirm(action.held
+      ? "Temporarily remove this listing from discovery and block new inquiries?"
+      : "Release this listing from safety hold?")
+    if (!confirmed) return
+
+    setHoldingId(report.id)
+    setError("")
+    try {
+      const response = await apiFetch(`/reports/admin/${report.id}/listing-hold`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+          "X-Listing-Safety-Version": String(report.listing_safety_version),
+        },
+        body: JSON.stringify({ held: action.held }),
+      })
+      const data = await readApiResponse(response)
+      if (!response.ok) throw new Error(getApiError(data, "Failed to update listing safety hold"))
+      setLoadAttempt((current) => current + 1)
+    } catch (holdError) {
+      setError(holdError.message)
+    } finally {
+      setHoldingId(null)
+    }
+  }
+
   if (accessDenied) {
     return (
       <main className="safety-page safety-access-denied">
@@ -190,6 +223,7 @@ function SafetyReports() {
           {reportPage.items.map((report) => {
             const draft = drafts[report.id] || { status: report.status, note: report.moderator_note || "" }
             const unchanged = draft.status === report.status && draft.note.trim() === (report.moderator_note || "")
+            const holdAction = getSafetyHoldAction(report)
             return (
               <article className="safety-report-card" key={report.id}>
                 <div className="safety-report-topline">
@@ -218,6 +252,20 @@ function SafetyReports() {
                 <div className="safety-report-details">
                   <span>Buyer details</span>
                   <p>{report.details || "No additional details were provided."}</p>
+                </div>
+
+                <div className={`safety-hold-control${report.listing_on_safety_hold ? " active" : ""}`}>
+                  <div>
+                    <strong>{report.listing_on_safety_hold ? "Safety hold active" : "Listing safety control"}</strong>
+                    <span>A hold hides the listing from discovery and pauses new inquiries without deleting it. The seller can still correct its details.</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => toggleSafetyHold(report)}
+                    disabled={!holdAction || updatingId !== null || holdingId !== null}
+                  >
+                    {holdingId === report.id ? "Updating…" : holdAction?.label || "Listing removed"}
+                  </button>
                 </div>
 
                 <div className="safety-review-controls">

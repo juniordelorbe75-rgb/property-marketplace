@@ -161,3 +161,52 @@ def moderate_listing_report(
         moderator_note,
         reviewer_id,
     )
+
+
+def set_listing_safety_hold(
+    session: Session,
+    report_id: int,
+    held: bool,
+    reviewer_id: int,
+    expected_safety_version: int,
+):
+    report = report_repository.get_report_for_update(session, report_id)
+    if report is None:
+        raise HTTPException(status_code=404, detail="Safety report not found")
+    if report.property_id is None:
+        raise HTTPException(status_code=409, detail="This listing has already been removed")
+
+    property_item = property_repository.get_property_for_update(
+        session,
+        report.property_id,
+    )
+    if property_item is None:
+        raise HTTPException(status_code=409, detail="This listing has already been removed")
+
+    if property_item.safety_version != expected_safety_version:
+        exact_retry = (
+            property_item.safety_version == expected_safety_version + 1
+            and property_item.safety_hold == held
+            and property_item.safety_report_id == report_id
+            and property_item.safety_updated_by_id == reviewer_id
+        )
+        if not exact_retry:
+            raise HTTPException(
+                status_code=409,
+                detail="This listing safety state changed in another review session. Refresh before continuing.",
+            )
+    elif property_item.safety_hold != held:
+        property_item = property_repository.update_property_safety_hold(
+            session,
+            property_item,
+            held,
+            report_id,
+            reviewer_id,
+        )
+
+    return {
+        "listing_id": property_item.id,
+        "safety_hold": property_item.safety_hold,
+        "safety_version": property_item.safety_version,
+        "safety_updated_at": property_item.safety_updated_at,
+    }

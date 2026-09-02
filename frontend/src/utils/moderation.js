@@ -16,6 +16,22 @@ export function getModerationStatusOptions(status) {
   return []
 }
 
+export function getSafetyHoldAction(report) {
+  if (
+    !report
+    || !Number.isInteger(report.property_id)
+    || report.property_id <= 0
+    || !Number.isInteger(report.listing_safety_version)
+    || report.listing_safety_version <= 0
+  ) return null
+
+  const held = !report.listing_on_safety_hold
+  return {
+    held,
+    label: held ? "Place Safety Hold" : "Release Safety Hold",
+  }
+}
+
 function safeCount(value) {
   return Number.isInteger(value) && value >= 0 ? value : 0
 }

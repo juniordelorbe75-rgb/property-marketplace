@@ -44,6 +44,12 @@ def create_inquiry(
             detail="You cannot send an inquiry about your own property"
         )
 
+    if property_item.safety_hold:
+        raise HTTPException(
+            status_code=409,
+            detail="This listing is temporarily unavailable during a safety review",
+        )
+
     if property_item.status.lower() != "available":
         raise HTTPException(
             status_code=400,

@@ -181,6 +181,56 @@ def ensure_schema_safety():
                 )
             )
 
+        if "safety_hold" not in property_columns:
+            connection.execute(
+                text(
+                    """
+                    ALTER TABLE properties
+                    ADD COLUMN safety_hold BOOLEAN NOT NULL DEFAULT FALSE
+                    """
+                )
+            )
+
+        if "safety_version" not in property_columns:
+            connection.execute(
+                text(
+                    """
+                    ALTER TABLE properties
+                    ADD COLUMN safety_version INTEGER NOT NULL DEFAULT 1
+                    """
+                )
+            )
+
+        if "safety_report_id" not in property_columns:
+            connection.execute(
+                text(
+                    """
+                    ALTER TABLE properties
+                    ADD COLUMN safety_report_id INTEGER
+                    """
+                )
+            )
+
+        if "safety_updated_by_id" not in property_columns:
+            connection.execute(
+                text(
+                    """
+                    ALTER TABLE properties
+                    ADD COLUMN safety_updated_by_id INTEGER
+                    """
+                )
+            )
+
+        if "safety_updated_at" not in property_columns:
+            connection.execute(
+                text(
+                    """
+                    ALTER TABLE properties
+                    ADD COLUMN safety_updated_at TIMESTAMP WITH TIME ZONE
+                    """
+                )
+            )
+
         inquiry_columns = {
             column["name"]
             for column in inspect(connection).get_columns("inquiries")
@@ -333,6 +383,8 @@ def ensure_schema_safety():
             "ON properties (status, listing_type, created_at)",
             "CREATE INDEX IF NOT EXISTS ix_properties_owner_created "
             "ON properties (owner_id, created_at)",
+            "CREATE INDEX IF NOT EXISTS ix_properties_safety_created "
+            "ON properties (safety_hold, created_at)",
             "CREATE UNIQUE INDEX IF NOT EXISTS uq_properties_owner_creation_key "
             "ON properties (owner_id, creation_key)",
             "CREATE INDEX IF NOT EXISTS ix_inquiries_buyer_updated "

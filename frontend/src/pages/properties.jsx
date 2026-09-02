@@ -588,6 +588,7 @@ function Properties() {
                   listingType={property.listing_type}
                   propertyType={property.property_type}
                   status={property.status}
+                  safetyHold={property.safety_hold}
                   imageUrl={property.image_url}
                   createdAt={property.created_at}
                   updatedAt={property.updated_at}
@@ -660,6 +661,7 @@ function Properties() {
                 listingType={property.listing_type}
                 propertyType={property.property_type}
                 status={property.status}
+                safetyHold={property.safety_hold}
                 imageUrl={property.image_url}
                 createdAt={property.created_at}
                 updatedAt={property.updated_at}

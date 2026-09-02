@@ -35,6 +35,14 @@
 .safety-report-grid a { color: #1d4ed8; }
 .safety-report-details { margin-bottom: 16px; padding: 13px 14px; border-left: 4px solid #fdba74; background: #fffaf5; }
 .safety-report-details p { margin: 0; color: #3f4654; line-height: 1.55; white-space: pre-wrap; }
+.safety-hold-control { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 16px; padding: 13px 14px; border: 1px solid #cbd5e1; border-radius: 10px; background: #f8fafc; }
+.safety-hold-control.active { border-color: #f59e0b; background: #fffbeb; }
+.safety-hold-control strong, .safety-hold-control span { display: block; }
+.safety-hold-control strong { margin-bottom: 4px; color: #172033; }
+.safety-hold-control span { max-width: 690px; color: #64748b; font-size: 13px; line-height: 1.45; }
+.safety-hold-control button { flex: 0 0 auto; padding: 10px 14px; border: 1px solid #b45309; border-radius: 8px; background: white; color: #92400e; cursor: pointer; font-weight: 800; }
+.safety-hold-control.active button { background: #92400e; color: white; }
+.safety-hold-control button:disabled { cursor: not-allowed; opacity: 0.5; }
 .safety-review-controls { display: grid; grid-template-columns: minmax(150px, 0.7fr) minmax(260px, 2fr) auto; align-items: end; gap: 12px; }
 .safety-review-controls select,
 .safety-review-controls textarea { width: 100%; padding: 10px 11px; border: 1px solid #cbd5e1; border-radius: 8px; background: white; color: #172033; font: inherit; box-sizing: border-box; }
@@ -57,5 +65,6 @@
   .safety-report-topline { flex-direction: column; }
   .safety-report-grid { grid-template-columns: 1fr; }
   .safety-review-controls { grid-template-columns: 1fr; }
+  .safety-hold-control { align-items: stretch; flex-direction: column; }
   .safety-review-controls > button { width: 100%; }
 }

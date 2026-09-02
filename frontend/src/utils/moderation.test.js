@@ -3,6 +3,7 @@ import assert from "node:assert/strict"
 
 import {
   getModerationStatusOptions,
+  getSafetyHoldAction,
   normalizeMyReportPage,
   normalizeReportPage,
 } from "./moderation.js"
@@ -56,4 +57,19 @@ test("keeps only valid private report-history rows", () => {
   assert.deepEqual(page.items, [{ id: 3, listing_id: 9, status: "resolved" }])
   assert.equal(page.total, 3)
   assert.equal(page.totalPages, 1)
+})
+
+test("builds only valid reversible listing safety-hold actions", () => {
+  assert.deepEqual(getSafetyHoldAction({
+    property_id: 12,
+    listing_safety_version: 3,
+    listing_on_safety_hold: false,
+  }), { held: true, label: "Place Safety Hold" })
+  assert.deepEqual(getSafetyHoldAction({
+    property_id: 12,
+    listing_safety_version: 4,
+    listing_on_safety_hold: true,
+  }), { held: false, label: "Release Safety Hold" })
+  assert.equal(getSafetyHoldAction({ property_id: null, listing_safety_version: 1 }), null)
+  assert.equal(getSafetyHoldAction({ property_id: 12, listing_safety_version: null }), null)
 })

@@ -139,6 +139,11 @@
   color: #991b1b;
 }
 
+.property-status-safety-hold {
+  background: #fef3c7;
+  color: #92400e;
+}
+
 .property-image img {
   width: 100%;
   height: 100%;

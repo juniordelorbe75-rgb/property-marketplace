@@ -131,6 +131,16 @@ def update_property(
             ),
         )
 
+    if property.safety_hold and updated_property.status == "available":
+        session.rollback()
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "This listing is temporarily unavailable during a safety review. "
+                "You can edit its details, but it cannot be marked available yet."
+            ),
+        )
+
     previous_image_urls = set(property.image_urls)
     updated = property_repository.update_property(
         session,

@@ -12,6 +12,7 @@ from backend.models import (
     AdminListingReport,
     ListingReport,
     ListingReportPage,
+    ListingSafetyHold,
     MyListingReportPage,
 )
 from backend.services.report_service import (
@@ -19,6 +20,7 @@ from backend.services.report_service import (
     get_my_listing_report_page,
     get_listing_report_page,
     moderate_listing_report,
+    set_listing_safety_hold,
 )
 
 
@@ -47,6 +49,10 @@ class ListingReportUpdate(BaseModel):
     @classmethod
     def strip_moderator_note(cls, value: str) -> str:
         return value.strip()
+
+
+class ListingSafetyHoldUpdate(BaseModel):
+    held: bool
 
 
 router = APIRouter(prefix="/reports", tags=["Safety Reports"])
@@ -83,6 +89,23 @@ def get_admin_reports(
     session: Session = Depends(get_db),
 ):
     return get_listing_report_page(session, status, page, page_size)
+
+
+@router.patch("/admin/{report_id}/listing-hold", response_model=ListingSafetyHold)
+def update_listing_safety_hold(
+    report_id: int,
+    hold_data: ListingSafetyHoldUpdate,
+    safety_version: int = Header(ge=1, alias="X-Listing-Safety-Version"),
+    admin_user_id: int = Depends(get_current_admin_user_id),
+    session: Session = Depends(get_db),
+):
+    return set_listing_safety_hold(
+        session=session,
+        report_id=report_id,
+        held=hold_data.held,
+        reviewer_id=admin_user_id,
+        expected_safety_version=safety_version,
+    )
 
 
 @router.patch("/admin/{report_id}", response_model=AdminListingReport)

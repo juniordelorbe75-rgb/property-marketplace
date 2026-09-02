@@ -121,6 +121,7 @@ class Property(BaseModel):
     bathrooms: int
     square_feet: int
     status: str
+    safety_hold: bool = False
     created_at: datetime
     updated_at: datetime
 
@@ -372,6 +373,8 @@ class AdminListingReport(ListingReport):
     reviewer_name: str | None
     updated_at: datetime
     version: int
+    listing_on_safety_hold: bool | None
+    listing_safety_version: int | None
 
 
 class ListingReportStatusCounts(BaseModel):
@@ -393,6 +396,13 @@ class ListingReportPage(BaseModel):
 
 class AdminAccess(BaseModel):
     is_admin: bool
+
+
+class ListingSafetyHold(BaseModel):
+    listing_id: int
+    safety_hold: bool
+    safety_version: int
+    safety_updated_at: datetime | None
 
 
 class InquiryMessage(BaseModel):

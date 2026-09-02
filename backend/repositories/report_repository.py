@@ -55,6 +55,7 @@ def get_report_page(
         .options(
             selectinload(ListingReportDB.reporter),
             selectinload(ListingReportDB.reviewer),
+            selectinload(ListingReportDB.listing),
         )
         .where(*filters)
         .order_by(ListingReportDB.created_at.desc(), ListingReportDB.id.desc())
@@ -103,6 +104,7 @@ def get_report_for_update(session: Session, report_id: int):
         .options(
             selectinload(ListingReportDB.reporter),
             selectinload(ListingReportDB.reviewer),
+            selectinload(ListingReportDB.listing),
         )
         .where(ListingReportDB.id == report_id)
         .with_for_update()

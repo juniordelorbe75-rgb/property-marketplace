@@ -20,6 +20,7 @@ def get_all_properties(
         .options(
             selectinload(PropertyDB.owner)
         )
+        .where(PropertyDB.safety_hold.is_(False))
         .order_by(
             PropertyDB.created_at.desc(),
             PropertyDB.id.desc(),
@@ -54,7 +55,9 @@ def get_my_properties(
 
 
 def count_all_properties(session: Session) -> int:
-    return session.scalar(select(func.count(PropertyDB.id))) or 0
+    return session.scalar(
+        select(func.count(PropertyDB.id)).where(PropertyDB.safety_hold.is_(False))
+    ) or 0
 
 
 def get_seller_dashboard_stats(session: Session, current_user_id: int):
@@ -67,6 +70,7 @@ def get_seller_dashboard_stats(session: Session, current_user_id: int):
         select(func.count(PropertyDB.id)).where(
             PropertyDB.owner_id == current_user_id,
             PropertyDB.status == "available",
+            PropertyDB.safety_hold.is_(False),
         )
     ) or 0
     favorites_received = session.scalar(
@@ -272,7 +276,7 @@ def _property_filter_statement(
     min_square_feet=None,
     status=None,
 ):
-    statement = select(PropertyDB)
+    statement = select(PropertyDB).where(PropertyDB.safety_hold.is_(False))
 
     if property_id is not None:
         statement = statement.where(PropertyDB.id == property_id)
@@ -382,6 +386,23 @@ def update_property(
     commit_or_rollback(session)
     session.refresh(property_item)
 
+    return property_item
+
+
+def update_property_safety_hold(
+    session: Session,
+    property_item: PropertyDB,
+    held: bool,
+    report_id: int,
+    reviewer_id: int,
+):
+    property_item.safety_hold = held
+    property_item.safety_report_id = report_id
+    property_item.safety_updated_by_id = reviewer_id
+    property_item.safety_updated_at = datetime.now(timezone.utc)
+    property_item.safety_version += 1
+    commit_or_rollback(session)
+    session.refresh(property_item)
     return property_item
 
 

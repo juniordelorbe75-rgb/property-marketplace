@@ -110,6 +110,11 @@ function MyProperties() {
   async function toggleAvailability(property) {
     const token = localStorage.getItem("access_token")
     if (!token || statusPendingIdsRef.current.has(property.id)) return
+    if (property.safety_hold) {
+      setStatusMessage("")
+      setStatusError("This listing is on a safety hold. You can correct its details, but only a safety administrator can release it.")
+      return
+    }
 
     const nextStatus = property.status === "available" ? "unavailable" : "available"
     statusPendingIdsRef.current.add(property.id)
@@ -265,6 +270,7 @@ function MyProperties() {
                   listingType={property.listing_type}
                   propertyType={property.property_type}
                   status={property.status}
+                  safetyHold={property.safety_hold}
                   imageUrl={property.image_url}
                   createdAt={property.created_at}
                   updatedAt={property.updated_at}
@@ -281,13 +287,20 @@ function MyProperties() {
                     </Link>
                   )}
                 </div>
+                {property.safety_hold && (
+                  <p className="listing-safety-hold" role="status">
+                    Safety hold active: hidden from discovery and new inquiries. Open the listing to correct its details.
+                  </p>
+                )}
                 <button
                   type="button"
                   className="listing-status-toggle"
                   onClick={() => toggleAvailability(property)}
-                  disabled={statusPendingIds.has(property.id)}
+                  disabled={statusPendingIds.has(property.id) || property.safety_hold}
                 >
-                  {statusPendingIds.has(property.id)
+                  {property.safety_hold
+                    ? "Safety hold active"
+                    : statusPendingIds.has(property.id)
                     ? "Updating..."
                     : property.status === "available"
                       ? "Mark unavailable"

@@ -17,6 +17,7 @@ function PropertyCard({
   listingType,
   propertyType,
   status,
+  safetyHold = false,
   imageUrl,
   createdAt,
   updatedAt,
@@ -53,12 +54,16 @@ function PropertyCard({
 
         <div
           className={`property-status ${
-            status === "available"
+            safetyHold
+              ? "property-status-safety-hold"
+              : status === "available"
               ? "property-status-available"
               : "property-status-unavailable"
           }`}
         >
-          {status === "available"
+          {safetyHold
+            ? "Safety Hold"
+            : status === "available"
             ? "Available"
             : "Unavailable"}
         </div>

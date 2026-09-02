@@ -99,3 +99,11 @@ class ListingReportDB(Base):
     @property
     def reviewer_name(self) -> str | None:
         return self.reviewer.name if self.reviewer else None
+
+    @property
+    def listing_on_safety_hold(self) -> bool | None:
+        return self.listing.safety_hold if self.listing else None
+
+    @property
+    def listing_safety_version(self) -> int | None:
+        return self.listing.safety_version if self.listing else None

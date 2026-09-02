@@ -24,6 +24,7 @@ from PIL import Image
 from backend.db import get_db
 from backend.auth.login_throttle import reset_login_throttle
 from backend.db_models.base import Base
+from backend.db_models.property import PropertyDB
 from backend.db_models.report import ListingReportDB
 from backend.main import app
 
@@ -43,6 +44,7 @@ async def request(
     idempotency_key=None,
     property_version=None,
     report_version=None,
+    safety_version=None,
 ):
     parsed_url = urlsplit(path)
     if (
@@ -74,6 +76,8 @@ async def request(
         headers.append((b"x-property-version", str(property_version).encode()))
     if report_version is not None:
         headers.append((b"x-report-version", str(report_version).encode()))
+    if safety_version is not None:
+        headers.append((b"x-listing-safety-version", str(safety_version).encode()))
 
     scope = {
         "type": "http",
@@ -186,6 +190,7 @@ class ApiFlowTests(unittest.TestCase):
         idempotency_key=None,
         property_version=None,
         report_version=None,
+        safety_version=None,
     ):
         return asyncio.run(
             request(
@@ -196,6 +201,7 @@ class ApiFlowTests(unittest.TestCase):
                 idempotency_key=idempotency_key,
                 property_version=property_version,
                 report_version=report_version,
+                safety_version=safety_version,
             )
         )
 
@@ -2195,6 +2201,202 @@ class ApiFlowTests(unittest.TestCase):
         self.assertEqual(resolved_queue_status, 200)
         self.assertEqual(resolved_queue["total"], 1)
         self.assertEqual(resolved_queue["counts"]["resolved"], 1)
+
+    def test_moderator_safety_hold_hides_listing_and_blocks_new_inquiries(self):
+        seller, seller_token = self.register_and_login(
+            "Hold Seller",
+            "hold-seller@example.com",
+        )
+        _buyer, buyer_token = self.register_and_login(
+            "Hold Buyer",
+            "hold-buyer@example.com",
+        )
+        admin, admin_token = self.register_and_login(
+            "Hold Admin",
+            "hold-admin@example.com",
+        )
+        _create_status, property_item = self.call(
+            "POST",
+            "/properties/",
+            {
+                "title": "Safety Hold Listing",
+                "description": "Original listing details.",
+                "price": 215000,
+                "location": "Puerto Plata, Dominican Republic",
+                "property_type": "Condo",
+                "bedrooms": 2,
+                "bathrooms": 2,
+                "status": "available",
+            },
+            seller_token,
+        )
+        report_status, report = self.call(
+            "POST",
+            f"/reports/properties/{property_item['id']}",
+            {"reason": "suspected_scam", "details": "Please verify this listing."},
+            buyer_token,
+            idempotency_key=str(uuid4()),
+        )
+
+        with patch.dict(os.environ, {"ADMIN_USER_IDS": str(admin["id"])}):
+            queue_status, queue = self.call("GET", "/reports/admin", token=admin_token)
+            queued_report = next(item for item in queue["items"] if item["id"] == report["id"])
+            denied_status, _denied = self.call(
+                "PATCH",
+                f"/reports/admin/{report['id']}/listing-hold",
+                {"held": True},
+                buyer_token,
+                safety_version=1,
+            )
+            missing_version_status, _missing = self.call(
+                "PATCH",
+                f"/reports/admin/{report['id']}/listing-hold",
+                {"held": True},
+                admin_token,
+            )
+            hold_status, held = self.call(
+                "PATCH",
+                f"/reports/admin/{report['id']}/listing-hold",
+                {"held": True},
+                admin_token,
+                safety_version=queued_report["listing_safety_version"],
+            )
+            retry_status, retry = self.call(
+                "PATCH",
+                f"/reports/admin/{report['id']}/listing-hold",
+                {"held": True},
+                admin_token,
+                safety_version=queued_report["listing_safety_version"],
+            )
+
+        list_status, listings, list_headers = self.call_with_headers("GET", "/properties/")
+        search_status, search_results = self.call(
+            "GET",
+            "/properties/search?location=Puerto%20Plata",
+        )
+        direct_status, direct = self.call("GET", f"/properties/{property_item['id']}")
+        inquiry_status, inquiry_error = self.call(
+            "POST",
+            f"/inquiries/{property_item['id']}",
+            {"message": "Is this listing available?"},
+            buyer_token,
+            idempotency_key=str(uuid4()),
+        )
+        blocked_edit_status, blocked_edit = self.call(
+            "PUT",
+            f"/properties/{property_item['id']}",
+            {
+                "title": "Unsafe Available Edit",
+                "description": "This edit must not be saved.",
+                "price": 215000,
+                "location": "Puerto Plata, Dominican Republic",
+                "property_type": "Condo",
+                "bedrooms": 2,
+                "bathrooms": 2,
+                "status": "available",
+            },
+            seller_token,
+            property_version=property_item["version"],
+        )
+        correction_status, corrected = self.call(
+            "PUT",
+            f"/properties/{property_item['id']}",
+            {
+                "title": "Corrected Safety Hold Listing",
+                "description": "Corrected listing details.",
+                "price": 215000,
+                "location": "Puerto Plata, Dominican Republic",
+                "property_type": "Condo",
+                "bedrooms": 2,
+                "bathrooms": 2,
+                "status": "unavailable",
+            },
+            seller_token,
+            property_version=property_item["version"],
+        )
+
+        with patch.dict(os.environ, {"ADMIN_USER_IDS": str(admin["id"])}):
+            stale_release_status, stale_release = self.call(
+                "PATCH",
+                f"/reports/admin/{report['id']}/listing-hold",
+                {"held": False},
+                admin_token,
+                safety_version=1,
+            )
+            release_status, released = self.call(
+                "PATCH",
+                f"/reports/admin/{report['id']}/listing-hold",
+                {"held": False},
+                admin_token,
+                safety_version=held["safety_version"],
+            )
+
+        available_status, available = self.call(
+            "PUT",
+            f"/properties/{property_item['id']}",
+            {
+                "title": corrected["title"],
+                "description": corrected["description"],
+                "price": corrected["price"],
+                "location": corrected["location"],
+                "property_type": corrected["property_type"],
+                "bedrooms": corrected["bedrooms"],
+                "bathrooms": corrected["bathrooms"],
+                "status": "available",
+            },
+            seller_token,
+            property_version=corrected["version"],
+        )
+        visible_status, visible_results = self.call(
+            "GET",
+            "/properties/search?location=Puerto%20Plata",
+        )
+        allowed_inquiry_status, _allowed_inquiry = self.call(
+            "POST",
+            f"/inquiries/{property_item['id']}",
+            {"message": "Now can I ask about it?"},
+            buyer_token,
+            idempotency_key=str(uuid4()),
+        )
+        stored_property = self.session.get(PropertyDB, property_item["id"])
+
+        self.assertEqual(report_status, 200)
+        self.assertEqual(queue_status, 200)
+        self.assertFalse(queued_report["listing_on_safety_hold"])
+        self.assertEqual(queued_report["listing_safety_version"], 1)
+        self.assertEqual(denied_status, 403)
+        self.assertEqual(missing_version_status, 422)
+        self.assertEqual(hold_status, 200)
+        self.assertTrue(held["safety_hold"])
+        self.assertEqual(held["safety_version"], 2)
+        self.assertEqual(retry_status, 200)
+        self.assertEqual(retry, held)
+        self.assertEqual(list_status, 200)
+        self.assertEqual(listings, [])
+        self.assertEqual(list_headers["x-total-count"], "0")
+        self.assertEqual(search_status, 200)
+        self.assertEqual(search_results, [])
+        self.assertEqual(direct_status, 200)
+        self.assertTrue(direct["safety_hold"])
+        self.assertEqual(inquiry_status, 409)
+        self.assertIn("safety review", inquiry_error["detail"])
+        self.assertEqual(blocked_edit_status, 409)
+        self.assertIn("safety review", blocked_edit["detail"])
+        self.assertEqual(correction_status, 200)
+        self.assertEqual(corrected["status"], "unavailable")
+        self.assertTrue(corrected["safety_hold"])
+        self.assertEqual(stale_release_status, 409)
+        self.assertIn("changed in another review session", stale_release["detail"])
+        self.assertEqual(release_status, 200)
+        self.assertFalse(released["safety_hold"])
+        self.assertEqual(released["safety_version"], 3)
+        self.assertEqual(available_status, 200)
+        self.assertEqual(visible_status, 200)
+        self.assertEqual([item["id"] for item in visible_results], [property_item["id"]])
+        self.assertEqual(allowed_inquiry_status, 200)
+        self.assertEqual(available["status"], "available")
+        self.assertEqual(stored_property.safety_report_id, report["id"])
+        self.assertEqual(stored_property.safety_updated_by_id, admin["id"])
 
     def test_complete_buyer_seller_marketplace_flow(self):
         seller, seller_token = self.register_and_login(

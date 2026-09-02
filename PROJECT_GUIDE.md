@@ -267,6 +267,15 @@ review notes, and pagination. Review updates lock the report row and require its
 current version; exact retries return the saved decision while stale tabs receive
 `409`. Resolved and dismissed reports cannot be reopened or switched to the other
 terminal state.
+Administrators can also place a live reported listing on a reversible safety hold.
+The hold is separate from the seller's availability choice: it removes the listing
+from public browsing, search, reference lookup, and public counts, and it rejects
+new inquiries. Direct links and the seller dashboard remain available with a clear
+warning so the owner can correct details or delete the listing. While held, an
+owner may save corrections only with the listing marked unavailable. Releasing the
+hold does not silently publish it; the owner chooses when to mark it available.
+Safety updates use a dedicated version, row lock, reviewer/report audit fields, and
+exact-retry handling so two moderator tabs cannot silently overwrite each other.
 Each authenticated buyer also has a private paginated report history. It shows
 only that buyer's submitted reason, details, public review status, timestamps,
 and retained listing reference. Internal moderator notes, reviewer identity, and
@@ -497,6 +506,7 @@ The project currently has automated coverage for:
 - Password confirmation for sign-in email changes without blocking name-only edits
 - Authenticated listing reports with owner protection, bounded categories/details, duplicate prevention, retry safety, and retained review snapshots
 - Explicit immutable-account-ID moderation with private queue filters, review notes, terminal decisions, exact-retry handling, and stale-tab conflict protection
+- Reversible, audited listing safety holds with public-discovery exclusion, inquiry blocking, seller correction access, and independent stale-update protection
 - Ownership-isolated buyer report history with public status updates, deleted-listing snapshots, pagination, and strict exclusion of internal moderation fields
 - Database rollback after duplicate-email conflicts
 - Password hashing and token validation
