@@ -582,6 +582,7 @@ The project currently has automated coverage for:
 - Private, authenticated, OAuth, and error API responses use `Cache-Control: no-store`; all API responses include anti-framing, browser-capability, content-type, cross-domain-policy, and referrer protections
 - Login sessions expire after two hours and tokens are accepted only when their signed issuer, audience, issued-at time, expiry, subject, and access-token type match this marketplace
 - The login page always shows Google, Facebook, and Yahoo sign-in choices; providers remain visibly unavailable until both provider-issued OAuth credentials are configured, then activate automatically
+- Email and password remain the primary login form, with Google, Facebook, and Yahoo choices presented below it as alternate sign-in methods
 - Login attempts are throttled per client-and-email pair after five failures in fifteen minutes, with a `Retry-After` response and automatic reset after successful authentication
 - Safe frontend reads retry temporary network, timeout-status, rate-limit, and gateway failures up to two times; write requests are never automatically replayed
 - An app-wide connection notice warns when the browser reports that the device is offline, keeps loaded information usable, and briefly confirms when connectivity returns

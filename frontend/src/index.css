@@ -45,7 +45,21 @@ textarea {
 }
 
 .social-login p {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0.25rem 0;
   color: #64748b;
+  font-size: 0.9rem;
+  text-align: center;
+}
+
+.social-login p::before,
+.social-login p::after {
+  content: "";
+  height: 1px;
+  flex: 1;
+  background: #dbe4ee;
 }
 
 .auth-callback {

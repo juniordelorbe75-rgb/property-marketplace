@@ -81,26 +81,6 @@ function Login() {
 
       <p className="auth-intro">Login to your account.</p>
 
-      {providersLoaded && providers.length > 0 && (
-        <section className="social-login" aria-label="Social sign-in options">
-          {providers.map((provider) => (
-            <button
-              key={provider.id}
-              type="button"
-              disabled={!provider.enabled}
-              title={provider.enabled ? `Continue with ${provider.name}` : `${provider.name} sign-in is not configured yet`}
-              onClick={() => socialLogin(provider.id)}
-            >
-              Continue with {provider.name}{provider.enabled ? "" : " — coming soon"}
-            </button>
-          ))}
-          {!providers.some((provider) => provider.enabled) && (
-            <small className="social-login-note">Social sign-in will activate when the marketplace administrator finishes provider setup.</small>
-          )}
-          <p><span>or use your email and password</span></p>
-        </section>
-      )}
-
       {returnTo !== "/" && <p className="auth-return-note">After login, you will return to where you left off.</p>}
 
       <form className="auth-form" onSubmit={handleLogin}>
@@ -134,6 +114,26 @@ function Login() {
           {loading ? "Logging in..." : "Login"}
         </button>
       </form>
+
+      {providersLoaded && providers.length > 0 && (
+        <section className="social-login" aria-label="Social sign-in options">
+          <p><span>or continue with</span></p>
+          {providers.map((provider) => (
+            <button
+              key={provider.id}
+              type="button"
+              disabled={!provider.enabled}
+              title={provider.enabled ? `Continue with ${provider.name}` : `${provider.name} sign-in is not configured yet`}
+              onClick={() => socialLogin(provider.id)}
+            >
+              Continue with {provider.name}{provider.enabled ? "" : " — coming soon"}
+            </button>
+          ))}
+          {!providers.some((provider) => provider.enabled) && (
+            <small className="social-login-note">Social sign-in will activate when the marketplace administrator finishes provider setup.</small>
+          )}
+        </section>
+      )}
 
       <p className="auth-switch">
         Need an account?{" "}
