@@ -32,6 +32,18 @@ textarea {
   font-weight: 600;
 }
 
+.social-login button:disabled {
+  background: #f8fafc;
+  color: #64748b;
+  cursor: not-allowed;
+}
+
+.social-login-note {
+  color: #64748b;
+  line-height: 1.45;
+  text-align: center;
+}
+
 .social-login p {
   color: #64748b;
 }

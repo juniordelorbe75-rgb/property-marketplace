@@ -10,7 +10,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from backend.auth.security import hash_password
-from backend.auth.social import PROVIDERS, begin_flow, consume_flow, create_login_code, consume_login_code, enabled_providers, fetch_profile
+from backend.auth.social import PROVIDERS, begin_flow, consume_flow, create_login_code, consume_login_code, fetch_profile, provider_options
 from backend.auth.token import create_access_token
 from backend.db import get_db
 from backend.db_models.social_identity import SocialIdentityDB
@@ -30,7 +30,7 @@ def _safe_return_to(value):
 
 @router.get("/providers")
 def providers():
-    return {"providers": enabled_providers()}
+    return {"providers": provider_options()}
 
 
 @router.get("/{provider}/start")

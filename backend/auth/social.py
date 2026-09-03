@@ -47,6 +47,17 @@ def enabled_providers():
     return [{"id": key, "name": item.label} for key, item in PROVIDERS.items() if all(provider_credentials(key))]
 
 
+def provider_options():
+    return [
+        {
+            "id": key,
+            "name": item.label,
+            "enabled": all(provider_credentials(key)),
+        }
+        for key, item in PROVIDERS.items()
+    ]
+
+
 def redirect_uri(provider):
     base = os.getenv("OAUTH_REDIRECT_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
     return f"{base}/auth/{provider}/callback"

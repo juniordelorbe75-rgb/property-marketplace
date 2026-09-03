@@ -19,12 +19,14 @@ function Login() {
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
   const [providers, setProviders] = useState([])
+  const [providersLoaded, setProvidersLoaded] = useState(false)
 
   useEffect(() => {
     apiFetch("/auth/providers")
       .then((response) => response.ok ? response.json() : { providers: [] })
       .then((data) => setProviders(data.providers || []))
       .catch(() => setProviders([]))
+      .finally(() => setProvidersLoaded(true))
   }, [])
 
   function socialLogin(provider) {
@@ -79,13 +81,22 @@ function Login() {
 
       <p className="auth-intro">Login to your account.</p>
 
-      {providers.length > 0 && (
+      {providersLoaded && providers.length > 0 && (
         <section className="social-login" aria-label="Social sign-in options">
           {providers.map((provider) => (
-            <button key={provider.id} type="button" onClick={() => socialLogin(provider.id)}>
-              Continue with {provider.name}
+            <button
+              key={provider.id}
+              type="button"
+              disabled={!provider.enabled}
+              title={provider.enabled ? `Continue with ${provider.name}` : `${provider.name} sign-in is not configured yet`}
+              onClick={() => socialLogin(provider.id)}
+            >
+              Continue with {provider.name}{provider.enabled ? "" : " — coming soon"}
             </button>
           ))}
+          {!providers.some((provider) => provider.enabled) && (
+            <small className="social-login-note">Social sign-in will activate when the marketplace administrator finishes provider setup.</small>
+          )}
           <p><span>or use your email and password</span></p>
         </section>
       )}

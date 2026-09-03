@@ -13,15 +13,19 @@ class SocialAuthTests(unittest.TestCase):
         social._flows.clear()
         social._codes.clear()
 
-    def test_only_configured_providers_are_advertised(self):
+    def test_all_providers_are_advertised_with_configuration_status(self):
         values = {
             "GOOGLE_CLIENT_ID": "google-id",
             "GOOGLE_CLIENT_SECRET": "google-secret",
         }
         with patch.dict(os.environ, values, clear=True):
             self.assertEqual(
-                social.enabled_providers(),
-                [{"id": "google", "name": "Google"}],
+                social.provider_options(),
+                [
+                    {"id": "google", "name": "Google", "enabled": True},
+                    {"id": "facebook", "name": "Facebook", "enabled": False},
+                    {"id": "yahoo", "name": "Yahoo", "enabled": False},
+                ],
             )
 
     def test_flow_state_and_login_code_are_single_use(self):
