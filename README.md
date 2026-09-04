@@ -30,6 +30,7 @@ A full-stack marketplace for discovering, listing, saving, and discussing proper
 - Whole-app render recovery and human-readable rate-limit wait times
 - Secure password recovery with expiring single-use links and session revocation
 - Email verification with 24-hour single-use links and protected resend controls
+- Account-scoped recovery and verification limits that prevent inbox flooding across different client addresses
 
 Detailed architecture and reliability notes are in [PROJECT_GUIDE.md](PROJECT_GUIDE.md).
 

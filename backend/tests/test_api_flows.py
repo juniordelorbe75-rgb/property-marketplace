@@ -47,6 +47,7 @@ async def request(
     property_version=None,
     report_version=None,
     safety_version=None,
+    client_address="test-client",
 ):
     parsed_url = urlsplit(path)
     if (
@@ -95,7 +96,7 @@ async def request(
         "query_string": parsed_url.query.encode(),
         "root_path": "",
         "headers": headers,
-        "client": ("test-client", 50000),
+        "client": (client_address, 50000),
         "server": ("test-server", 80),
     }
     sent_messages = []
@@ -483,6 +484,37 @@ class ApiFlowTests(unittest.TestCase):
             "If an account exists for that email, password reset instructions have been sent.",
         )
         send_email.assert_not_called()
+
+    def test_password_reset_requests_are_limited_per_target_across_clients(self):
+        async def make_request(attempt):
+            return await request(
+                "POST",
+                "/users/password-reset/request",
+                {"email": " Target@Example.com "},
+                client_address=f"reset-client-{attempt}",
+            )
+
+        statuses = [asyncio.run(make_request(attempt))[0] for attempt in range(4)]
+
+        self.assertEqual(statuses, [200, 200, 200, 429])
+
+    def test_verification_resends_are_limited_per_account_across_clients(self):
+        _user, token = self.register_and_login(
+            "Verification Throttle User", "verification-throttle@example.com"
+        )
+
+        async def make_request(attempt):
+            return await request(
+                "POST",
+                "/users/email-verification/request",
+                token=token,
+                client_address=f"verification-client-{attempt}",
+            )
+
+        with patch("backend.services.email_verification_service._send"):
+            statuses = [asyncio.run(make_request(attempt))[0] for attempt in range(4)]
+
+        self.assertEqual(statuses, [200, 200, 200, 429])
 
     def test_email_verification_link_is_single_use(self):
         with patch("backend.services.email_verification_service._send") as send_email:

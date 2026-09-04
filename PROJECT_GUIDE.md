@@ -621,6 +621,13 @@ It keeps at most 30,000 bounded entries in each API process. This is an effectiv
 single-instance baseline. A deployment running multiple API processes or servers
 should use a shared rate-limit store (such as Redis or a gateway rate limiter)
 so attempts cannot be distributed across instances.
+
+Password-reset delivery is limited both per client and per normalized target
+account, with the target represented only by a one-way hash in process memory.
+Authenticated verification resends are likewise limited per client and account,
+and invalid verification confirmations have a separate client-wide ceiling.
+These layers reduce inbox flooding and distributed request abuse without changing
+the generic response used for unknown password-reset accounts.
 - Consistent frontend API errors with server-correlated support IDs
 - Complete edit cancellation and browser-memory cleanup for image previews
 - Safe global handling for empty and malformed API response bodies

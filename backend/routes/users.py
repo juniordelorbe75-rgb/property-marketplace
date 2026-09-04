@@ -1,3 +1,5 @@
+import hashlib
+
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
@@ -39,6 +41,25 @@ router = APIRouter(
     prefix="/users",
     tags=["Users"]
 )
+
+
+def _anonymous_rate_limit_key(value: str) -> str:
+    """Keep normalized account identifiers out of process-local throttle keys."""
+    return hashlib.sha256(value.strip().lower().encode("utf-8")).hexdigest()
+
+
+def _combined_retry_after(*limits: tuple[str, str, int, int]) -> int | None:
+    waits = [
+        wait
+        for action, subject, limit, window_seconds in limits
+        if (wait := consume_rate_limit(
+            action,
+            subject,
+            limit=limit,
+            window_seconds=window_seconds,
+        )) is not None
+    ]
+    return max(waits, default=None)
 
 
 @router.post(
@@ -105,8 +126,14 @@ def request_password_reset_link(
     db: Session = Depends(get_db),
 ):
     client_address = request.client.host if request.client else "unknown"
-    retry_after = consume_rate_limit(
-        "password-reset-request", client_address, limit=5, window_seconds=15 * 60
+    retry_after = _combined_retry_after(
+        ("password-reset-request-client", client_address, 5, 15 * 60),
+        (
+            "password-reset-request-account",
+            _anonymous_rate_limit_key(payload.email),
+            3,
+            15 * 60,
+        ),
     )
     if retry_after is not None:
         raise HTTPException(
@@ -143,14 +170,31 @@ def resend_email_verification(
     db: Session = Depends(get_db),
 ):
     client_address = request.client.host if request.client else "unknown"
-    retry_after = consume_rate_limit("email-verification", client_address, limit=3, window_seconds=15 * 60)
+    retry_after = _combined_retry_after(
+        ("email-verification-client", client_address, 3, 15 * 60),
+        ("email-verification-account", str(current_user_id), 3, 15 * 60),
+    )
     if retry_after is not None:
         raise HTTPException(429, retry_after_detail("Too many verification requests.", retry_after), headers={"Retry-After": str(retry_after)})
     return issue_email_verification(db, get_user_by_id(db, current_user_id))
 
 
 @router.post("/email-verification/confirm")
-def confirm_email_verification(payload: EmailVerificationConfirmation, db: Session = Depends(get_db)):
+def confirm_email_verification(
+    payload: EmailVerificationConfirmation,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    client_address = request.client.host if request.client else "unknown"
+    retry_after = consume_rate_limit(
+        "email-verification-confirm", client_address, limit=20, window_seconds=15 * 60
+    )
+    if retry_after is not None:
+        raise HTTPException(
+            429,
+            retry_after_detail("Too many verification attempts.", retry_after),
+            headers={"Retry-After": str(retry_after)},
+        )
     return verify_email(db, payload.token)
 
 
