@@ -24,7 +24,7 @@ A full-stack marketplace for discovering, listing, saving, and discussing proper
 - Secure first-password creation for social accounts, with normal password protection and token revocation afterward
 - Optional Google, Facebook, and Yahoo sign-in with verified-email account linking and one-time callback codes
 - Readiness checks, image maintenance, backup/restore scripts, and sanitized errors
-- Per-address throttling for login attempts, account creation, and authenticated image uploads
+- Layered login throttling by client, account, and client-account pair, plus per-address limits for account creation and authenticated image uploads
 - Early request-body limits that reject oversized writes before validation or image decoding
 - Login responses and password-check work are normalized to reduce account enumeration
 - Whole-app render recovery and human-readable rate-limit wait times

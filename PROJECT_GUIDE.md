@@ -614,11 +614,13 @@ The project currently has automated coverage for:
 - Create, edit, and buyer search location fields offer all 31 Dominican provinces plus the National District as accessible suggestions while remaining free text for sectors, neighborhoods, and future countries
 - Property details can open the seller-provided location as a safe external map search without storing precise coordinates, embedding a tracking map, or requiring a map API key
 
-The login throttle keeps at most 10,000 client-and-email entries in each API
-process. This is an effective single-instance baseline. A deployment running
-multiple API processes or servers should use a shared rate-limit store (such as
-Redis or a gateway rate limiter) so attempts cannot be distributed across
-instances.
+The login throttle combines client-and-email, account-wide, and client-wide
+failure windows. This blocks both distributed attacks against one account and
+password spraying from one address while retaining generic login responses.
+It keeps at most 30,000 bounded entries in each API process. This is an effective
+single-instance baseline. A deployment running multiple API processes or servers
+should use a shared rate-limit store (such as Redis or a gateway rate limiter)
+so attempts cannot be distributed across instances.
 - Consistent frontend API errors with server-correlated support IDs
 - Complete edit cancellation and browser-memory cleanup for image previews
 - Safe global handling for empty and malformed API response bodies
