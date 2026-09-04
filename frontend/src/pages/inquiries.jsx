@@ -98,6 +98,110 @@ function InquiryConversation({ inquiry, viewerRole }) {
   )
 }
 
+function getConversationPreview(inquiry, viewerRole) {
+  const messages = Array.isArray(inquiry.conversation_messages)
+    ? inquiry.conversation_messages
+    : []
+  const latest = messages.at(-1)
+  if (!latest) return { sender: "No messages yet", body: "Open this inquiry to view its details." }
+  return {
+    sender: latest.sender_role === viewerRole ? "You" : latest.sender_name,
+    body: latest.body,
+  }
+}
+
+function InquiryCard({
+  inquiry,
+  viewerRole,
+  direction,
+  expanded,
+  busy,
+  cancelling,
+  replyValue,
+  replyNotice,
+  replying,
+  onToggle,
+  onStatusChange,
+  onCancel,
+  onReplyChange,
+  onReply,
+}) {
+  const contactName = direction === "sent" ? inquiry.seller_name : inquiry.buyer_name
+  const preview = getConversationPreview(inquiry, viewerRole)
+  const conversationId = `inquiry-conversation-${inquiry.id}`
+
+  return (
+    <article className={`inquiry-card${inquiry.unread_count > 0 ? " has-unread" : ""}`}>
+      <button
+        type="button"
+        className="inquiry-preview-button"
+        onClick={onToggle}
+        aria-expanded={expanded}
+        aria-controls={conversationId}
+      >
+        <span className="inquiry-avatar" aria-hidden="true">{contactName?.trim()?.charAt(0)?.toUpperCase() || "?"}</span>
+        <span className="inquiry-preview-content">
+          <span className="inquiry-preview-heading">
+            <strong>{contactName || "Marketplace member"}</strong>
+            <time>{formatInquiryDate(inquiry.updated_at)}</time>
+          </span>
+          <span className="inquiry-property-name">{inquiry.property_title}</span>
+          <span className="inquiry-message-preview"><b>{preview.sender}:</b> {preview.body}</span>
+        </span>
+        <span className="inquiry-preview-aside">
+          {inquiry.unread_count > 0 && <span className="inquiry-unread-count">{inquiry.unread_count} new</span>}
+          <span className={`inquiry-status-pill ${inquiry.status}`}>{titleCase(inquiry.status)}</span>
+          <span className="inquiry-chevron" aria-hidden="true">⌄</span>
+        </span>
+      </button>
+
+      {expanded && (
+        <div className="inquiry-details" id={conversationId}>
+          <div className="inquiry-details-meta">
+            <span>Inquiry #{inquiry.id}</span>
+            <span>{formatPropertyReference(inquiry.property_id)}</span>
+            <span>Started {formatInquiryDate(inquiry.created_at)}</span>
+          </div>
+
+          <InquiryConversation inquiry={inquiry} viewerRole={viewerRole} />
+
+          <div className="inquiry-detail-links">
+            <Link className="inquiry-link" to={`/properties/${inquiry.property_id}`}>View property</Link>
+          </div>
+
+          {direction === "sent" && inquiry.status === "pending" && (
+            <div className="inquiry-actions">
+              <button className="cancel-button" onClick={onCancel} disabled={cancelling}>
+                {cancelling ? "Cancelling..." : "Cancel inquiry"}
+              </button>
+            </div>
+          )}
+
+          {direction === "received" && inquiry.status === "pending" && (
+            <div className="inquiry-actions">
+              <button className="accept-button" onClick={() => onStatusChange("accepted")} disabled={busy}>
+                {busy ? "Updating..." : "Accept inquiry"}
+              </button>
+              <button className="reject-button" onClick={() => onStatusChange("rejected")} disabled={busy}>
+                {busy ? "Updating..." : "Reject"}
+              </button>
+            </div>
+          )}
+
+          <InquiryReplyComposer
+            inquiry={inquiry}
+            value={replyValue}
+            sending={replying}
+            notice={replyNotice}
+            onChange={onReplyChange}
+            onSend={onReply}
+          />
+        </div>
+      )}
+    </article>
+  )
+}
+
 function InquiryReplyComposer({ inquiry, value, sending, notice, onChange, onSend }) {
   const canMessage = ["pending", "accepted"].includes(inquiry.status)
   if (!canMessage) {
@@ -156,6 +260,7 @@ function Inquiries() {
   const [replyKeys, setReplyKeys] = useState({})
   const [replyNotices, setReplyNotices] = useState({})
   const [replyingInquiry, setReplyingInquiry] = useState(null)
+  const [expandedInquiryId, setExpandedInquiryId] = useState(null)
   const loadControllerRef = useRef(null)
   const autoRefreshPausedRef = useRef(false)
 
@@ -259,26 +364,6 @@ function Inquiries() {
       if (normalizedReceived.page !== receivedPage) setReceivedPage(normalizedReceived.page)
       setLastUpdatedAt(new Date())
 
-      const readReceipts = buildInquiryReadReceipts([
-        ...normalizedSent.items,
-        ...normalizedReceived.items,
-      ])
-      if (readReceipts.length > 0) {
-        try {
-          const readResponse = await apiFetch("/inquiries/read", {
-            method: "PATCH",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify({ receipts: readReceipts }),
-          })
-          if (readResponse.ok) notifyInquiriesChanged()
-        } catch {
-          console.warn("Visible inquiries could not be marked as read")
-        }
-      }
-
     } catch (error) {
       if (error.name === "AbortError") return
 
@@ -306,6 +391,42 @@ function Inquiries() {
       loadControllerRef.current?.abort()
     }
   }, [fetchInquiries])
+
+  async function openInquiry(inquiry) {
+    if (expandedInquiryId === inquiry.id) {
+      setExpandedInquiryId(null)
+      return
+    }
+
+    setExpandedInquiryId(inquiry.id)
+    const receipts = buildInquiryReadReceipts([inquiry])
+    if (receipts.length === 0) return
+
+    const accessToken = localStorage.getItem("access_token")
+    if (!accessToken) return
+
+    try {
+      const response = await apiFetch("/inquiries/read", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ receipts }),
+      })
+      if (response.status === 401) {
+        logout()
+        return
+      }
+      if (!response.ok) throw new Error("The conversation could not be marked as read.")
+      const markRead = (items) => items.map((item) => item.id === inquiry.id ? { ...item, unread_count: 0 } : item)
+      setSentInquiries(markRead)
+      setReceivedInquiries(markRead)
+      notifyInquiriesChanged()
+    } catch {
+      setSyncWarning("This conversation is open, but its read status could not be synchronized.")
+    }
+  }
 
   const hasReplyDraft = Object.values(replyMessages).some((message) => message.trim())
   const autoRefreshPaused = hasReplyDraft || Boolean(
@@ -621,93 +742,26 @@ function Inquiries() {
 
           <div className="inquiries-grid">
 
-            {sentInquiries.map(
-              (inquiry) => (
-
-                <div
-                  className="inquiry-card"
-                  key={inquiry.id}
-                >
-
-                  <div className="inquiry-card-heading">
-                    <h3>Inquiry #{inquiry.id}</h3>
-                    {inquiry.unread_count > 0 && <span>{inquiry.unread_count} new</span>}
-                  </div>
-
-                  <p>
-                    To: {inquiry.seller_name}
-                  </p>
-
-                  <p>
-                    Property:{" "}
-                    {inquiry.property_title}
-                  </p>
-
-                  <p className="inquiry-reference">
-                    Reference: {formatPropertyReference(inquiry.property_id)}
-                  </p>
-
-                  <p className="inquiry-date">
-                    Sent {formatInquiryDate(inquiry.created_at)}
-                  </p>
-
-                  <p className="inquiry-date">
-                    Last activity {formatInquiryDate(inquiry.updated_at)}
-                  </p>
-
-                  <p className="inquiry-status">
-
-                    Status:{" "}
-
-                    <span
-                      className={
-                        inquiry.status
-                      }
-                    >
-                      {inquiry.status}
-                    </span>
-
-                  </p>
-
-                  <InquiryConversation inquiry={inquiry} viewerRole="buyer" />
-
-                  <Link
-                    className="inquiry-link"
-                    to={`/properties/${inquiry.property_id}`}
-                  >
-                    View Property
-                  </Link>
-
-                  {inquiry.status === "pending" && (
-                    <div className="inquiry-actions">
-                      <button
-                        className="cancel-button"
-                        onClick={() => cancelInquiry(inquiry.id)}
-                        disabled={cancellingInquiry === inquiry.id}
-                      >
-                        {cancellingInquiry === inquiry.id
-                          ? "Cancelling..."
-                          : "Cancel Inquiry"}
-                      </button>
-                    </div>
-                  )}
-
-                  <InquiryReplyComposer
-                    inquiry={inquiry}
-                    value={replyMessages[inquiry.id] || ""}
-                    sending={replyingInquiry === inquiry.id}
-                    notice={replyNotices[inquiry.id] || ""}
-                    onChange={(message) => {
-                      setReplyMessages((current) => ({ ...current, [inquiry.id]: message }))
-                      setReplyNotices((current) => ({ ...current, [inquiry.id]: "" }))
-                    }}
-                    onSend={() => sendInquiryMessage(inquiry.id)}
-                  />
-
-                </div>
-
-              )
-            )}
+            {sentInquiries.map((inquiry) => (
+              <InquiryCard
+                key={inquiry.id}
+                inquiry={inquiry}
+                viewerRole="buyer"
+                direction="sent"
+                expanded={expandedInquiryId === inquiry.id}
+                cancelling={cancellingInquiry === inquiry.id}
+                replyValue={replyMessages[inquiry.id] || ""}
+                replyNotice={replyNotices[inquiry.id] || ""}
+                replying={replyingInquiry === inquiry.id}
+                onToggle={() => openInquiry(inquiry)}
+                onCancel={() => cancelInquiry(inquiry.id)}
+                onReplyChange={(message) => {
+                  setReplyMessages((current) => ({ ...current, [inquiry.id]: message }))
+                  setReplyNotices((current) => ({ ...current, [inquiry.id]: "" }))
+                }}
+                onReply={() => sendInquiryMessage(inquiry.id)}
+              />
+            ))}
 
           </div>
 
@@ -751,128 +805,26 @@ function Inquiries() {
 
           <div className="inquiries-grid">
 
-            {receivedInquiries.map(
-              (inquiry) => (
-
-                <div
-                  className="inquiry-card"
-                  key={inquiry.id}
-                >
-
-                  <div className="inquiry-card-heading">
-                    <h3>Inquiry #{inquiry.id}</h3>
-                    {inquiry.unread_count > 0 && <span>{inquiry.unread_count} new</span>}
-                  </div>
-
-                  <p>
-                    From: {inquiry.buyer_name}
-                  </p>
-
-                  <p>
-                    Property:{" "}
-                    {inquiry.property_title}
-                  </p>
-
-                  <p className="inquiry-reference">
-                    Reference: {formatPropertyReference(inquiry.property_id)}
-                  </p>
-
-                  <p className="inquiry-date">
-                    Received {formatInquiryDate(inquiry.created_at)}
-                  </p>
-
-                  <p className="inquiry-date">
-                    Last activity {formatInquiryDate(inquiry.updated_at)}
-                  </p>
-
-                  <p className="inquiry-status">
-
-                    Status:{" "}
-
-                    <span
-                      className={
-                        inquiry.status
-                      }
-                    >
-                      {inquiry.status}
-                    </span>
-
-                  </p>
-
-                  <InquiryConversation inquiry={inquiry} viewerRole="seller" />
-
-                  <Link
-                    className="inquiry-link"
-                    to={`/properties/${inquiry.property_id}`}
-                  >
-                    View Property
-                  </Link>
-
-                  {/* ACCEPT / REJECT */}
-
-                  {inquiry.status ===
-                    "pending" && (
-
-                    <div className="inquiry-actions">
-
-                      <button
-                        className="accept-button"
-                        onClick={() =>
-                          updateInquiryStatus(
-                            inquiry.id,
-                            "accepted"
-                          )
-                        }
-                        disabled={
-                          updatingInquiry ===
-                          inquiry.id
-                        }
-                      >
-                        {updatingInquiry ===
-                        inquiry.id
-                          ? "Updating..."
-                          : "Accept"}
-                      </button>
-
-                      <button
-                        className="reject-button"
-                        onClick={() =>
-                          updateInquiryStatus(
-                            inquiry.id,
-                            "rejected"
-                          )
-                        }
-                        disabled={
-                          updatingInquiry ===
-                          inquiry.id
-                        }
-                      >
-                        {updatingInquiry ===
-                        inquiry.id
-                          ? "Updating..."
-                          : "Reject"}
-                      </button>
-
-                    </div>
-
-                  )}
-
-                  <InquiryReplyComposer
-                    inquiry={inquiry}
-                    value={replyMessages[inquiry.id] || ""}
-                    sending={replyingInquiry === inquiry.id}
-                    notice={replyNotices[inquiry.id] || ""}
-                    onChange={(message) => {
-                      setReplyMessages((current) => ({ ...current, [inquiry.id]: message }))
-                      setReplyNotices((current) => ({ ...current, [inquiry.id]: "" }))
-                    }}
-                    onSend={() => sendInquiryMessage(inquiry.id)}
-                  />
-
-                </div>
-
-              )
-            )}
+            {receivedInquiries.map((inquiry) => (
+              <InquiryCard
+                key={inquiry.id}
+                inquiry={inquiry}
+                viewerRole="seller"
+                direction="received"
+                expanded={expandedInquiryId === inquiry.id}
+                busy={updatingInquiry === inquiry.id}
+                replyValue={replyMessages[inquiry.id] || ""}
+                replyNotice={replyNotices[inquiry.id] || ""}
+                replying={replyingInquiry === inquiry.id}
+                onToggle={() => openInquiry(inquiry)}
+                onStatusChange={(status) => updateInquiryStatus(inquiry.id, status)}
+                onReplyChange={(message) => {
+                  setReplyMessages((current) => ({ ...current, [inquiry.id]: message }))
+                  setReplyNotices((current) => ({ ...current, [inquiry.id]: "" }))
+                }}
+                onReply={() => sendInquiryMessage(inquiry.id)}
+              />
+            ))}
 
           </div>
 
