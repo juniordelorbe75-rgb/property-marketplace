@@ -7,6 +7,7 @@ import { apiFetch } from "../utils/apiFetch"
 import { getSafeReturnPath } from "../utils/authRedirect"
 import { queueLoginWelcome } from "../utils/loginWelcomeSession"
 import PasswordInput from "../components/PasswordInput"
+import AuthLayout from "../components/AuthLayout"
 import "./auth.css"
 
 function Login() {
@@ -35,52 +36,40 @@ function Login() {
     window.location.assign(`/auth/${provider}/start?${query}`)
   }
 
-  function handleLogin(event) {
+  async function handleLogin(event) {
     event.preventDefault()
+
+    if (loading) return
 
     setError("")
     setLoading(true)
 
-    apiFetch("/users/login", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        email: email,
-        password: password,
-      }),
-    })
-      .then(async (response) => {
-        const data = await readApiResponse(response)
-
-        if (!response.ok) {
-          throw new Error(getApiError(data, "Login failed"))
-        }
-
-        return data
+    try {
+      const response = await apiFetch("/users/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
       })
-      .then((data) => {
-        login(data.access_token)
-        queueLoginWelcome("returning")
+      const data = await readApiResponse(response)
+      if (!response.ok) throw new Error(getApiError(data, "Login failed"))
 
-        setLoading(false)
-
-        navigate(returnTo, { replace: true })
-      })
-      .catch((error) => {
-        console.error("Login error:", error)
-        setError(error.message)
-        setLoading(false)
-      })
+      login(data.access_token)
+      queueLoginWelcome("returning")
+      navigate(returnTo, { replace: true })
+    } catch (loginError) {
+      console.error("Login error:", loginError)
+      setError(loginError.message)
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
-    <main className="auth-page">
-      <section className="auth-card">
-      <h1>Login</h1>
+    <AuthLayout>
+      <p className="auth-card-eyebrow">Welcome back</p>
+      <h1>Sign in to your account</h1>
 
-      <p className="auth-intro">Login to your account.</p>
+      <p className="auth-intro">Continue managing your saved properties and conversations.</p>
 
       {location.state?.sessionExpired && (
         <p className="auth-session-note" role="status">
@@ -145,8 +134,7 @@ function Login() {
         Need an account?{" "}
         <Link to="/register" state={{ returnTo }}>Register</Link>
       </p>
-      </section>
-    </main>
+    </AuthLayout>
   )
 }
 

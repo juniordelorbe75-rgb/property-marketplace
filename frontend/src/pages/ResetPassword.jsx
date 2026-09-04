@@ -6,6 +6,7 @@ import { apiFetch } from "../utils/apiFetch"
 import { getApiError } from "../utils/apiError"
 import { readApiResponse } from "../utils/apiResponse"
 import { queueLoginWelcome } from "../utils/loginWelcomeSession"
+import AuthLayout from "../components/AuthLayout"
 import "./auth.css"
 
 function ResetPassword() {
@@ -20,6 +21,7 @@ function ResetPassword() {
 
   async function handleSubmit(event) {
     event.preventDefault()
+    if (loading) return
     if (password !== confirmation) {
       setError("Passwords do not match")
       return
@@ -46,17 +48,17 @@ function ResetPassword() {
 
   if (!token) {
     return (
-      <main className="auth-page"><section className="auth-card">
+      <AuthLayout eyebrow="Account recovery">
         <h1>Reset link missing</h1>
         <p className="auth-error" role="alert">This password reset link is incomplete.</p>
         <p className="auth-switch"><Link to="/forgot-password">Request a new link</Link></p>
-      </section></main>
+      </AuthLayout>
     )
   }
 
   return (
-    <main className="auth-page">
-      <section className="auth-card">
+    <AuthLayout eyebrow="Account recovery">
+        <p className="auth-card-eyebrow">Secure recovery</p>
         <h1>Create a new password</h1>
         <p className="auth-intro">Use at least 8 characters and choose a password you don’t use elsewhere.</p>
         <form className="auth-form" onSubmit={handleSubmit}>
@@ -66,8 +68,7 @@ function ResetPassword() {
           <button className="auth-submit" type="submit" disabled={loading || password.length < 8 || password !== confirmation}>{loading ? "Resetting..." : "Reset password"}</button>
         </form>
         <p className="auth-switch"><Link to="/login">Back to login</Link></p>
-      </section>
-    </main>
+    </AuthLayout>
   )
 }
 

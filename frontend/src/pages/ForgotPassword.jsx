@@ -3,6 +3,7 @@ import { Link } from "react-router-dom"
 import { apiFetch } from "../utils/apiFetch"
 import { getApiError } from "../utils/apiError"
 import { readApiResponse } from "../utils/apiResponse"
+import AuthLayout from "../components/AuthLayout"
 import "./auth.css"
 
 function ForgotPassword() {
@@ -13,6 +14,7 @@ function ForgotPassword() {
 
   async function handleSubmit(event) {
     event.preventDefault()
+    if (loading) return
     setError("")
     setLoading(true)
     try {
@@ -32,8 +34,8 @@ function ForgotPassword() {
   }
 
   return (
-    <main className="auth-page">
-      <section className="auth-card">
+    <AuthLayout eyebrow="Account recovery">
+        <p className="auth-card-eyebrow">Secure recovery</p>
         <h1>Forgot password?</h1>
         {sent ? (
           <>
@@ -54,8 +56,7 @@ function ForgotPassword() {
           </>
         )}
         <p className="auth-switch"><Link to="/login">Back to login</Link></p>
-      </section>
-    </main>
+    </AuthLayout>
   )
 }
 

@@ -7,6 +7,7 @@ import { apiFetch } from "../utils/apiFetch"
 import { getSafeReturnPath } from "../utils/authRedirect"
 import { queueLoginWelcome } from "../utils/loginWelcomeSession"
 import PasswordInput from "../components/PasswordInput"
+import AuthLayout from "../components/AuthLayout"
 import "./auth.css"
 
 function Register() {
@@ -29,6 +30,8 @@ function Register() {
 
   async function handleRegister(event) {
     event.preventDefault()
+
+    if (loading) return
 
     setError("")
 
@@ -106,11 +109,11 @@ function Register() {
   }
 
   return (
-    <main className="auth-page">
-      <section className="auth-card auth-card-wide">
-      <h1>Create Account</h1>
+    <AuthLayout wide>
+      <p className="auth-card-eyebrow">Join the marketplace</p>
+      <h1>Create your account</h1>
 
-      <p className="auth-intro">Register for your property marketplace account.</p>
+      <p className="auth-intro">Save properties, contact owners, and manage listings securely.</p>
 
       <form className="auth-form" onSubmit={handleRegister}>
 
@@ -215,8 +218,7 @@ function Register() {
           Login
         </Link>
       </p>
-      </section>
-    </main>
+    </AuthLayout>
   )
 }
 
