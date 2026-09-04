@@ -23,6 +23,7 @@ from PIL import Image
 
 from backend.db import get_db
 from backend.auth.login_throttle import reset_login_throttle
+from backend.auth.request_throttle import reset_request_throttles
 from backend.auth.social import create_login_code
 from backend.db_models.base import Base
 from backend.db_models.property import PropertyDB
@@ -67,7 +68,10 @@ async def request(
     ):
         json_body = {**json_body, "currency": "USD"}
     body = b"" if json_body is None else json.dumps(json_body).encode()
-    headers = [(b"content-type", b"application/json")]
+    headers = [
+        (b"host", b"testserver"),
+        (b"content-type", b"application/json"),
+    ]
 
     if token:
         headers.append((b"authorization", f"Bearer {token}".encode()))
@@ -148,6 +152,7 @@ async def request(
 class ApiFlowTests(unittest.TestCase):
     def setUp(self):
         reset_login_throttle()
+        reset_request_throttles()
         self.upload_directory = tempfile.TemporaryDirectory()
         self.upload_directory_patch = patch(
             "backend.routes.uploads.UPLOAD_DIRECTORY",
@@ -176,6 +181,7 @@ class ApiFlowTests(unittest.TestCase):
 
     def tearDown(self):
         reset_login_throttle()
+        reset_request_throttles()
         app.dependency_overrides.clear()
         self.session.close()
         self.engine.dispose()
@@ -210,6 +216,22 @@ class ApiFlowTests(unittest.TestCase):
         return asyncio.run(
             request(method, path, json_body, token, include_headers=True)
         )
+
+    def test_oversized_write_is_rejected_before_route_validation(self):
+        status, body, headers = self.call_with_headers(
+            "POST",
+            "/users/",
+            {
+                "name": "Oversized Request",
+                "email": "oversized@example.com",
+                "password": "secure-password",
+                "bio": "x" * (1024 * 1024),
+            },
+        )
+
+        self.assertEqual(status, 413)
+        self.assertIn("1 MB", body["detail"])
+        self.assertEqual(headers["cache-control"], "no-store")
 
     def register_and_login(self, name, email):
         register_status, user = self.call(
@@ -350,7 +372,7 @@ class ApiFlowTests(unittest.TestCase):
         self.assertEqual(blocked_status, 429)
         self.assertEqual(
             blocked_body["detail"],
-            "Too many login attempts. Please try again later.",
+            "Too many login attempts. Try again in about 15 minutes.",
         )
         self.assertGreater(int(blocked_headers["retry-after"]), 0)
         self.assertEqual(blocked_headers["cache-control"], "no-store")
@@ -374,7 +396,7 @@ class ApiFlowTests(unittest.TestCase):
                     "password": "incorrect-password",
                 },
             )
-            self.assertEqual(failed_status, 401)
+        self.assertEqual(failed_status, 401)
 
         success_status, _success = self.call(
             "POST",
@@ -395,6 +417,99 @@ class ApiFlowTests(unittest.TestCase):
 
         self.assertEqual(success_status, 200)
         self.assertEqual(after_success_status, 401)
+
+    def test_password_reset_is_private_single_use_and_revokes_old_sessions(self):
+        user, old_access_token = self.register_and_login(
+            "Recovery User", "recovery@example.com"
+        )
+
+        with patch(
+            "backend.services.password_reset_service.send_password_reset_email"
+        ) as send_email:
+            request_status, request_body = self.call(
+                "POST",
+                "/users/password-reset/request",
+                {"email": " RECOVERY@example.com "},
+            )
+
+        self.assertEqual(request_status, 200)
+        self.assertNotIn("recovery@example.com", request_body["message"])
+        send_email.assert_called_once()
+        reset_token = send_email.call_args.args[1]
+
+        reset_status, reset_body = self.call(
+            "POST",
+            "/users/password-reset/confirm",
+            {"token": reset_token, "new_password": "new-secure-password"},
+        )
+        self.assertEqual(reset_status, 200)
+        self.assertIn("access_token", reset_body)
+
+        old_session_status, _ = self.call("GET", "/users/me", token=old_access_token)
+        self.assertEqual(old_session_status, 401)
+
+        old_login_status, _ = self.call(
+            "POST", "/users/login",
+            {"email": user["email"], "password": "secure-password"},
+        )
+        new_login_status, _ = self.call(
+            "POST", "/users/login",
+            {"email": user["email"], "password": "new-secure-password"},
+        )
+        self.assertEqual(old_login_status, 401)
+        self.assertEqual(new_login_status, 200)
+
+        reused_status, reused_body = self.call(
+            "POST",
+            "/users/password-reset/confirm",
+            {"token": reset_token, "new_password": "another-secure-password"},
+        )
+        self.assertEqual(reused_status, 400)
+        self.assertIn("invalid or expired", reused_body["detail"])
+
+    def test_password_reset_request_does_not_reveal_unknown_accounts(self):
+        with patch(
+            "backend.services.password_reset_service.send_password_reset_email"
+        ) as send_email:
+            status, body = self.call(
+                "POST",
+                "/users/password-reset/request",
+                {"email": "missing@example.com"},
+            )
+
+        self.assertEqual(status, 200)
+        self.assertEqual(
+            body["message"],
+            "If an account exists for that email, password reset instructions have been sent.",
+        )
+        send_email.assert_not_called()
+
+    def test_email_verification_link_is_single_use(self):
+        with patch("backend.services.email_verification_service._send") as send_email:
+            register_status, user = self.call(
+                "POST", "/users/",
+                {"name": "Verify User", "email": "verify@example.com", "password": "secure-password"},
+            )
+        self.assertEqual(register_status, 200)
+        self.assertFalse(user["email_verified"])
+        verification_token = send_email.call_args.args[1]
+
+        verify_status, _ = self.call(
+            "POST", "/users/email-verification/confirm", {"token": verification_token}
+        )
+        self.assertEqual(verify_status, 200)
+
+        _, login = self.call(
+            "POST", "/users/login", {"email": "verify@example.com", "password": "secure-password"}
+        )
+        me_status, verified_user = self.call("GET", "/users/me", token=login["access_token"])
+        self.assertEqual(me_status, 200)
+        self.assertTrue(verified_user["email_verified"])
+
+        reused_status, _ = self.call(
+            "POST", "/users/email-verification/confirm", {"token": verification_token}
+        )
+        self.assertEqual(reused_status, 400)
 
     def test_readiness_reports_database_success_and_failure(self):
         ready_status, ready = self.call("GET", "/ready")

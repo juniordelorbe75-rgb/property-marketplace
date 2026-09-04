@@ -331,6 +331,29 @@ class UserLogin(BaseModel):
         return normalize_email(value)
 
 
+class PasswordResetRequest(BaseModel):
+    email: str = Field(min_length=3, max_length=255)
+
+    @field_validator("email")
+    @classmethod
+    def validate_email(cls, value: str) -> str:
+        return normalize_email(value)
+
+
+class PasswordResetConfirmation(BaseModel):
+    token: str = Field(min_length=32, max_length=256)
+    new_password: str = Field(min_length=8, max_length=128)
+
+    @field_validator("new_password")
+    @classmethod
+    def validate_password(cls, value: str) -> str:
+        return validate_new_password(value)
+
+
+class EmailVerificationConfirmation(BaseModel):
+    token: str = Field(min_length=32, max_length=256)
+
+
 class UserResponse(BaseModel):
     id: int
     name: str
@@ -344,6 +367,7 @@ class UserResponse(BaseModel):
     public_name_mode: Literal["first_name", "full_name"] = "first_name"
     public_bio_visible: bool = False
     has_password: bool = True
+    email_verified: bool = False
 
     model_config = {
         "from_attributes": True

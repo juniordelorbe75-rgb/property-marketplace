@@ -45,6 +45,8 @@ function Account() {
   const [passwordError, setPasswordError] = useState("")
 
   const [deleteError, setDeleteError] = useState("")
+  const [verificationMessage, setVerificationMessage] = useState("")
+  const [sendingVerification, setSendingVerification] = useState(false)
 
   const displayName = [firstName, middleName, lastName].filter(Boolean).join(" ") || user?.name || "Not provided"
   const displayBirthDate = dateOfBirth
@@ -126,6 +128,24 @@ function Account() {
       controller.abort()
     }
   }, [fetchAccount, loadAttempt])
+
+  async function resendVerification() {
+    setSendingVerification(true)
+    setVerificationMessage("")
+    try {
+      const response = await apiFetch("/users/email-verification/request", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` },
+      })
+      const data = await readApiResponse(response)
+      if (!response.ok) throw new Error(getApiError(data, "Could not send verification email"))
+      setVerificationMessage("Verification link sent. Check your inbox and spam folder.")
+    } catch (error) {
+      setVerificationMessage(error.message)
+    } finally {
+      setSendingVerification(false)
+    }
+  }
 
   async function handleProfileSubmit(event) {
     event.preventDefault()
@@ -356,6 +376,17 @@ function Account() {
         </div>
 
         {profileMessage && <p className="success-message">{profileMessage}</p>}
+
+        {!user?.email_verified && <section className="email-verification-notice" aria-labelledby="verify-email-heading">
+          <div>
+            <h2 id="verify-email-heading">Verify your email</h2>
+            <p>Verify {user?.email} so people can trust that your account contact is yours.</p>
+            {verificationMessage && <p role="status">{verificationMessage}</p>}
+          </div>
+          <button type="button" className="primary-button" onClick={resendVerification} disabled={sendingVerification}>
+            {sendingVerification ? "Sending…" : "Resend verification"}
+          </button>
+        </section>}
 
         {/* PROFILE */}
 

@@ -7,6 +7,12 @@ from backend.auth.security import hash_password, verify_password
 from backend.repositories import property_repository, user_repository
 from backend.auth.token import create_access_token
 from backend.db_models.user import UserDB
+from backend.services.email_verification_service import issue_email_verification
+
+
+# Unknown accounts still perform one normal bcrypt verification so login timing
+# does not disclose whether an email address is registered.
+DUMMY_PASSWORD_HASH = hash_password("timing-only-password-that-is-never-accepted")
 
 
 def get_all_users(db):
@@ -59,6 +65,7 @@ def login_user(
     )
 
     if user is None:
+        verify_password(password, DUMMY_PASSWORD_HASH)
         raise HTTPException(
             status_code=401,
             detail="Invalid email or password"
@@ -116,10 +123,12 @@ def create_user(
     )
 
     try:
-        return user_repository.create_user(
+        created_user = user_repository.create_user(
             db,
             new_user
         )
+        issue_email_verification(db, created_user)
+        return created_user
     except IntegrityError:
         raise HTTPException(
             status_code=400,
@@ -168,7 +177,8 @@ def update_current_user(
             detail="Email cannot be empty"
         )
 
-    if email != user.email:
+    email_changed = email != user.email
+    if email_changed:
         if not current_password:
             raise HTTPException(
                 status_code=400,
@@ -202,6 +212,8 @@ def update_current_user(
         user.public_name_mode = public_name_mode
         user.public_bio_visible = public_bio_visible
     user.email = email
+    if email_changed:
+        user.email_verified = False
 
     try:
         return user_repository.update_user(

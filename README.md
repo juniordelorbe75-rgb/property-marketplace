@@ -24,6 +24,12 @@ A full-stack marketplace for discovering, listing, saving, and discussing proper
 - Secure first-password creation for social accounts, with normal password protection and token revocation afterward
 - Optional Google, Facebook, and Yahoo sign-in with verified-email account linking and one-time callback codes
 - Readiness checks, image maintenance, backup/restore scripts, and sanitized errors
+- Per-address throttling for login attempts, account creation, and authenticated image uploads
+- Early request-body limits that reject oversized writes before validation or image decoding
+- Login responses and password-check work are normalized to reduce account enumeration
+- Whole-app render recovery and human-readable rate-limit wait times
+- Secure password recovery with expiring single-use links and session revocation
+- Email verification with 24-hour single-use links and protected resend controls
 
 Detailed architecture and reliability notes are in [PROJECT_GUIDE.md](PROJECT_GUIDE.md).
 
@@ -67,6 +73,15 @@ Set `FRONTEND_URL` to the browser-facing marketplace origin and
 HTTPS. Request only the profile and email permissions shown on the provider's
 consent screen. Existing accounts are linked only when the provider returns the
 same verified email address; otherwise a new marketplace account is created.
+
+For production, set `TRUSTED_HOSTS` to the API hostnames that may reach the
+application (without schemes or paths) and set `FORCE_HTTPS=true`. HTTPS
+redirection and a one-year HSTS policy remain disabled for local HTTP development.
+
+Password reset links expire after 30 minutes and can be used only once. Configure
+the `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_FROM`, and
+`SMTP_USE_TLS` settings to deliver them by email. If `SMTP_HOST` is empty during
+local development, the backend prints the reset link in its terminal instead.
 
 To grant moderation access, copy the stable Account ID shown on the Account page into the comma-separated `ADMIN_USER_IDS` setting, then restart the backend. Leave it empty when no account should have administrator access; registration cannot choose or reuse an Account ID.
 

@@ -11,6 +11,8 @@ from backend.db_models.inquiry import InquiryDB, InquiryMessageDB
 from backend.db_models.favorite import FavoriteDB
 from backend.db_models.report import ListingReportDB
 from backend.db_models.social_identity import SocialIdentityDB
+from backend.db_models.password_reset import PasswordResetTokenDB
+from backend.db_models.email_verification import EmailVerificationTokenDB
 
 load_dotenv()
 
@@ -50,6 +52,10 @@ def ensure_schema_safety():
         if "has_password" not in user_columns:
             connection.execute(text(
                 "ALTER TABLE users ADD COLUMN has_password BOOLEAN NOT NULL DEFAULT TRUE"
+            ))
+        if "email_verified" not in user_columns:
+            connection.execute(text(
+                "ALTER TABLE users ADD COLUMN email_verified BOOLEAN NOT NULL DEFAULT FALSE"
             ))
 
         user_profile_columns = (

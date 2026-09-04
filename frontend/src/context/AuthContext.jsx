@@ -8,14 +8,17 @@ export function AuthProvider({ children }) {
   const [token, setToken] = useState(
     localStorage.getItem("access_token")
   )
+  const [sessionExpired, setSessionExpired] = useState(false)
   const login = useCallback((accessToken) => {
     localStorage.setItem("access_token", accessToken)
     setToken(accessToken)
+    setSessionExpired(false)
   }, [])
 
   const logout = useCallback(() => {
     localStorage.removeItem("access_token")
     setToken(null)
+    setSessionExpired(false)
   }, [])
 
   useEffect(() => {
@@ -25,6 +28,7 @@ export function AuthProvider({ children }) {
       if (currentToken && currentToken === event.detail?.token) {
         localStorage.removeItem("access_token")
         setToken(null)
+        setSessionExpired(true)
       }
     }
 
@@ -47,6 +51,7 @@ export function AuthProvider({ children }) {
     <AuthContext.Provider
       value={{
         token,
+        sessionExpired,
         login,
         logout,
       }}

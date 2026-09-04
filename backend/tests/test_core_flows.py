@@ -153,6 +153,23 @@ class CoreFlowTests(unittest.TestCase):
 
         self.assertEqual(raised.exception.status_code, 401)
 
+    def test_unknown_login_performs_dummy_password_verification(self):
+        with patch(
+            "backend.services.user_service.verify_password",
+            return_value=False,
+        ) as password_check:
+            with self.assertRaises(HTTPException) as raised:
+                login_user(
+                    self.session,
+                    "missing@example.com",
+                    "attempted-password",
+                )
+
+        self.assertEqual(raised.exception.status_code, 401)
+        self.assertEqual(raised.exception.detail, "Invalid email or password")
+        password_check.assert_called_once()
+        self.assertEqual(password_check.call_args.args[0], "attempted-password")
+
     def test_duplicate_registration_is_rejected_cleanly(self):
         self.create_test_user()
 

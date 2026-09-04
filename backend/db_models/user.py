@@ -30,6 +30,7 @@ class UserDB(Base):
     )
 
     has_password: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="true")
+    email_verified: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
 
     role: Mapped[str] = mapped_column(
         String(50),

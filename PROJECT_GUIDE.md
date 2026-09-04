@@ -689,3 +689,35 @@ read-only repository permissions, dependency caches keyed by committed dependenc
 manifests, explicit timeouts, and concurrency cancellation. On Windows,
 `scripts/check.ps1` runs the same local verification sequence with fail-fast exit
 handling.
+
+## Post-MVP data expansion roadmap
+
+After the core marketplace is finished, stable, and ready for deployment, expand
+the inventory beyond owner-submitted listings through two carefully governed
+data programs:
+
+1. Research authoritative Dominican Republic public-record sources for parcel,
+   transaction, tax, cadastral, geographic, and historical-sale information.
+   Confirm that each source permits collection, storage, republication, and
+   commercial use before building an importer. Preserve provenance, retrieval
+   dates, correction procedures, and source-specific licensing metadata.
+2. Pursue direct listing-feed agreements with brokerages, developers, agent
+   associations, and listing platforms. Define a versioned feed contract for
+   listing identity, status, price, location precision, photos, attribution,
+   update frequency, takedowns, and duplicate resolution.
+3. Build ingestion as a separate, retry-safe pipeline with staging, validation,
+   deduplication, moderation, audit logs, and rollback. Imported records must
+   never silently overwrite owner-managed listings.
+4. Explore an automated valuation feature only after sufficient licensed,
+   representative historical data exists. Display confidence ranges, coverage
+   limits, update dates, and a clear explanation that an estimate is not an
+   appraisal. Measure accuracy across barrios, rural areas, beach communities,
+   and different property types to avoid serving only luxury or high-data areas.
+5. Design the source and geographic models for later international expansion,
+   while keeping the first implementation grounded in Dominican Republic data,
+   terminology, currencies, privacy expectations, and property practices.
+
+This roadmap is inspired by the public-record plus direct-syndication growth
+model used by large real-estate portals, but implementation depends on verified
+local rights and partnerships rather than scraping first and resolving rights
+later.

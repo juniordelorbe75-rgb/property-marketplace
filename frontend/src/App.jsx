@@ -19,6 +19,9 @@ import MySafetyReports from "./pages/MySafetyReports"
 import OAuthCallback from "./pages/OAuthCallback"
 import LoginWelcome from "./components/LoginWelcome"
 import PublicProfile from "./pages/PublicProfile"
+import ForgotPassword from "./pages/ForgotPassword"
+import ResetPassword from "./pages/ResetPassword"
+import VerifyEmail from "./pages/VerifyEmail"
 
 function protectedPage(page) {
   return (
@@ -66,6 +69,10 @@ function App() {
             path="/login"
             element={<Login />}
           />
+
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/verify-email" element={<VerifyEmail />} />
 
           <Route
             path="/auth/callback"

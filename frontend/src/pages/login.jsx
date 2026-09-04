@@ -6,6 +6,7 @@ import { readApiResponse } from "../utils/apiResponse"
 import { apiFetch } from "../utils/apiFetch"
 import { getSafeReturnPath } from "../utils/authRedirect"
 import { queueLoginWelcome } from "../utils/loginWelcomeSession"
+import PasswordInput from "../components/PasswordInput"
 import "./auth.css"
 
 function Login() {
@@ -81,6 +82,12 @@ function Login() {
 
       <p className="auth-intro">Login to your account.</p>
 
+      {location.state?.sessionExpired && (
+        <p className="auth-session-note" role="status">
+          Your session expired or was revoked. Log in again to continue safely.
+        </p>
+      )}
+
       {returnTo !== "/" && <p className="auth-return-note">After login, you will return to where you left off.</p>}
 
       <form className="auth-form" onSubmit={handleLogin}>
@@ -90,23 +97,22 @@ function Login() {
           <input
             id="login-email"
             type="email"
+            autoComplete="email"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
             required
           />
         </div>
 
-        <div className="auth-field">
-          <label htmlFor="login-password">Password</label>
+        <PasswordInput
+          id="login-password"
+          label="Password"
+          value={password}
+          onChange={(event) => setPassword(event.target.value)}
+          autoComplete="current-password"
+        />
 
-          <input
-            id="login-password"
-            type="password"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            required
-          />
-        </div>
+        <div className="auth-forgot-link"><Link to="/forgot-password">Forgot your password?</Link></div>
 
         {error && <p className="auth-error" role="alert">{error}</p>}
 

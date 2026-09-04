@@ -1,0 +1,9 @@
+.app-error-page { min-height: 100vh; display: grid; place-items: center; padding: 24px; background: #f5f8f6; }
+.app-error-card { width: min(100%, 560px); padding: 38px; border: 1px solid #dce5df; border-radius: 18px; background: white; box-shadow: 0 18px 44px rgba(31, 61, 48, 0.1); text-align: center; }
+.app-error-card > span { display: grid; width: 52px; height: 52px; margin: 0 auto 18px; place-items: center; border-radius: 14px; background: #2f6f57; color: white; font-size: 1.7rem; }
+.app-error-card h1 { margin: 0 0 12px; color: #173e30; }
+.app-error-card p { margin: 0 auto 24px; color: #526159; line-height: 1.6; }
+.app-error-card div { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
+.app-error-card button, .app-error-card a { min-height: 44px; padding: 11px 16px; border: 1px solid #2f6f57; border-radius: 9px; font: inherit; font-weight: 750; cursor: pointer; text-decoration: none; }
+.app-error-card button { background: #2f6f57; color: white; }
+.app-error-card a { background: white; color: #2f6f57; }

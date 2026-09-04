@@ -6,6 +6,8 @@ from uuid import uuid4
 from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.httpsredirect import HTTPSRedirectMiddleware
+from starlette.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
@@ -13,7 +15,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from backend.db import get_db
-from backend.config import parse_admin_user_ids, parse_cors_origins
+from backend.config import parse_admin_user_ids, parse_boolean_setting, parse_cors_origins, parse_trusted_hosts
 from backend.routes.properties import router as property_router
 from backend.routes.users import router as user_router
 from backend.routes.favorites import router as favorite_router
@@ -21,6 +23,7 @@ from backend.routes.inquiries import router as inquiry_router
 from backend.routes.uploads import UPLOAD_DIRECTORY, router as upload_router
 from backend.routes.reports import router as report_router
 from backend.routes.auth import router as auth_router
+from backend.middleware.request_size import RequestBodyLimitMiddleware
 
 
 load_dotenv()
@@ -33,6 +36,10 @@ allowed_origins = parse_cors_origins(
     )
 )
 parse_admin_user_ids(os.getenv("ADMIN_USER_IDS"))
+trusted_hosts = parse_trusted_hosts(
+    os.getenv("TRUSTED_HOSTS", "127.0.0.1,localhost,testserver")
+)
+force_https = parse_boolean_setting("FORCE_HTTPS", os.getenv("FORCE_HTTPS"))
 
 app = FastAPI(
     title = "Property Marketplace API",
@@ -48,6 +55,10 @@ app.add_middleware(
     allow_headers=["*"],
     expose_headers=["X-Request-ID", "X-Total-Count"],
 )
+app.add_middleware(TrustedHostMiddleware, allowed_hosts=trusted_hosts)
+app.add_middleware(RequestBodyLimitMiddleware)
+if force_https:
+    app.add_middleware(HTTPSRedirectMiddleware)
 
 app.include_router(property_router)
 app.include_router(user_router)
@@ -81,6 +92,8 @@ async def add_request_tracing(request: Request, call_next):
         "camera=(), microphone=(), geolocation=(), payment=()"
     )
     response.headers["X-Permitted-Cross-Domain-Policies"] = "none"
+    if force_https:
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
 
     is_sensitive_response = (
         bool(request.headers.get("authorization"))

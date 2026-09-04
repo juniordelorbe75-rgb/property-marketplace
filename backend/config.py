@@ -56,3 +56,26 @@ def parse_admin_user_ids(value: str | None) -> set[int]:
             raise RuntimeError(f"Invalid ADMIN_USER_IDS entry: {cleaned}")
         user_ids.add(user_id)
     return user_ids
+
+
+def parse_boolean_setting(name: str, value: str | None, default: bool = False) -> bool:
+    if value is None or not value.strip():
+        return default
+    normalized = value.strip().lower()
+    if normalized in {"1", "true", "yes", "on"}:
+        return True
+    if normalized in {"0", "false", "no", "off"}:
+        return False
+    raise RuntimeError(f"{name} must be true or false")
+
+
+def parse_trusted_hosts(value: str) -> list[str]:
+    hosts = list(dict.fromkeys(host.strip().lower() for host in value.split(",") if host.strip()))
+    if not hosts:
+        raise RuntimeError("TRUSTED_HOSTS must contain at least one host")
+    for host in hosts:
+        if "://" in host or "/" in host or host == "*":
+            raise RuntimeError(f"Invalid trusted host: {host}")
+        if host.startswith(".") or host.endswith(".") or ".." in host:
+            raise RuntimeError(f"Invalid trusted host: {host}")
+    return hosts

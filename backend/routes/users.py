@@ -7,6 +7,7 @@ from backend.auth.login_throttle import (
     login_retry_after,
     record_login_failure,
 )
+from backend.auth.request_throttle import consume_rate_limit, retry_after_detail
 from backend.models import (
     UserCreate,
     UserLogin,
@@ -15,6 +16,9 @@ from backend.models import (
     PublicProfile,
     PasswordChange,
     AccountDeletionConfirmation,
+    PasswordResetRequest,
+    PasswordResetConfirmation,
+    EmailVerificationConfirmation,
 )
 from backend.services.user_service import (
     create_user,
@@ -25,6 +29,8 @@ from backend.services.user_service import (
     change_password,
     delete_current_user,
 )
+from backend.services.password_reset_service import request_password_reset, reset_password
+from backend.services.email_verification_service import issue_email_verification, verify_email
 
 from backend.db import get_db
 
@@ -41,8 +47,21 @@ router = APIRouter(
 )
 def register_user(
     user: UserCreate,
+    request: Request,
     db: Session = Depends(get_db)
 ):
+    client_address = request.client.host if request.client else "unknown"
+    retry_after = consume_rate_limit(
+        "registration", client_address, limit=5, window_seconds=15 * 60
+    )
+    if retry_after is not None:
+        raise HTTPException(
+            status_code=429,
+            detail=retry_after_detail(
+                "Too many accounts were created from this address.", retry_after
+            ),
+            headers={"Retry-After": str(retry_after)},
+        )
     return create_user(
         db,
         user
@@ -60,7 +79,7 @@ def login(
     if retry_after is not None:
         raise HTTPException(
             status_code=429,
-            detail="Too many login attempts. Please try again later.",
+            detail=retry_after_detail("Too many login attempts.", retry_after),
             headers={"Retry-After": str(retry_after)},
         )
 
@@ -77,6 +96,62 @@ def login(
 
     clear_login_failures(client_address, user_json.email)
     return result
+
+
+@router.post("/password-reset/request")
+def request_password_reset_link(
+    payload: PasswordResetRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    client_address = request.client.host if request.client else "unknown"
+    retry_after = consume_rate_limit(
+        "password-reset-request", client_address, limit=5, window_seconds=15 * 60
+    )
+    if retry_after is not None:
+        raise HTTPException(
+            status_code=429,
+            detail=retry_after_detail("Too many password reset requests.", retry_after),
+            headers={"Retry-After": str(retry_after)},
+        )
+    return request_password_reset(db, payload.email)
+
+
+@router.post("/password-reset/confirm")
+def confirm_password_reset(
+    payload: PasswordResetConfirmation,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    client_address = request.client.host if request.client else "unknown"
+    retry_after = consume_rate_limit(
+        "password-reset-confirm", client_address, limit=10, window_seconds=15 * 60
+    )
+    if retry_after is not None:
+        raise HTTPException(
+            status_code=429,
+            detail=retry_after_detail("Too many password reset attempts.", retry_after),
+            headers={"Retry-After": str(retry_after)},
+        )
+    return reset_password(db, payload.token, payload.new_password)
+
+
+@router.post("/email-verification/request")
+def resend_email_verification(
+    request: Request,
+    current_user_id: int = Depends(get_current_user_id),
+    db: Session = Depends(get_db),
+):
+    client_address = request.client.host if request.client else "unknown"
+    retry_after = consume_rate_limit("email-verification", client_address, limit=3, window_seconds=15 * 60)
+    if retry_after is not None:
+        raise HTTPException(429, retry_after_detail("Too many verification requests.", retry_after), headers={"Retry-After": str(retry_after)})
+    return issue_email_verification(db, get_user_by_id(db, current_user_id))
+
+
+@router.post("/email-verification/confirm")
+def confirm_email_verification(payload: EmailVerificationConfirmation, db: Session = Depends(get_db)):
+    return verify_email(db, payload.token)
 
 
 @router.get(

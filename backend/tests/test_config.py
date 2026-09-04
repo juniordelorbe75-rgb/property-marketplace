@@ -1,7 +1,13 @@
 import unittest
 import warnings
 
-from backend.config import parse_admin_user_ids, parse_cors_origins, validate_secret_key
+from backend.config import (
+    parse_admin_user_ids,
+    parse_boolean_setting,
+    parse_cors_origins,
+    parse_trusted_hosts,
+    validate_secret_key,
+)
 
 
 class ConfigurationTests(unittest.TestCase):
@@ -49,6 +55,25 @@ class ConfigurationTests(unittest.TestCase):
             with self.subTest(value=value):
                 with self.assertRaises(RuntimeError):
                     parse_admin_user_ids(value)
+
+    def test_boolean_settings_are_explicit(self):
+        for value in ("true", "1", "YES", "on"):
+            self.assertTrue(parse_boolean_setting("FORCE_HTTPS", value))
+        for value in ("false", "0", "NO", "off"):
+            self.assertFalse(parse_boolean_setting("FORCE_HTTPS", value))
+        self.assertFalse(parse_boolean_setting("FORCE_HTTPS", None))
+        with self.assertRaises(RuntimeError):
+            parse_boolean_setting("FORCE_HTTPS", "sometimes")
+
+    def test_trusted_hosts_are_normalized_and_reject_unsafe_values(self):
+        self.assertEqual(
+            parse_trusted_hosts("Example.COM, api.example.com, example.com"),
+            ["example.com", "api.example.com"],
+        )
+        for value in ("", "*", "https://example.com", "example.com/path", ".example.com"):
+            with self.subTest(value=value):
+                with self.assertRaises(RuntimeError):
+                    parse_trusted_hosts(value)
 
 
 if __name__ == "__main__":

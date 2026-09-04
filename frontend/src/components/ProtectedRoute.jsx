@@ -4,11 +4,11 @@ import { getReturnPath } from "../utils/authRedirect"
 
 
 function ProtectedRoute({ children }) {
-  const { token } = useAuth()
+  const { token, sessionExpired } = useAuth()
   const location = useLocation()
 
   if (!token) {
-    return <Navigate to="/login" replace state={{ returnTo: getReturnPath(location) }} />
+    return <Navigate to="/login" replace state={{ returnTo: getReturnPath(location), sessionExpired }} />
   }
 
   return children

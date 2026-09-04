@@ -20,6 +20,7 @@
 .auth-card h1 { margin: 0 0 10px; color: #0f172a; font-size: 2rem; }
 .auth-intro { margin: 0 0 24px; color: #64748b; line-height: 1.55; }
 .auth-return-note { margin: -12px 0 20px; color: #0f766e; font-size: 0.92rem; }
+.auth-session-note { margin: -10px 0 20px; padding: 11px 13px; border: 1px solid #f4cf8d; border-radius: 8px; background: #fffbeb; color: #92400e; font-size: 0.92rem; line-height: 1.45; }
 .auth-form { display: grid; gap: 18px; }
 .auth-field { display: grid; gap: 7px; }
 .auth-field label { color: #334155; font-weight: 700; }
@@ -39,7 +40,16 @@
 .auth-field small { color: #64748b; line-height: 1.4; }
 .auth-field [aria-invalid="true"] { border-color: #dc2626; }
 .auth-field [aria-invalid="true"] + small { color: #b91c1c; }
+.password-input-wrap { position: relative; }
+.password-input-wrap input { padding-right: 70px; }
+.password-visibility-button { position: absolute; top: 50%; right: 7px; min-width: 52px; min-height: 34px; padding: 5px 8px; transform: translateY(-50%); border: 0; border-radius: 6px; background: #edf2f7; color: #334155; font: inherit; font-size: 0.82rem; font-weight: 750; cursor: pointer; }
+.password-visibility-button:hover { background: #dbe5ef; }
+.password-visibility-button:focus-visible { outline: 3px solid rgba(37, 99, 235, 0.2); outline-offset: 1px; }
+.password-help { display: block; margin-top: -11px; color: #64748b; line-height: 1.4; }
 .auth-error { margin: 0; padding: 11px 13px; border-radius: 8px; background: #fef2f2; color: #b91c1c; }
+.auth-success { margin: 0 0 18px; padding: 11px 13px; border: 1px solid #a7f3d0; border-radius: 8px; background: #ecfdf5; color: #065f46; line-height: 1.45; }
+.auth-forgot-link { margin-top: -8px; text-align: right; }
+.auth-forgot-link a { color: #1d4ed8; font-size: 0.92rem; font-weight: 700; }
 .auth-submit { min-height: 46px; border: 0; border-radius: 8px; background: #2563eb; color: white; cursor: pointer; font: inherit; font-weight: 800; }
 .auth-submit:hover:not(:disabled) { background: #1d4ed8; }
 .auth-submit:disabled { cursor: not-allowed; opacity: 0.55; }

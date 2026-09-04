@@ -6,6 +6,7 @@ import { readApiResponse } from "../utils/apiResponse"
 import { apiFetch } from "../utils/apiFetch"
 import { getSafeReturnPath } from "../utils/authRedirect"
 import { queueLoginWelcome } from "../utils/loginWelcomeSession"
+import PasswordInput from "../components/PasswordInput"
 import "./auth.css"
 
 function Register() {
@@ -156,6 +157,7 @@ function Register() {
           <input
             id="register-email"
             type="email"
+            autoComplete="email"
             value={email}
             onChange={(event) =>
               setEmail(event.target.value)
@@ -164,36 +166,28 @@ function Register() {
           />
         </div>
 
-        <div className="auth-field">
-          <label htmlFor="register-password">Password</label>
+        <PasswordInput
+          id="register-password"
+          label="Password"
+          value={password}
+          onChange={(event) => setPassword(event.target.value)}
+          autoComplete="new-password"
+          describedBy="new-password-help"
+          minLength={8}
+        />
+        <small id="new-password-help" className="password-help">Use at least 8 characters. A password manager can create and save a unique password for you.</small>
 
-          <input
-            id="register-password"
-            type="password"
-            value={password}
-            onChange={(event) =>
-              setPassword(event.target.value)
-            }
-            required
-          />
-        </div>
-
-        <div className="auth-field">
-          <label htmlFor="register-confirm-password">Confirm password</label>
-
-          <input
+        <div>
+          <PasswordInput
             id="register-confirm-password"
-            type="password"
+            label="Confirm password"
             value={confirmPassword}
             onChange={(event) => setConfirmPassword(event.target.value)}
             autoComplete="new-password"
             minLength={8}
-            maxLength={128}
-            aria-invalid={Boolean(confirmPassword) && password !== confirmPassword}
-            aria-describedby="confirm-password-help"
-            required
+            invalid={Boolean(confirmPassword) && password !== confirmPassword}
+            describedBy="confirm-password-help"
           />
-
           <small id="confirm-password-help">
             {confirmPassword && password !== confirmPassword
               ? "Passwords do not match."

@@ -145,6 +145,11 @@
   color: #b91c1c;
 }
 
+.email-verification-notice { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-bottom: 24px; padding: 20px; border: 1px solid #f4cf8d; border-radius: 12px; background: #fffbeb; color: #78350f; }
+.email-verification-notice h2 { margin: 0 0 6px; font-size: 1.1rem; }
+.email-verification-notice p { margin: 0; line-height: 1.45; }
+.email-verification-notice p + p { margin-top: 8px; font-weight: 700; }
+
 .profile-bio-information {
   grid-column: 1 / -1;
 }

@@ -6,10 +6,11 @@ from pathlib import Path
 import tempfile
 from uuid import uuid4
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from PIL import Image, UnidentifiedImageError
 
 from backend.auth.dependencies import get_current_user_id
+from backend.auth.request_throttle import consume_rate_limit, retry_after_detail
 from backend.db import get_db
 from backend.models import PropertyImageUpload, PropertyImageUploadResponse
 from backend.repositories import property_repository
@@ -32,8 +33,21 @@ Image.MAX_IMAGE_PIXELS = MAX_IMAGE_PIXELS
 @router.post("/property-images", response_model=PropertyImageUploadResponse)
 def upload_property_image(
     upload: PropertyImageUpload,
+    request: Request,
     current_user_id: int = Depends(get_current_user_id),
 ):
+    client_address = request.client.host if request.client else "unknown"
+    retry_after = consume_rate_limit(
+        "property-image-upload", client_address, limit=30, window_seconds=15 * 60
+    )
+    if retry_after is not None:
+        raise HTTPException(
+            status_code=429,
+            detail=retry_after_detail(
+                "Too many images were uploaded from this address.", retry_after
+            ),
+            headers={"Retry-After": str(retry_after)},
+        )
     try:
         image_data = b64decode(upload.data, validate=True)
     except (Base64Error, ValueError) as error:

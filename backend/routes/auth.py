@@ -69,9 +69,11 @@ def callback(request: Request, provider: str, state: str = "", code: str = "", e
     else:
         user = db.scalar(select(UserDB).where(UserDB.email == email))
         if user is None:
-            user = UserDB(name=name, email=email, password=hash_password(secrets.token_urlsafe(48)), has_password=False, role="buyer")
+            user = UserDB(name=name, email=email, password=hash_password(secrets.token_urlsafe(48)), has_password=False, email_verified=True, role="buyer")
             db.add(user)
             db.flush()
+        else:
+            user.email_verified = True
         db.add(SocialIdentityDB(user_id=user.id, provider=provider, provider_user_id=subject))
         try:
             commit_or_rollback(db)
