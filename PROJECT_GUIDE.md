@@ -628,6 +628,19 @@ Authenticated verification resends are likewise limited per client and account,
 and invalid verification confirmations have a separate client-wide ceiling.
 These layers reduce inbox flooding and distributed request abuse without changing
 the generic response used for unknown password-reset accounts.
+
+Issuing a new password-reset or email-verification link deletes every older token
+hash for that account. Successful use deletes the account's token records in the
+same transaction as the protected change. This preserves single-use behavior,
+ensures only the newest link can work, and prevents obsolete recovery state from
+growing indefinitely.
+
+A password-confirmed email-address change increments the account's token
+generation, revoking every existing session on other devices. The successful
+response includes a newly signed token for the current browser so the user can
+continue without interruption. Ordinary name, biography, and privacy edits do
+not rotate sessions. The new email remains unverified until its verification
+link succeeds.
 - Consistent frontend API errors with server-correlated support IDs
 - Complete edit cancellation and browser-memory cleanup for image previews
 - Safe global handling for empty and malformed API response bodies

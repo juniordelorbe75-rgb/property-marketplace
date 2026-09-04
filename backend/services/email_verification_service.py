@@ -8,7 +8,7 @@ from email.message import EmailMessage
 from urllib.parse import quote
 
 from fastapi import HTTPException
-from sqlalchemy import select, update
+from sqlalchemy import delete, select
 
 from backend.db_models.email_verification import EmailVerificationTokenDB
 from backend.db_models.user import UserDB
@@ -45,10 +45,11 @@ def issue_email_verification(db, user):
         return {"message": "Email is already verified"}
     now = datetime.now(timezone.utc)
     token = secrets.token_urlsafe(32)
-    db.execute(update(EmailVerificationTokenDB).where(
+    # Keep only the newest verification link for an account and avoid retaining
+    # obsolete token hashes indefinitely.
+    db.execute(delete(EmailVerificationTokenDB).where(
         EmailVerificationTokenDB.user_id == user.id,
-        EmailVerificationTokenDB.used_at.is_(None),
-    ).values(used_at=now))
+    ))
     db.add(EmailVerificationTokenDB(user_id=user.id, token_hash=_hash(token), expires_at=now + timedelta(hours=24)))
     commit_or_rollback(db)
     try:
@@ -70,6 +71,8 @@ def verify_email(db, token):
     if not user:
         raise HTTPException(400, "This verification link is invalid or expired")
     user.email_verified = True
-    record.used_at = now
+    db.execute(delete(EmailVerificationTokenDB).where(
+        EmailVerificationTokenDB.user_id == user.id,
+    ))
     commit_or_rollback(db)
     return {"message": "Email verified successfully"}

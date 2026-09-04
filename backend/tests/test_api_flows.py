@@ -15,7 +15,7 @@ os.environ.setdefault("DATABASE_URL", "sqlite+pysqlite:///:memory:")
 os.environ.setdefault("SECRET_KEY", "test-only-secret-key-32-characters-long")
 
 
-from sqlalchemy import create_engine, event
+from sqlalchemy import create_engine, event, func, select
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import StaticPool
@@ -26,6 +26,8 @@ from backend.auth.login_throttle import reset_login_throttle
 from backend.auth.request_throttle import reset_request_throttles
 from backend.auth.social import create_login_code
 from backend.db_models.base import Base
+from backend.db_models.email_verification import EmailVerificationTokenDB
+from backend.db_models.password_reset import PasswordResetTokenDB
 from backend.db_models.property import PropertyDB
 from backend.db_models.report import ListingReportDB
 from backend.main import app
@@ -445,6 +447,10 @@ class ApiFlowTests(unittest.TestCase):
         )
         self.assertEqual(reset_status, 200)
         self.assertIn("access_token", reset_body)
+        self.assertEqual(
+            self.session.scalar(select(func.count()).select_from(PasswordResetTokenDB)),
+            0,
+        )
 
         old_session_status, _ = self.call("GET", "/users/me", token=old_access_token)
         self.assertEqual(old_session_status, 401)
@@ -484,6 +490,42 @@ class ApiFlowTests(unittest.TestCase):
             "If an account exists for that email, password reset instructions have been sent.",
         )
         send_email.assert_not_called()
+
+    def test_new_password_reset_link_invalidates_the_previous_link(self):
+        self.register_and_login("Newest Recovery Link", "newest-reset@example.com")
+
+        with patch(
+            "backend.services.password_reset_service.send_password_reset_email"
+        ) as send_email:
+            first_status, _ = self.call(
+                "POST",
+                "/users/password-reset/request",
+                {"email": "newest-reset@example.com"},
+            )
+            first_token = send_email.call_args.args[1]
+            second_status, _ = self.call(
+                "POST",
+                "/users/password-reset/request",
+                {"email": "newest-reset@example.com"},
+            )
+            second_token = send_email.call_args.args[1]
+
+        old_status, _ = self.call(
+            "POST",
+            "/users/password-reset/confirm",
+            {"token": first_token, "new_password": "replacement-password"},
+        )
+        newest_status, _ = self.call(
+            "POST",
+            "/users/password-reset/confirm",
+            {"token": second_token, "new_password": "replacement-password"},
+        )
+
+        self.assertEqual(first_status, 200)
+        self.assertEqual(second_status, 200)
+        self.assertNotEqual(first_token, second_token)
+        self.assertEqual(old_status, 400)
+        self.assertEqual(newest_status, 200)
 
     def test_password_reset_requests_are_limited_per_target_across_clients(self):
         async def make_request(attempt):
@@ -530,6 +572,10 @@ class ApiFlowTests(unittest.TestCase):
             "POST", "/users/email-verification/confirm", {"token": verification_token}
         )
         self.assertEqual(verify_status, 200)
+        self.assertEqual(
+            self.session.scalar(select(func.count()).select_from(EmailVerificationTokenDB)),
+            0,
+        )
 
         _, login = self.call(
             "POST", "/users/login", {"email": "verify@example.com", "password": "secure-password"}
@@ -1606,6 +1652,7 @@ class ApiFlowTests(unittest.TestCase):
             },
             token,
         )
+        replacement_profile_token = profile.get("access_token")
         password_status, password_result = self.call(
             "PATCH",
             "/users/me/password",
@@ -1613,7 +1660,7 @@ class ApiFlowTests(unittest.TestCase):
                 "current_password": "secure-password",
                 "new_password": "new-secure-password",
             },
-            token,
+            replacement_profile_token,
         )
         revoked_token_status, _revoked_token = self.call(
             "GET", "/users/me", token=token
@@ -1647,6 +1694,7 @@ class ApiFlowTests(unittest.TestCase):
         self.assertEqual(profile["id"], user["id"])
         self.assertEqual(profile["name"], "Updated Account User")
         self.assertEqual(profile["email"], "updated@example.com")
+        self.assertTrue(replacement_profile_token)
         self.assertEqual(password_status, 200)
         self.assertEqual(
             password_result["message"],
@@ -1707,10 +1755,15 @@ class ApiFlowTests(unittest.TestCase):
             },
             token,
         )
+        revoked_status, _ = self.call("GET", "/users/me", token=token)
+        replacement_status, replacement_user = self.call(
+            "GET", "/users/me", token=changed_user.get("access_token")
+        )
 
         self.assertEqual(name_status, 200)
         self.assertEqual(name_result["id"], user["id"])
         self.assertEqual(name_result["name"], "Safer Profile User")
+        self.assertNotIn("access_token", name_result)
         self.assertEqual(missing_status, 400)
         self.assertEqual(
             missing_result["detail"],
@@ -1722,6 +1775,11 @@ class ApiFlowTests(unittest.TestCase):
         self.assertEqual(unchanged_user["email"], "profile-user@example.com")
         self.assertEqual(changed_status, 200)
         self.assertEqual(changed_user["email"], "redirected@example.com")
+        self.assertFalse(changed_user["email_verified"])
+        self.assertTrue(changed_user.get("access_token"))
+        self.assertEqual(revoked_status, 401)
+        self.assertEqual(replacement_status, 200)
+        self.assertEqual(replacement_user["email"], "redirected@example.com")
 
     def test_inquiry_unread_counts_are_participant_scoped_and_markable(self):
         seller, seller_token = self.register_and_login(

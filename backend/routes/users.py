@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
 from backend.auth.dependencies import get_current_user_id
+from backend.auth.token import create_access_token
 from backend.auth.login_throttle import (
     clear_login_failures,
     login_retry_after,
@@ -14,6 +15,7 @@ from backend.models import (
     UserCreate,
     UserLogin,
     UserResponse,
+    UserUpdateResponse,
     UserUpdate,
     PublicProfile,
     PasswordChange,
@@ -214,14 +216,15 @@ def get_current_user(
 
 @router.put(
     "/me",
-    response_model=UserResponse
+    response_model=UserUpdateResponse,
+    response_model_exclude_none=True,
 )
 def update_me(
     user_data: UserUpdate,
     current_user_id: int = Depends(get_current_user_id),
     db: Session = Depends(get_db)
 ):
-    return update_current_user(
+    updated_user, email_changed = update_current_user(
         db=db,
         user_id=current_user_id,
         name=user_data.name,
@@ -236,6 +239,16 @@ def update_me(
         email=user_data.email,
         current_password=user_data.current_password,
     )
+    response = UserUpdateResponse.model_validate(updated_user).model_dump()
+    if email_changed:
+        response.update({
+            "access_token": create_access_token({
+                "sub": str(updated_user.id),
+                "gen": updated_user.token_generation,
+            }),
+            "token_type": "bearer",
+        })
+    return response
 
 
 @router.get("/{user_id}/profile", response_model=PublicProfile)

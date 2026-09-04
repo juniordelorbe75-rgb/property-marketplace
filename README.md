@@ -19,6 +19,7 @@ A full-stack marketplace for discovering, listing, saving, and discussing proper
 - Immediate message and unread-count refresh when a visible browser reconnects
 - Snapshot-bounded read receipts that never clear a message newer than the conversation displayed
 - Profile management with password-confirmed email changes, password rotation, session invalidation, and verified account deletion
+- Email-address changes revoke sessions on other devices while securely replacing the current session
 - Structured profiles with first, optional middle, and last names, date of birth, and a private editable biography
 - Opt-in public profiles with first-name-only defaults and separate full-name and biography visibility controls
 - Secure first-password creation for social accounts, with normal password protection and token revocation afterward
@@ -31,6 +32,7 @@ A full-stack marketplace for discovering, listing, saving, and discussing proper
 - Secure password recovery with expiring single-use links and session revocation
 - Email verification with 24-hour single-use links and protected resend controls
 - Account-scoped recovery and verification limits that prevent inbox flooding across different client addresses
+- Bounded recovery-token storage that removes superseded and consumed token hashes
 
 Detailed architecture and reliability notes are in [PROJECT_GUIDE.md](PROJECT_GUIDE.md).
 

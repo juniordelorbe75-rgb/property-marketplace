@@ -374,6 +374,11 @@ class UserResponse(BaseModel):
     }
 
 
+class UserUpdateResponse(UserResponse):
+    access_token: str | None = None
+    token_type: str | None = None
+
+
 class UserUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=2, max_length=300)
     first_name: str | None = Field(default=None, max_length=100)

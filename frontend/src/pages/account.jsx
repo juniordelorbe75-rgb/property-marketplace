@@ -195,6 +195,9 @@ function Account() {
         )
       }
 
+      if (data.access_token) {
+        login(data.access_token)
+      }
       setUser(data)
       setFirstName(data.first_name || data.name || "")
       setMiddleName(data.middle_name || "")

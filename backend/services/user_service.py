@@ -214,12 +214,16 @@ def update_current_user(
     user.email = email
     if email_changed:
         user.email_verified = False
+        # Changing the login identifier is a sensitive account event. Revoke
+        # every previously issued session before returning a replacement token.
+        user.token_generation += 1
 
     try:
-        return user_repository.update_user(
+        updated_user = user_repository.update_user(
             db,
             user
         )
+        return updated_user, email_changed
     except IntegrityError:
         raise HTTPException(
             status_code=400,

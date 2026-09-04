@@ -8,7 +8,7 @@ from email.message import EmailMessage
 from urllib.parse import quote
 
 from fastapi import HTTPException
-from sqlalchemy import select, update
+from sqlalchemy import delete, select
 
 from backend.auth.security import hash_password, verify_password
 from backend.auth.token import create_access_token
@@ -73,13 +73,12 @@ def request_password_reset(db, email: str) -> dict:
 
     now = datetime.now(timezone.utc)
     raw_token = secrets.token_urlsafe(32)
+    # A new request supersedes every earlier link for this account. Removing
+    # hashes instead of retaining consumed rows keeps recovery state bounded.
     db.execute(
-        update(PasswordResetTokenDB)
-        .where(
-            PasswordResetTokenDB.user_id == user.id,
-            PasswordResetTokenDB.used_at.is_(None),
+        delete(PasswordResetTokenDB).where(
+            PasswordResetTokenDB.user_id == user.id
         )
-        .values(used_at=now)
     )
     db.add(PasswordResetTokenDB(
         user_id=user.id,
@@ -121,12 +120,9 @@ def reset_password(db, token: str, new_password: str) -> dict:
     user.has_password = True
     user.token_generation += 1
     db.execute(
-        update(PasswordResetTokenDB)
-        .where(
-            PasswordResetTokenDB.user_id == user.id,
-            PasswordResetTokenDB.used_at.is_(None),
+        delete(PasswordResetTokenDB).where(
+            PasswordResetTokenDB.user_id == user.id
         )
-        .values(used_at=now)
     )
     commit_or_rollback(db)
 
