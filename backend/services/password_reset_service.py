@@ -2,7 +2,6 @@ import hashlib
 import logging
 import os
 import secrets
-import smtplib
 from datetime import datetime, timedelta, timezone
 from email.message import EmailMessage
 from urllib.parse import quote
@@ -15,6 +14,7 @@ from backend.auth.token import create_access_token
 from backend.db_models.password_reset import PasswordResetTokenDB
 from backend.db_models.user import UserDB
 from backend.repositories.transaction import commit_or_rollback
+from backend.services.smtp_delivery import deliver_email
 
 
 logger = logging.getLogger(__name__)
@@ -39,31 +39,18 @@ def _reset_url(token: str) -> str:
 
 def send_password_reset_email(recipient: str, token: str) -> None:
     reset_url = _reset_url(token)
-    smtp_host = os.getenv("SMTP_HOST", "").strip()
-    if not smtp_host:
-        logger.warning("Local password reset link for %s: %s", recipient, reset_url)
-        return
-
     message = EmailMessage()
-    message["Subject"] = "Reset your Property Marketplace password"
+    message["Subject"] = "Restablezca su contraseña de HabitaRD"
     message["From"] = os.getenv("SMTP_FROM", "no-reply@property-marketplace.local")
     message["To"] = recipient
     message.set_content(
-        "Use the link below within 30 minutes to reset your password. "
-        "If you did not request this, you can ignore this email.\n\n"
+        "Use el siguiente enlace durante los próximos 30 minutos para restablecer su contraseña. "
+        "Si usted no solicitó este cambio, puede ignorar este correo.\n\n"
         f"{reset_url}"
     )
 
-    port = int(os.getenv("SMTP_PORT", "587"))
-    username = os.getenv("SMTP_USERNAME", "")
-    password = os.getenv("SMTP_PASSWORD", "")
-    use_tls = os.getenv("SMTP_USE_TLS", "true").strip().lower() in {"1", "true", "yes", "on"}
-    with smtplib.SMTP(smtp_host, port, timeout=10) as smtp:
-        if use_tls:
-            smtp.starttls()
-        if username:
-            smtp.login(username, password)
-        smtp.send_message(message)
+    if not deliver_email(message):
+        logger.warning("Local password reset link for %s: %s", recipient, reset_url)
 
 
 def request_password_reset(db, email: str) -> dict:

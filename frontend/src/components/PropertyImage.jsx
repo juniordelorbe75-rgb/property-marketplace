@@ -17,7 +17,7 @@ function PropertyImage({ imageUrl, title, position, priority = false }) {
         aria-label={getUnavailableImageLabel(title)}
       >
         <span aria-hidden="true" className="property-image-placeholder-icon">⌂</span>
-        <span>Picture unavailable</span>
+        <span>Imagen no disponible</span>
       </span>
     )
   }

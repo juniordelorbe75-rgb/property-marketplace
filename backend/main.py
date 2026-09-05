@@ -14,20 +14,32 @@ from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from backend.db import get_db
-from backend.config import parse_admin_user_ids, parse_boolean_setting, parse_cors_origins, parse_trusted_hosts
+from backend.db import get_db, missing_required_tables
+from backend.config import (
+    api_documentation_paths,
+    parse_admin_user_ids,
+    parse_app_environment,
+    parse_boolean_setting,
+    parse_cors_origins,
+    parse_trusted_hosts,
+    validate_production_environment,
+)
 from backend.routes.properties import router as property_router
 from backend.routes.users import router as user_router
 from backend.routes.favorites import router as favorite_router
 from backend.routes.inquiries import router as inquiry_router
-from backend.routes.uploads import UPLOAD_DIRECTORY, router as upload_router
+from backend.image_storage import UPLOAD_DIRECTORY, image_storage_mode
+from backend.routes.uploads import router as upload_router
 from backend.routes.reports import router as report_router
 from backend.routes.auth import router as auth_router
+from backend.routes.catalog import router as catalog_router
 from backend.middleware.request_size import RequestBodyLimitMiddleware
 
 
 load_dotenv()
+validate_production_environment()
 logger = logging.getLogger(__name__)
+app_environment = parse_app_environment(os.getenv("APP_ENV"))
 
 allowed_origins = parse_cors_origins(
     os.getenv(
@@ -42,9 +54,10 @@ trusted_hosts = parse_trusted_hosts(
 force_https = parse_boolean_setting("FORCE_HTTPS", os.getenv("FORCE_HTTPS"))
 
 app = FastAPI(
-    title = "Property Marketplace API",
-    description = "API for buying, selling, renting and searching properties",
-    version = "1.0.0"
+    title = "API de HabitaRD",
+    description = "API para comprar, vender, alquilar y buscar propiedades",
+    version = "1.0.0",
+    **api_documentation_paths(app_environment),
 )
 
 app.add_middleware(
@@ -67,13 +80,15 @@ app.include_router(inquiry_router)
 app.include_router(upload_router)
 app.include_router(report_router)
 app.include_router(auth_router)
+app.include_router(catalog_router)
 
-UPLOAD_DIRECTORY.mkdir(parents=True, exist_ok=True)
-app.mount(
-    "/uploads/property-images",
-    StaticFiles(directory=UPLOAD_DIRECTORY),
-    name="property-images",
-)
+if image_storage_mode() == "local":
+    UPLOAD_DIRECTORY.mkdir(parents=True, exist_ok=True)
+    app.mount(
+        "/uploads/property-images",
+        StaticFiles(directory=UPLOAD_DIRECTORY),
+        name="property-images",
+    )
 
 
 @app.middleware("http")
@@ -183,11 +198,19 @@ def health_check():
 def readiness_check(session: Session = Depends(get_db)):
     try:
         session.execute(text("SELECT 1"))
+        missing_tables = missing_required_tables(session)
     except SQLAlchemyError as error:
         raise HTTPException(
             status_code=503,
             detail="Database is unavailable",
         ) from error
+
+    if missing_tables:
+        logger.error("Database schema is missing required tables: %s", sorted(missing_tables))
+        raise HTTPException(
+            status_code=503,
+            detail="Database schema is not ready",
+        )
 
     return {
         "status": "ready",
@@ -198,5 +221,5 @@ def readiness_check(session: Session = Depends(get_db)):
 @app.get("/")
 def home():
     return {
-        "message": "Property Marketplace API is running"
+        "message": "La API de HabitaRD está funcionando"
     }

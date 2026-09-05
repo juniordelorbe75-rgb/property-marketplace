@@ -5,15 +5,15 @@ function NotFound() {
   return (
     <main className="not-found-page">
       <p>404</p>
-      <h1>Page not found</h1>
+      <h1>Página no encontrada</h1>
       <p>
-        The page may have moved, or the address may be incorrect.
+        Es posible que la página haya cambiado de ubicación o que la dirección sea incorrecta.
       </p>
 
       <div>
-        <Link to="/">Browse Properties</Link>
+        <Link to="/">Explorar propiedades</Link>
         {" · "}
-        <Link to="/account">My Account</Link>
+        <Link to="/account">Mi cuenta</Link>
       </div>
     </main>
   )

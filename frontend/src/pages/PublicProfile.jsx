@@ -18,7 +18,7 @@ function PublicProfile() {
     try {
       const response = await apiFetch(`/users/${id}/profile`, { signal })
       const data = await readApiResponse(response)
-      if (!response.ok) throw new Error(getApiError(data, "This profile is not available"))
+      if (!response.ok) throw new Error(getApiError(data, "Este perfil no está disponible"))
       setProfile(data)
     } catch (requestError) {
       if (!signal.aborted) setError(requestError.message)
@@ -38,14 +38,14 @@ function PublicProfile() {
 
   return (
     <main className="public-profile-page">
-      {loading && <p>Loading profile…</p>}
-      {!loading && error && <section className="public-profile-card" role="alert"><h1>Profile unavailable</h1><p>{error}</p><button type="button" onClick={() => setAttempt((value) => value + 1)}>Try again</button><Link to="/">Return home</Link></section>}
+      {loading && <p>Cargando perfil…</p>}
+      {!loading && error && <section className="public-profile-card" role="alert"><h1>Perfil no disponible</h1><p>{error}</p><button type="button" onClick={() => setAttempt((value) => value + 1)}>Intentar de nuevo</button><Link to="/">Volver al inicio</Link></section>}
       {!loading && profile && <section className="public-profile-card">
-        <p className="public-profile-label">Marketplace profile</p>
+        <p className="public-profile-label">Perfil de HabitaRD</p>
         <h1>{profile.display_name}</h1>
-        {profile.bio ? <p className="public-profile-bio">{profile.bio}</p> : <p className="public-profile-empty">This member has chosen not to share a biography.</p>}
-        <div className="public-profile-privacy">Email and date of birth are private and are never shown on public profiles.</div>
-        <Link to="/search">Search properties</Link>
+        {profile.bio ? <p className="public-profile-bio">{profile.bio}</p> : <p className="public-profile-empty">Este miembro decidió no compartir una biografía.</p>}
+        <div className="public-profile-privacy">El correo electrónico y la fecha de nacimiento son privados y nunca aparecen en perfiles públicos.</div>
+        <Link to="/search">Buscar propiedades</Link>
       </section>}
     </main>
   )

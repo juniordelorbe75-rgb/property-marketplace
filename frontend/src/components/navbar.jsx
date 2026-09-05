@@ -85,14 +85,27 @@ function Navbar() {
   }, [menuOpen])
 
   function closeMenu() { setMenuOpen(false) }
-  function handleLogout() { closeMenu(); logout(); navigate("/login") }
+  async function handleLogout() {
+    closeMenu()
+    try {
+      await apiFetch("/auth/logout", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      })
+    } catch {
+      // Local sign-out must still complete if the network is unavailable.
+    } finally {
+      logout()
+      navigate("/login")
+    }
+  }
   const isAdmin = Boolean(token && adminToken === token)
 
   return (
     <header className="site-header">
-      <nav className="site-navigation" aria-label="Main navigation">
+      <nav className="site-navigation" aria-label="Navegación principal">
         <div className="navigation-heading">
-          <Link className="marketplace-brand" to="/" onClick={closeMenu} aria-label="Property Marketplace home"><span aria-hidden="true">⌂</span><strong>Property Marketplace</strong></Link>
+          <Link className="marketplace-brand" to="/" onClick={closeMenu} aria-label="Inicio de HabitaRD"><span aria-hidden="true">⌂</span><strong>HabitaRD</strong></Link>
           <button
             className="menu-button"
             type="button"
@@ -101,22 +114,23 @@ function Navbar() {
             onClick={() => setMenuOpen((current) => !current)}
           >
             <span className="menu-button-icon" aria-hidden="true">{menuOpen ? "×" : "☰"}</span>
-            <span>{menuOpen ? "Close" : "Menu"}</span>
+            <span>{menuOpen ? "Cerrar" : "Menú"}</span>
           </button>
         </div>
         <div className={`navigation-links${menuOpen ? " open" : ""}`} id="primary-navigation-links">
-          <NavigationLink to="/search" onNavigate={closeMenu}>Search Properties</NavigationLink>
+          <NavigationLink to="/search" onNavigate={closeMenu}>Buscar propiedades</NavigationLink>
           {token ? <>
-            <NavigationLink to="/favorites" onNavigate={closeMenu}>Favorites</NavigationLink>
-            <NavigationLink to="/my-properties" onNavigate={closeMenu}>My Listings</NavigationLink>
-            <NavigationLink to="/inquiries" onNavigate={closeMenu}>Inquiries{unreadInquiries > 0 && <span className="inquiry-badge" aria-label={`${unreadInquiries} unread inquiry messages`}>{unreadInquiries > 99 ? "99+" : unreadInquiries}</span>}</NavigationLink>
-            <NavigationLink to="/create-property" onNavigate={closeMenu}>Create Listing</NavigationLink>
-            <NavigationLink to="/account" onNavigate={closeMenu}>Account</NavigationLink>
-            {isAdmin && <NavigationLink to="/safety-reports" onNavigate={closeMenu}>Safety</NavigationLink>}
-            <button className="logout-button" type="button" onClick={handleLogout}>Log out</button>
+            <NavigationLink to="/favorites" onNavigate={closeMenu}>Favoritos</NavigationLink>
+            <NavigationLink to="/my-properties" onNavigate={closeMenu}>Mis anuncios</NavigationLink>
+            <NavigationLink to="/inquiries" onNavigate={closeMenu}>Consultas{unreadInquiries > 0 && <span className="inquiry-badge" aria-label={`${unreadInquiries} mensajes de consulta sin leer`}>{unreadInquiries > 99 ? "99+" : unreadInquiries}</span>}</NavigationLink>
+            <NavigationLink to="/create-property" onNavigate={closeMenu}>Publicar propiedad</NavigationLink>
+            <NavigationLink to="/account" onNavigate={closeMenu}>Mi cuenta</NavigationLink>
+            {isAdmin && <NavigationLink to="/safety-reports" onNavigate={closeMenu}>Seguridad</NavigationLink>}
+            {isAdmin && <NavigationLink to="/data-sources" onNavigate={closeMenu}>Fuentes de datos</NavigationLink>}
+            <button className="logout-button" type="button" onClick={handleLogout}>Cerrar sesión</button>
           </> : <>
-            <NavigationLink to="/login" onNavigate={closeMenu}>Log in</NavigationLink>
-            <Link className="register-link" to="/register" onClick={closeMenu}>Create account</Link>
+            <NavigationLink to="/login" onNavigate={closeMenu}>Iniciar sesión</NavigationLink>
+            <Link className="register-link" to="/register" onClick={closeMenu}>Crear cuenta</Link>
           </>}
         </div>
       </nav>

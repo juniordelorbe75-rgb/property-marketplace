@@ -5,6 +5,8 @@ from urllib.parse import urlsplit
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
+from backend.location_data import normalize_dominican_province, normalize_location_part
+
 
 EMAIL_PATTERN = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 BCRYPT_MAX_PASSWORD_BYTES = 72
@@ -120,6 +122,39 @@ class PropertyEngagement(BaseModel):
     pending_inquiries: int
 
 
+class ExternalProperty(BaseModel):
+    id: int
+    external_id: str
+    source_url: str
+    title: str
+    description: str
+    listing_type: str
+    status: str
+    price: float
+    currency: str
+    country_code: str
+    province: str
+    municipality: str
+    sector: str
+    property_type: str
+    bedrooms: int | None
+    bathrooms: float | None
+    area_sqm: float | None
+    image_urls: list[str]
+    source_updated_at: datetime
+    retrieved_at: datetime
+    source_name: str
+    attribution: str
+
+    @classmethod
+    def from_db(cls, item):
+        return cls.model_validate({
+            **{field: getattr(item, field) for field in cls.model_fields if field not in {"source_name", "attribution"}},
+            "source_name": item.source.name,
+            "attribution": item.source.attribution,
+        })
+
+
 class Property(BaseModel):
     id: int
     version: int
@@ -135,6 +170,10 @@ class Property(BaseModel):
     listing_type: str
     amenities: list[str] = Field(default_factory=list)
     location: str
+    country_code: Literal["DO"] = "DO"
+    province: str = ""
+    municipality: str = ""
+    sector: str = ""
     property_type: str
     bedrooms: int
     bathrooms: int
@@ -164,6 +203,10 @@ class PropertyCreate(BaseModel):
     listing_type: Literal["sale", "rent"] = "sale"
     amenities: list[Amenity] = Field(default_factory=list, max_length=8)
     location: str = Field(min_length=2, max_length=255)
+    country_code: Literal["DO"] = "DO"
+    province: str = Field(default="", max_length=100)
+    municipality: str = Field(default="", max_length=100)
+    sector: str = Field(default="", max_length=100)
     property_type: Literal["House", "Villa", "Apartment", "Condo"]
     bedrooms: int = Field(ge=0, le=100)
     bathrooms: int = Field(default=1, ge=0, le=100)
@@ -193,6 +236,16 @@ class PropertyCreate(BaseModel):
     def validate_image_urls(cls, values: list[str]) -> list[str]:
         return list(dict.fromkeys(normalize_image_url(value) for value in values if value))
 
+    @field_validator("province")
+    @classmethod
+    def validate_province(cls, value: str) -> str:
+        return normalize_dominican_province(value)
+
+    @field_validator("municipality", "sector")
+    @classmethod
+    def normalize_location_parts(cls, value: str) -> str:
+        return normalize_location_part(value)
+
     @model_validator(mode="after")
     def synchronize_images(self):
         images = self.image_urls or ([self.image_url] if self.image_url else [])
@@ -213,6 +266,10 @@ class PropertyUpdate(BaseModel):
     listing_type: Literal["sale", "rent"] = "sale"
     amenities: list[Amenity] = Field(default_factory=list, max_length=8)
     location: str = Field(min_length=2, max_length=255)
+    country_code: Literal["DO"] = "DO"
+    province: str = Field(default="", max_length=100)
+    municipality: str = Field(default="", max_length=100)
+    sector: str = Field(default="", max_length=100)
     property_type: Literal["House", "Villa", "Apartment", "Condo"]
     bedrooms: int = Field(ge=0, le=100)
     bathrooms: int = Field(default=1, ge=0, le=100)
@@ -241,6 +298,16 @@ class PropertyUpdate(BaseModel):
     @classmethod
     def validate_image_urls(cls, values: list[str]) -> list[str]:
         return list(dict.fromkeys(normalize_image_url(value) for value in values if value))
+
+    @field_validator("province")
+    @classmethod
+    def validate_province(cls, value: str) -> str:
+        return normalize_dominican_province(value)
+
+    @field_validator("municipality", "sector")
+    @classmethod
+    def normalize_location_parts(cls, value: str) -> str:
+        return normalize_location_part(value)
 
     @model_validator(mode="after")
     def synchronize_images(self):

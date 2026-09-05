@@ -2,7 +2,6 @@ import hashlib
 import logging
 import os
 import secrets
-import smtplib
 from datetime import datetime, timedelta, timezone
 from email.message import EmailMessage
 from urllib.parse import quote
@@ -13,6 +12,7 @@ from sqlalchemy import delete, select
 from backend.db_models.email_verification import EmailVerificationTokenDB
 from backend.db_models.user import UserDB
 from backend.repositories.transaction import commit_or_rollback
+from backend.services.smtp_delivery import deliver_email
 
 logger = logging.getLogger(__name__)
 
@@ -23,21 +23,13 @@ def _hash(token):
 
 def _send(recipient, token):
     url = f"{os.getenv('FRONTEND_URL', 'http://127.0.0.1:5173').rstrip('/')}/verify-email?token={quote(token, safe='')}"
-    host = os.getenv("SMTP_HOST", "").strip()
-    if not host:
-        logger.warning("Local email verification link for %s: %s", recipient, url)
-        return
     message = EmailMessage()
-    message["Subject"] = "Verify your Property Marketplace email"
+    message["Subject"] = "Verifique su correo electrónico de HabitaRD"
     message["From"] = os.getenv("SMTP_FROM", "no-reply@property-marketplace.local")
     message["To"] = recipient
-    message.set_content(f"Verify your email within 24 hours:\n\n{url}")
-    with smtplib.SMTP(host, int(os.getenv("SMTP_PORT", "587")), timeout=10) as smtp:
-        if os.getenv("SMTP_USE_TLS", "true").lower() in {"1", "true", "yes", "on"}:
-            smtp.starttls()
-        if os.getenv("SMTP_USERNAME"):
-            smtp.login(os.getenv("SMTP_USERNAME"), os.getenv("SMTP_PASSWORD", ""))
-        smtp.send_message(message)
+    message.set_content(f"Verifique su correo electrónico durante las próximas 24 horas:\n\n{url}")
+    if not deliver_email(message):
+        logger.warning("Local email verification link for %s: %s", recipient, url)
 
 
 def issue_email_verification(db, user):

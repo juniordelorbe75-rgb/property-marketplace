@@ -24,7 +24,7 @@ function ForgotPassword() {
         body: JSON.stringify({ email }),
       })
       const data = await readApiResponse(response)
-      if (!response.ok) throw new Error(getApiError(data, "Could not request a reset link"))
+      if (!response.ok) throw new Error(getApiError(data, "No pudimos solicitar el enlace de recuperación"))
       setSent(true)
     } catch (requestError) {
       setError(requestError.message)
@@ -34,28 +34,28 @@ function ForgotPassword() {
   }
 
   return (
-    <AuthLayout eyebrow="Account recovery">
-        <p className="auth-card-eyebrow">Secure recovery</p>
-        <h1>Forgot password?</h1>
+    <AuthLayout eyebrow="Recuperación de cuenta">
+        <p className="auth-card-eyebrow">Recuperación segura</p>
+        <h1>¿Olvidó su contraseña?</h1>
         {sent ? (
           <>
-            <p className="auth-success" role="status">If an account exists for that email, we sent a reset link. It expires in 30 minutes.</p>
-            <p className="auth-intro">Check your inbox and spam folder. During local development, the link appears in the backend terminal.</p>
+            <p className="auth-success" role="status">Si existe una cuenta con ese correo, enviamos un enlace de recuperación. Vence en 30 minutos.</p>
+            <p className="auth-intro">Revise su bandeja de entrada y la carpeta de correo no deseado.</p>
           </>
         ) : (
           <>
-            <p className="auth-intro">Enter your account email and we’ll send you a secure reset link.</p>
+            <p className="auth-intro">Ingrese el correo de su cuenta y le enviaremos un enlace seguro.</p>
             <form className="auth-form" onSubmit={handleSubmit}>
               <div className="auth-field">
-                <label htmlFor="reset-email">Email</label>
+                <label htmlFor="reset-email">Correo electrónico</label>
                 <input id="reset-email" type="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} required autoFocus />
               </div>
               {error && <p className="auth-error" role="alert">{error}</p>}
-              <button className="auth-submit" type="submit" disabled={loading}>{loading ? "Sending..." : "Send reset link"}</button>
+              <button className="auth-submit" type="submit" disabled={loading}>{loading ? "Enviando..." : "Enviar enlace"}</button>
             </form>
           </>
         )}
-        <p className="auth-switch"><Link to="/login">Back to login</Link></p>
+        <p className="auth-switch"><Link to="/login">Volver a iniciar sesión</Link></p>
     </AuthLayout>
   )
 }

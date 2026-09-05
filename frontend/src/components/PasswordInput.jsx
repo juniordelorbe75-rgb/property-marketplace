@@ -23,10 +23,10 @@ function PasswordInput({ id, label, value, onChange, autoComplete, describedBy, 
           type="button"
           className="password-visibility-button"
           onClick={() => setVisible((current) => !current)}
-          aria-label={`${visible ? "Hide" : "Show"} ${label.toLowerCase()}`}
+          aria-label={`${visible ? "Ocultar" : "Mostrar"} ${label.toLowerCase()}`}
           aria-pressed={visible}
         >
-          {visible ? "Hide" : "Show"}
+          {visible ? "Ocultar" : "Mostrar"}
         </button>
       </div>
     </div>

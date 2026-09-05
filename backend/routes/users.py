@@ -1,4 +1,5 @@
 import hashlib
+import os
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
@@ -37,12 +38,14 @@ from backend.services.password_reset_service import request_password_reset, rese
 from backend.services.email_verification_service import issue_email_verification, verify_email
 
 from backend.db import get_db
+from backend.request_identity import client_address, parse_trusted_proxy_networks
 
 
 router = APIRouter(
     prefix="/users",
     tags=["Users"]
 )
+TRUSTED_PROXY_NETWORKS = parse_trusted_proxy_networks(os.getenv("TRUSTED_PROXY_IPS"))
 
 
 def _anonymous_rate_limit_key(value: str) -> str:
@@ -73,9 +76,9 @@ def register_user(
     request: Request,
     db: Session = Depends(get_db)
 ):
-    client_address = request.client.host if request.client else "unknown"
+    request_address = client_address(request, TRUSTED_PROXY_NETWORKS)
     retry_after = consume_rate_limit(
-        "registration", client_address, limit=5, window_seconds=15 * 60
+        "registration", request_address, limit=5, window_seconds=15 * 60
     )
     if retry_after is not None:
         raise HTTPException(
@@ -97,8 +100,8 @@ def login(
     request: Request,
     db: Session = Depends(get_db)
 ):
-    client_address = request.client.host if request.client else "unknown"
-    retry_after = login_retry_after(client_address, user_json.email)
+    request_address = client_address(request, TRUSTED_PROXY_NETWORKS)
+    retry_after = login_retry_after(request_address, user_json.email)
     if retry_after is not None:
         raise HTTPException(
             status_code=429,
@@ -114,10 +117,10 @@ def login(
         )
     except HTTPException as error:
         if error.status_code == 401:
-            record_login_failure(client_address, user_json.email)
+            record_login_failure(request_address, user_json.email)
         raise
 
-    clear_login_failures(client_address, user_json.email)
+    clear_login_failures(request_address, user_json.email)
     return result
 
 
@@ -127,9 +130,9 @@ def request_password_reset_link(
     request: Request,
     db: Session = Depends(get_db),
 ):
-    client_address = request.client.host if request.client else "unknown"
+    request_address = client_address(request, TRUSTED_PROXY_NETWORKS)
     retry_after = _combined_retry_after(
-        ("password-reset-request-client", client_address, 5, 15 * 60),
+        ("password-reset-request-client", request_address, 5, 15 * 60),
         (
             "password-reset-request-account",
             _anonymous_rate_limit_key(payload.email),
@@ -152,9 +155,9 @@ def confirm_password_reset(
     request: Request,
     db: Session = Depends(get_db),
 ):
-    client_address = request.client.host if request.client else "unknown"
+    request_address = client_address(request, TRUSTED_PROXY_NETWORKS)
     retry_after = consume_rate_limit(
-        "password-reset-confirm", client_address, limit=10, window_seconds=15 * 60
+        "password-reset-confirm", request_address, limit=10, window_seconds=15 * 60
     )
     if retry_after is not None:
         raise HTTPException(
@@ -171,9 +174,9 @@ def resend_email_verification(
     current_user_id: int = Depends(get_current_user_id),
     db: Session = Depends(get_db),
 ):
-    client_address = request.client.host if request.client else "unknown"
+    request_address = client_address(request, TRUSTED_PROXY_NETWORKS)
     retry_after = _combined_retry_after(
-        ("email-verification-client", client_address, 3, 15 * 60),
+        ("email-verification-client", request_address, 3, 15 * 60),
         ("email-verification-account", str(current_user_id), 3, 15 * 60),
     )
     if retry_after is not None:
@@ -187,9 +190,9 @@ def confirm_email_verification(
     request: Request,
     db: Session = Depends(get_db),
 ):
-    client_address = request.client.host if request.client else "unknown"
+    request_address = client_address(request, TRUSTED_PROXY_NETWORKS)
     retry_after = consume_rate_limit(
-        "email-verification-confirm", client_address, limit=20, window_seconds=15 * 60
+        "email-verification-confirm", request_address, limit=20, window_seconds=15 * 60
     )
     if retry_after is not None:
         raise HTTPException(

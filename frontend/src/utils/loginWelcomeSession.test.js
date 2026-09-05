@@ -1,7 +1,15 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 
-import { LOGIN_WELCOME_KEY, queueLoginWelcome } from "./loginWelcomeSession.js"
+import {
+  LOGIN_WELCOME_DURATION_MS,
+  LOGIN_WELCOME_KEY,
+  queueLoginWelcome,
+} from "./loginWelcomeSession.js"
+
+test("keeps the welcome visible for fifteen seconds", () => {
+  assert.equal(LOGIN_WELCOME_DURATION_MS, 15_000)
+})
 
 function memoryStorage() {
   const values = new Map()

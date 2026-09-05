@@ -19,15 +19,18 @@ import { readInquiryDrafts, saveInquiryDrafts } from "../utils/inquiryDrafts"
 const INQUIRY_STATUSES = ["pending", "accepted", "rejected", "cancelled"]
 const INQUIRIES_PER_PAGE = 6
 
-function titleCase(value) {
-  return value.charAt(0).toUpperCase() + value.slice(1)
+function inquiryStatusLabel(value, plural = true) {
+  const labels = plural
+    ? { all: "Todas", pending: "Pendientes", accepted: "Aceptadas", rejected: "Rechazadas", cancelled: "Canceladas" }
+    : { pending: "Pendiente", accepted: "Aceptada", rejected: "Rechazada", cancelled: "Cancelada" }
+  return labels[value] || value
 }
 
 function InquiryFilters({ counts, value, onChange }) {
   const filters = ["all", ...INQUIRY_STATUSES]
 
   return (
-    <div className="inquiry-filters" aria-label="Filter inquiries by status">
+    <div className="inquiry-filters" aria-label="Filtrar consultas por estado">
       {filters.map((status) => {
         return (
           <button
@@ -37,7 +40,7 @@ function InquiryFilters({ counts, value, onChange }) {
             aria-pressed={value === status}
             onClick={() => onChange(status)}
           >
-            {titleCase(status)} <span>{counts[status] || 0}</span>
+            {inquiryStatusLabel(status)} <span>{counts[status] || 0}</span>
           </button>
         )
       })}
@@ -48,10 +51,10 @@ function InquiryFilters({ counts, value, onChange }) {
 function InquiryPagination({ page, totalPages, onChange }) {
   if (totalPages <= 1) return null
   return (
-    <nav className="inquiry-pagination" aria-label="Inquiry pages">
-      <button type="button" disabled={page <= 1} onClick={() => onChange(page - 1)}>Previous</button>
-      <span aria-current="page">Page {page} of {totalPages}</span>
-      <button type="button" disabled={page >= totalPages} onClick={() => onChange(page + 1)}>Next</button>
+    <nav className="inquiry-pagination" aria-label="Páginas de consultas">
+      <button type="button" disabled={page <= 1} onClick={() => onChange(page - 1)}>Anterior</button>
+      <span aria-current="page">Página {page} de {totalPages}</span>
+      <button type="button" disabled={page >= totalPages} onClick={() => onChange(page + 1)}>Siguiente</button>
     </nav>
   )
 }
@@ -60,7 +63,7 @@ function formatInquiryDate(value) {
   const date = new Date(value)
 
   if (Number.isNaN(date.getTime())) {
-    return "Unknown"
+    return "Fecha desconocida"
   }
 
   return new Intl.DateTimeFormat(undefined, {
@@ -78,7 +81,7 @@ function InquiryConversation({ inquiry, viewerRole }) {
     : []
 
   return (
-    <div className="inquiry-conversation" aria-label="Conversation">
+    <div className="inquiry-conversation" aria-label="Conversación">
       {messages.map((message, index) => {
         const isMine = message.sender_role === viewerRole
         return (
@@ -87,7 +90,7 @@ function InquiryConversation({ inquiry, viewerRole }) {
             key={message.id ?? `${message.sender_role}-${index}`}
           >
             <div className="inquiry-message-heading">
-              <strong>{isMine ? "You" : message.sender_name}</strong>
+              <strong>{isMine ? "Usted" : message.sender_name}</strong>
               <span>{formatInquiryDate(message.created_at)}</span>
             </div>
             <p>{message.body}</p>
@@ -103,9 +106,9 @@ function getConversationPreview(inquiry, viewerRole) {
     ? inquiry.conversation_messages
     : []
   const latest = messages.at(-1)
-  if (!latest) return { sender: "No messages yet", body: "Open this inquiry to view its details." }
+  if (!latest) return { sender: "Sin mensajes", body: "Abra esta consulta para ver sus detalles." }
   return {
-    sender: latest.sender_role === viewerRole ? "You" : latest.sender_name,
+    sender: latest.sender_role === viewerRole ? "Usted" : latest.sender_name,
     body: latest.body,
   }
 }
@@ -142,15 +145,15 @@ function InquiryCard({
         <span className="inquiry-avatar" aria-hidden="true">{contactName?.trim()?.charAt(0)?.toUpperCase() || "?"}</span>
         <span className="inquiry-preview-content">
           <span className="inquiry-preview-heading">
-            <strong>{contactName || "Marketplace member"}</strong>
+            <strong>{contactName || "Miembro de HabitaRD"}</strong>
             <time>{formatInquiryDate(inquiry.updated_at)}</time>
           </span>
           <span className="inquiry-property-name">{inquiry.property_title}</span>
           <span className="inquiry-message-preview"><b>{preview.sender}:</b> {preview.body}</span>
         </span>
         <span className="inquiry-preview-aside">
-          {inquiry.unread_count > 0 && <span className="inquiry-unread-count">{inquiry.unread_count} new</span>}
-          <span className={`inquiry-status-pill ${inquiry.status}`}>{titleCase(inquiry.status)}</span>
+          {inquiry.unread_count > 0 && <span className="inquiry-unread-count">{inquiry.unread_count} {inquiry.unread_count === 1 ? "nuevo" : "nuevos"}</span>}
+          <span className={`inquiry-status-pill ${inquiry.status}`}>{inquiryStatusLabel(inquiry.status, false)}</span>
           <span className="inquiry-chevron" aria-hidden="true">⌄</span>
         </span>
       </button>
@@ -158,21 +161,21 @@ function InquiryCard({
       {expanded && (
         <div className="inquiry-details" id={conversationId}>
           <div className="inquiry-details-meta">
-            <span>Inquiry #{inquiry.id}</span>
+            <span>Consulta #{inquiry.id}</span>
             <span>{formatPropertyReference(inquiry.property_id)}</span>
-            <span>Started {formatInquiryDate(inquiry.created_at)}</span>
+            <span>Iniciada el {formatInquiryDate(inquiry.created_at)}</span>
           </div>
 
           <InquiryConversation inquiry={inquiry} viewerRole={viewerRole} />
 
           <div className="inquiry-detail-links">
-            <Link className="inquiry-link" to={`/properties/${inquiry.property_id}`}>View property</Link>
+            <Link className="inquiry-link" to={`/properties/${inquiry.property_id}`}>Ver propiedad</Link>
           </div>
 
           {direction === "sent" && inquiry.status === "pending" && (
             <div className="inquiry-actions">
               <button className="cancel-button" onClick={onCancel} disabled={cancelling}>
-                {cancelling ? "Cancelling..." : "Cancel inquiry"}
+                {cancelling ? "Cancelando..." : "Cancelar consulta"}
               </button>
             </div>
           )}
@@ -180,10 +183,10 @@ function InquiryCard({
           {direction === "received" && inquiry.status === "pending" && (
             <div className="inquiry-actions">
               <button className="accept-button" onClick={() => onStatusChange("accepted")} disabled={busy}>
-                {busy ? "Updating..." : "Accept inquiry"}
+                {busy ? "Actualizando..." : "Aceptar consulta"}
               </button>
               <button className="reject-button" onClick={() => onStatusChange("rejected")} disabled={busy}>
-                {busy ? "Updating..." : "Reject"}
+                {busy ? "Actualizando..." : "Rechazar"}
               </button>
             </div>
           )}
@@ -205,17 +208,17 @@ function InquiryCard({
 function InquiryReplyComposer({ inquiry, value, sending, notice, onChange, onSend }) {
   const canMessage = ["pending", "accepted"].includes(inquiry.status)
   if (!canMessage) {
-    return <p className="inquiry-closed-message">This conversation is closed.</p>
+    return <p className="inquiry-closed-message">Esta conversación está cerrada.</p>
   }
 
   return (
     <form className="inquiry-reply-form" onSubmit={(event) => { event.preventDefault(); onSend() }}>
-      <label htmlFor={`inquiry-reply-${inquiry.id}`}>Reply in this conversation</label>
+      <label htmlFor={`inquiry-reply-${inquiry.id}`}>Responder en esta conversación</label>
       <textarea
         id={`inquiry-reply-${inquiry.id}`}
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        placeholder="Write your message..."
+        placeholder="Escriba su mensaje..."
         rows="3"
         maxLength="1000"
         disabled={sending}
@@ -223,7 +226,7 @@ function InquiryReplyComposer({ inquiry, value, sending, notice, onChange, onSen
       <div className="inquiry-reply-footer">
         <span>{value.length}/1000</span>
         <button className="reply-button" type="submit" disabled={sending || !value.trim()}>
-          {sending ? "Sending..." : "Send reply"}
+          {sending ? "Enviando..." : "Enviar respuesta"}
         </button>
       </div>
       {notice && <p className="inquiry-reply-notice" role="status">{notice}</p>}
@@ -279,7 +282,7 @@ function Inquiries() {
     const token = localStorage.getItem("access_token")
 
     if (!token) {
-      setLoadError("Please log in to view your inquiries.")
+      setLoadError("Inicie sesión para ver sus consultas.")
       setLoading(false)
       return
     }
@@ -343,14 +346,14 @@ function Inquiries() {
       if (!sentResponse.ok) {
         throw new Error(
           sentData.detail ||
-            "Failed to load sent inquiries"
+            "No pudimos cargar las consultas enviadas"
         )
       }
 
       if (!receivedResponse.ok) {
         throw new Error(
           receivedData.detail ||
-            "Failed to load received inquiries"
+            "No pudimos cargar las consultas recibidas"
         )
       }
 
@@ -369,7 +372,7 @@ function Inquiries() {
 
       console.error("Inquiries error:", error)
       if (background) {
-        setSyncWarning("New messages could not be refreshed. Your loaded conversations are still available.")
+        setSyncWarning("No pudimos actualizar los mensajes nuevos. Las conversaciones ya cargadas siguen disponibles.")
       } else {
         setLoadError(error.message)
       }
@@ -418,13 +421,13 @@ function Inquiries() {
         logout()
         return
       }
-      if (!response.ok) throw new Error("The conversation could not be marked as read.")
+      if (!response.ok) throw new Error("No pudimos marcar la conversación como leída.")
       const markRead = (items) => items.map((item) => item.id === inquiry.id ? { ...item, unread_count: 0 } : item)
       setSentInquiries(markRead)
       setReceivedInquiries(markRead)
       notifyInquiriesChanged()
     } catch {
-      setSyncWarning("This conversation is open, but its read status could not be synchronized.")
+      setSyncWarning("La conversación está abierta, pero no pudimos sincronizar su estado de lectura.")
     }
   }
 
@@ -469,7 +472,7 @@ function Inquiries() {
   ) {
     if (
       status === "rejected"
-      && !window.confirm("Reject and close this inquiry? The conversation cannot be reopened.")
+      && !window.confirm("¿Rechazar y cerrar esta consulta? La conversación no podrá volver a abrirse.")
     ) {
       return
     }
@@ -478,7 +481,7 @@ function Inquiries() {
       localStorage.getItem("access_token")
 
     if (!token) {
-      setError("Please log in.")
+      setError("Inicie sesión.")
       return
     }
 
@@ -511,7 +514,7 @@ function Inquiries() {
 
       if (!response.ok) {
         throw new Error(
-          getApiError(data, "Failed to update inquiry status")
+          getApiError(data, "No pudimos actualizar el estado de la consulta")
         )
       }
 
@@ -536,7 +539,7 @@ function Inquiries() {
       localStorage.getItem("access_token")
 
     if (!token) {
-      setError("Please log in.")
+      setError("Inicie sesión.")
       return
     }
 
@@ -544,7 +547,7 @@ function Inquiries() {
       replyMessages[inquiryId]?.trim()
 
     if (!replyMessage) {
-      setError("Please enter a reply.")
+      setError("Escriba una respuesta.")
       return
     }
 
@@ -583,7 +586,7 @@ function Inquiries() {
 
       if (!response.ok) {
         throw new Error(
-          getApiError(data, "Failed to send reply")
+          getApiError(data, "No pudimos enviar la respuesta")
         )
       }
 
@@ -594,7 +597,7 @@ function Inquiries() {
         })
       )
       setReplyKeys((current) => ({ ...current, [inquiryId]: crypto.randomUUID() }))
-      setReplyNotices((current) => ({ ...current, [inquiryId]: "Reply sent." }))
+      setReplyNotices((current) => ({ ...current, [inquiryId]: "Respuesta enviada." }))
       await fetchInquiries({ background: true })
 
     } catch (error) {
@@ -611,14 +614,14 @@ function Inquiries() {
   }
 
   async function cancelInquiry(inquiryId) {
-    if (!window.confirm("Cancel this inquiry? This cannot be undone.")) {
+    if (!window.confirm("¿Cancelar esta consulta? Esta acción no se puede deshacer.")) {
       return
     }
 
     const token = localStorage.getItem("access_token")
 
     if (!token) {
-      setError("Please log in.")
+      setError("Inicie sesión.")
       return
     }
 
@@ -644,7 +647,7 @@ function Inquiries() {
 
       if (!response.ok) {
         throw new Error(
-          getApiError(data, "Failed to cancel inquiry")
+          getApiError(data, "No pudimos cancelar la consulta")
         )
       }
 
@@ -660,7 +663,7 @@ function Inquiries() {
   if (loading) {
     return (
       <div className="inquiries-page">
-        <p className="inquiry-loading" role="status">Loading inquiries...</p>
+        <p className="inquiry-loading" role="status">Cargando consultas...</p>
       </div>
     )
   }
@@ -671,10 +674,10 @@ function Inquiries() {
       <div className="inquiries-header">
 
         <div>
-          <h1>My Inquiries</h1>
-          <p>Manage your property inquiries.</p>
-          {lastUpdatedAt && <span>Updated {formatInquiryDate(lastUpdatedAt)}</span>}
-          {autoRefreshPaused && <span className="inquiry-refresh-paused">Auto-refresh paused while you finish this action.</span>}
+          <h1>Mis consultas</h1>
+          <p>Administre sus conversaciones sobre propiedades.</p>
+          {lastUpdatedAt && <span>Actualizado el {formatInquiryDate(lastUpdatedAt)}</span>}
+          {autoRefreshPaused && <span className="inquiry-refresh-paused">La actualización automática está pausada mientras termina esta acción.</span>}
         </div>
 
         <button
@@ -682,7 +685,7 @@ function Inquiries() {
           onClick={() => fetchInquiries({ background: true })}
           disabled={refreshing}
         >
-          {refreshing ? "Refreshing..." : "Refresh messages"}
+          {refreshing ? "Actualizando..." : "Actualizar mensajes"}
         </button>
 
       </div>
@@ -690,7 +693,7 @@ function Inquiries() {
       {loadError && (
         <div className="inquiry-load-error" role="alert">
           <p>{loadError}</p>
-          <button type="button" onClick={fetchInquiries}>Try again</button>
+          <button type="button" onClick={fetchInquiries}>Intentar de nuevo</button>
         </div>
       )}
 
@@ -701,14 +704,14 @@ function Inquiries() {
       {syncWarning && (
         <div className="inquiry-sync-warning" role="status">
           <span>{syncWarning}</span>
-          <button type="button" onClick={() => fetchInquiries({ background: true })}>Try again</button>
+          <button type="button" onClick={() => fetchInquiries({ background: true })}>Intentar de nuevo</button>
         </div>
       )}
 
       {propertyReference && (
         <div className="inquiry-property-filter" role="status">
-          <span>Showing conversations for <strong>{propertyReference}</strong>.</span>
-          <button type="button" onClick={clearPropertyFilter}>Show all inquiries</button>
+          <span>Mostrando conversaciones de <strong>{propertyReference}</strong>.</span>
+          <button type="button" onClick={clearPropertyFilter}>Mostrar todas las consultas</button>
         </div>
       )}
 
@@ -716,12 +719,12 @@ function Inquiries() {
 
       {!loadError && <section className="inquiries-section">
 
-        <h2>Sent Inquiries</h2>
+        <h2>Consultas enviadas</h2>
 
         {sentMeta.counts.all === 0 ? (
 
           <p>
-            You haven't sent any inquiries yet.
+            Todavía no ha enviado ninguna consulta.
           </p>
 
         ) : (
@@ -736,7 +739,7 @@ function Inquiries() {
 
           {sentInquiries.length === 0 ? (
             <p className="inquiry-empty-filter">
-              No {sentFilter} sent inquiries.
+              No hay consultas enviadas con este estado.
             </p>
           ) : (
 
@@ -779,12 +782,12 @@ function Inquiries() {
 
       {!loadError && <section className="inquiries-section">
 
-        <h2>Received Inquiries</h2>
+        <h2>Consultas recibidas</h2>
 
         {receivedMeta.counts.all === 0 ? (
 
           <p>
-            You haven't received any inquiries yet.
+            Todavía no ha recibido ninguna consulta.
           </p>
 
         ) : (
@@ -799,7 +802,7 @@ function Inquiries() {
 
           {receivedInquiries.length === 0 ? (
             <p className="inquiry-empty-filter">
-              No {receivedFilter} received inquiries.
+              No hay consultas recibidas con este estado.
             </p>
           ) : (
 

@@ -3,7 +3,7 @@ export function formatListingDate(value) {
 
   if (Number.isNaN(date.getTime())) return ""
 
-  return new Intl.DateTimeFormat(undefined, {
+  return new Intl.DateTimeFormat("es-DO", {
     year: "numeric",
     month: "short",
     day: "numeric",
@@ -20,5 +20,5 @@ export function getListingFreshness(createdAt, updatedAt) {
   const value = wasUpdated ? updatedAt : createdAt
   const formatted = formatListingDate(value)
 
-  return formatted ? `${wasUpdated ? "Updated" : "Listed"} ${formatted}` : ""
+  return formatted ? `${wasUpdated ? "Actualizada" : "Publicada"} ${formatted}` : ""
 }

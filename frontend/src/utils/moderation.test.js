@@ -64,12 +64,12 @@ test("builds only valid reversible listing safety-hold actions", () => {
     property_id: 12,
     listing_safety_version: 3,
     listing_on_safety_hold: false,
-  }), { held: true, label: "Place Safety Hold" })
+  }), { held: true, label: "Aplicar retención de seguridad" })
   assert.deepEqual(getSafetyHoldAction({
     property_id: 12,
     listing_safety_version: 4,
     listing_on_safety_hold: true,
-  }), { held: false, label: "Release Safety Hold" })
+  }), { held: false, label: "Liberar retención de seguridad" })
   assert.equal(getSafetyHoldAction({ property_id: null, listing_safety_version: 1 }), null)
   assert.equal(getSafetyHoldAction({ property_id: 12, listing_safety_version: null }), null)
 })

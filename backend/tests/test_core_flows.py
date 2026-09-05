@@ -111,6 +111,43 @@ class CoreFlowTests(unittest.TestCase):
         self.assertNotEqual(user.password, "secure-password")
         self.assertTrue(verify_password("secure-password", user.password))
 
+    def test_dominican_location_data_is_normalized_and_stored(self):
+        user = self.create_test_user()
+        property_item = create_property(
+            self.session,
+            PropertyCreate(
+                title="Piantini Apartment",
+                image_url="https://images.example.com/piantini.jpg",
+                price=18500000,
+                currency="DOP",
+                location="Piantini, Santo Domingo, Distrito Nacional, Dominican Republic",
+                province="distrito nacional",
+                municipality="  Santo   Domingo ",
+                sector=" Piantini ",
+                property_type="Apartment",
+                bedrooms=3,
+            ),
+            user.id,
+        )
+
+        self.assertEqual(property_item.country_code, "DO")
+        self.assertEqual(property_item.province, "Distrito Nacional")
+        self.assertEqual(property_item.municipality, "Santo Domingo")
+        self.assertEqual(property_item.sector, "Piantini")
+
+    def test_rejects_unknown_dominican_province(self):
+        with self.assertRaises(ValueError):
+            PropertyCreate(
+                title="Invalid Province Home",
+                image_url="https://images.example.com/home.jpg",
+                price=100000,
+                location="Unknown, Dominican Republic",
+                province="Not a province",
+                municipality="Unknown",
+                property_type="House",
+                bedrooms=2,
+            )
+
     def test_password_hashing_enforces_bcrypt_byte_limit_without_truncation(self):
         maximum_password = "a" * 72
         password_hash = hash_password(maximum_password)
@@ -223,6 +260,9 @@ class CoreFlowTests(unittest.TestCase):
         self.assertEqual(valid_payload["iss"], TOKEN_ISSUER)
         self.assertEqual(valid_payload["aud"], TOKEN_AUDIENCE)
         self.assertEqual(valid_payload["token_type"], "access")
+        self.assertTrue(valid_payload["jti"])
+        second_payload = decode_access_token(create_access_token({"sub": "1", "gen": 1}))
+        self.assertNotEqual(valid_payload["jti"], second_payload["jti"])
 
         base_payload = {
             "sub": "1",
@@ -232,6 +272,7 @@ class CoreFlowTests(unittest.TestCase):
             "iss": TOKEN_ISSUER,
             "aud": TOKEN_AUDIENCE,
             "token_type": "access",
+            "jti": "test-token-identifier",
         }
         invalid_payloads = (
             {**base_payload, "iss": "another-service"},

@@ -1,7 +1,7 @@
 import test from "node:test"
 import assert from "node:assert/strict"
 
-import { DOMINICAN_PROVINCES } from "./dominicanLocations.js"
+import { buildDominicanLocation, DOMINICAN_PROVINCES } from "./dominicanLocations.js"
 
 
 test("provides every Dominican province and the National District once", () => {
@@ -16,4 +16,11 @@ test("provides every Dominican province and the National District once", () => {
   ]) {
     assert.equal(DOMINICAN_PROVINCES.includes(location), true)
   }
+})
+
+test("builds a consistent Dominican listing location from structured parts", () => {
+  assert.equal(
+    buildDominicanLocation({ sector: "  Piantini ", municipality: "Santo  Domingo", province: "Distrito Nacional" }),
+    "Piantini, Santo Domingo, Distrito Nacional, República Dominicana",
+  )
 })

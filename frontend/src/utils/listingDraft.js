@@ -45,6 +45,9 @@ function cleanDraft(value) {
       ? [...new Set(value.amenities.filter((item) => PROPERTY_AMENITIES.includes(item)))]
       : [],
     location: text("location", 255),
+    province: text("province", 100),
+    municipality: text("municipality", 100),
+    sector: text("sector", 100),
     propertyType: PROPERTY_TYPES.has(value.propertyType) ? value.propertyType : "",
     bedrooms: text("bedrooms", 4),
     bathrooms: text("bathrooms", 4) || "1",
@@ -60,7 +63,8 @@ export function hasListingDraft(draft) {
   if (!draft) return false
   return Boolean(
     draft.title || draft.description || draft.imageUrl || draft.price
-    || draft.location || draft.propertyType || draft.bedrooms
+    || draft.location || draft.province || draft.municipality || draft.sector
+    || draft.propertyType || draft.bedrooms
     || draft.squareFeet || draft.amenities.length,
   )
 }

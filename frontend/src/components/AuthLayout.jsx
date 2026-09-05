@@ -7,21 +7,21 @@ function ShieldMark() {
   )
 }
 
-function AuthLayout({ children, wide = false, eyebrow = "Property Marketplace" }) {
+function AuthLayout({ children, wide = false, eyebrow = "HabitaRD" }) {
   return (
     <main className="auth-page">
       <div className={`auth-shell${wide ? " auth-shell-wide" : ""}`}>
-        <aside className="auth-trust" aria-label="Account security information">
+        <aside className="auth-trust" aria-label="Información sobre la seguridad de la cuenta">
           <div className="auth-brand-mark"><ShieldMark /></div>
           <p className="auth-eyebrow">{eyebrow}</p>
-          <h2>A safer way to find your next property.</h2>
+          <h2>Una forma más segura de encontrar su próxima propiedad.</h2>
           <p className="auth-trust-copy">
-            Your account helps keep conversations, saved homes, and property activity in one protected place.
+            Su cuenta mantiene sus conversaciones, propiedades guardadas y actividad en un solo lugar protegido.
           </p>
           <ul className="auth-trust-list">
-            <li><span aria-hidden="true">✓</span> Secure, time-limited account recovery</li>
-            <li><span aria-hidden="true">✓</span> Protection against repeated sign-in attempts</li>
-            <li><span aria-hidden="true">✓</span> Access your account from any trusted device</li>
+            <li><span aria-hidden="true">✓</span> Recuperación segura con tiempo limitado</li>
+            <li><span aria-hidden="true">✓</span> Protección contra intentos repetidos de acceso</li>
+            <li><span aria-hidden="true">✓</span> Acceso desde cualquier dispositivo de confianza</li>
           </ul>
         </aside>
         <section className="auth-card">{children}</section>

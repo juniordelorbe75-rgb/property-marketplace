@@ -1,9 +1,9 @@
 export function getPropertyImageAlt(title, position) {
-  const propertyTitle = String(title || "Property").trim() || "Property"
-  return position ? `${propertyTitle} — picture ${position}` : propertyTitle
+  const propertyTitle = String(title || "Propiedad").trim() || "Propiedad"
+  return position ? `${propertyTitle} — imagen ${position}` : propertyTitle
 }
 
 export function getUnavailableImageLabel(title) {
-  const propertyTitle = String(title || "Property").trim() || "Property"
-  return `${propertyTitle} picture unavailable`
+  const propertyTitle = String(title || "Propiedad").trim() || "Propiedad"
+  return `Imagen no disponible de ${propertyTitle}`
 }

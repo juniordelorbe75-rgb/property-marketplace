@@ -21,6 +21,7 @@ class PropertyDB(Base):
         ),
         Index("ix_properties_owner_created", "owner_id", "created_at"),
         Index("ix_properties_safety_created", "safety_hold", "created_at"),
+        Index("ix_properties_dominican_location", "country_code", "province", "municipality"),
         Index(
             "uq_properties_owner_creation_key",
             "owner_id",
@@ -98,6 +99,11 @@ class PropertyDB(Base):
         String(255),
         nullable=False
     )
+
+    country_code: Mapped[str] = mapped_column(String(2), nullable=False, default="DO", server_default="DO")
+    province: Mapped[str] = mapped_column(String(100), nullable=False, default="", server_default="")
+    municipality: Mapped[str] = mapped_column(String(100), nullable=False, default="", server_default="")
+    sector: Mapped[str] = mapped_column(String(100), nullable=False, default="", server_default="")
 
     property_type: Mapped[str] = mapped_column(
         String(100),

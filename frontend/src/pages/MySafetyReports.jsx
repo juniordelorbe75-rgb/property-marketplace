@@ -10,17 +10,17 @@ import { formatPropertyReference } from "../utils/propertyReference"
 import "./MySafetyReports.css"
 
 const STATUS_CONTENT = {
-  submitted: ["Received", "Your report was recorded and is waiting for review."],
-  reviewing: ["Being reviewed", "A safety administrator is reviewing the information."],
-  resolved: ["Review complete", "The report was reviewed and closed."],
-  dismissed: ["Review closed", "The report was reviewed and closed without further action."],
+  submitted: ["Recibido", "Su reporte fue registrado y está pendiente de revisión."],
+  reviewing: ["En revisión", "Un administrador de seguridad está revisando la información."],
+  resolved: ["Revisión completada", "El reporte fue revisado y cerrado."],
+  dismissed: ["Revisión cerrada", "El reporte fue revisado y cerrado sin acciones adicionales."],
 }
 
 const EMPTY_PAGE = { items: [], total: 0, page: 1, pageSize: 20, totalPages: 1 }
 
 function formatDate(value) {
   const date = new Date(value)
-  return Number.isNaN(date.getTime()) ? "Date unavailable" : date.toLocaleString()
+  return Number.isNaN(date.getTime()) ? "Fecha no disponible" : date.toLocaleString("es-DO")
 }
 
 function MySafetyReports() {
@@ -42,7 +42,7 @@ function MySafetyReports() {
         signal,
       })
       const data = await readApiResponse(response)
-      if (!response.ok) throw new Error(getApiError(data, "Failed to load your safety reports"))
+      if (!response.ok) throw new Error(getApiError(data, "No pudimos cargar sus reportes de seguridad"))
 
       const normalized = normalizeMyReportPage(data)
       if (page > normalized.totalPages) {
@@ -70,32 +70,32 @@ function MySafetyReports() {
     <main className="my-reports-page">
       <header className="my-reports-header">
         <div>
-          <p>Marketplace safety</p>
-          <h1>My Safety Reports</h1>
-          <span>Track reports you submitted. Internal review notes and other users’ reports remain private.</span>
+          <p>Seguridad de HabitaRD</p>
+          <h1>Mis reportes de seguridad</h1>
+          <span>Consulte los reportes que ha enviado. Las notas internas y los reportes de otras personas permanecen privados.</span>
         </div>
         <button type="button" onClick={() => setLoadAttempt((current) => current + 1)} disabled={loading}>
-          {loading ? "Refreshing…" : "Refresh"}
+          {loading ? "Actualizando…" : "Actualizar"}
         </button>
       </header>
 
       {error && (
         <div className="my-reports-error" role="alert">
           <span>{error}</span>
-          <button type="button" onClick={() => setLoadAttempt((current) => current + 1)}>Try again</button>
+          <button type="button" onClick={() => setLoadAttempt((current) => current + 1)}>Intentar de nuevo</button>
         </div>
       )}
 
       {loading && reportPage.items.length === 0 ? (
-        <p className="my-reports-empty">Loading your reports…</p>
+        <p className="my-reports-empty">Cargando sus reportes…</p>
       ) : reportPage.items.length === 0 ? (
         <div className="my-reports-empty">
-          <h2>No safety reports yet</h2>
-          <p>You can report a concern from any property page you do not own.</p>
-          <Link to="/">Explore properties</Link>
+          <h2>Todavía no ha enviado reportes</h2>
+          <p>Puede reportar una inquietud desde la página de cualquier propiedad que no le pertenezca.</p>
+          <Link to="/">Explorar propiedades</Link>
         </div>
       ) : (
-        <section className="my-reports-list" aria-label="Your safety reports">
+        <section className="my-reports-list" aria-label="Sus reportes de seguridad">
           {reportPage.items.map((report) => {
             const [statusLabel, statusDescription] = STATUS_CONTENT[report.status]
             return (
@@ -103,30 +103,30 @@ function MySafetyReports() {
                 <div className="my-report-heading">
                   <div>
                     <span className={`my-report-status ${report.status}`}>{statusLabel}</span>
-                    <strong>Safety report #{report.id}</strong>
+                    <strong>Reporte de seguridad #{report.id}</strong>
                   </div>
-                  <span>Submitted {formatDate(report.created_at)}</span>
+                  <span>Enviado el {formatDate(report.created_at)}</span>
                 </div>
 
                 <div className="my-report-listing">
-                  <span>Listing</span>
+                  <span>Propiedad</span>
                   {report.property_id ? (
                     <Link to={`/properties/${report.property_id}`}>
                       {report.listing_title} · {formatPropertyReference(report.listing_id)}
                     </Link>
                   ) : (
-                    <strong>{report.listing_title} · {formatPropertyReference(report.listing_id)} (removed)</strong>
+                    <strong>{report.listing_title} · {formatPropertyReference(report.listing_id)} (eliminada)</strong>
                   )}
                 </div>
 
                 <div className="my-report-content">
-                  <div><span>Reason</span><strong>{REPORT_REASON_LABELS[report.reason] || report.reason}</strong></div>
-                  <div><span>Your details</span><p>{report.details || "No additional details provided."}</p></div>
+                  <div><span>Motivo</span><strong>{REPORT_REASON_LABELS[report.reason] || report.reason}</strong></div>
+                  <div><span>Sus detalles</span><p>{report.details || "No proporcionó detalles adicionales."}</p></div>
                 </div>
 
                 <div className="my-report-update">
                   <strong>{statusDescription}</strong>
-                  <span>Last updated {formatDate(report.updated_at)}</span>
+                  <span>Última actualización: {formatDate(report.updated_at)}</span>
                 </div>
               </article>
             )
@@ -135,10 +135,10 @@ function MySafetyReports() {
       )}
 
       {reportPage.totalPages > 1 && (
-        <nav className="my-reports-pagination" aria-label="Your safety report pages">
-          <button type="button" disabled={page <= 1 || loading} onClick={() => setPage((current) => current - 1)}>Previous</button>
-          <span>Page {reportPage.page} of {reportPage.totalPages}</span>
-          <button type="button" disabled={page >= reportPage.totalPages || loading} onClick={() => setPage((current) => current + 1)}>Next</button>
+        <nav className="my-reports-pagination" aria-label="Páginas de sus reportes de seguridad">
+          <button type="button" disabled={page <= 1 || loading} onClick={() => setPage((current) => current - 1)}>Anterior</button>
+          <span>Página {reportPage.page} de {reportPage.totalPages}</span>
+          <button type="button" disabled={page >= reportPage.totalPages || loading} onClick={() => setPage((current) => current + 1)}>Siguiente</button>
         </nav>
       )}
     </main>

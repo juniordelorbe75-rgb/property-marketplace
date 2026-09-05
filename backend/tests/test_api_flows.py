@@ -236,6 +236,34 @@ class ApiFlowTests(unittest.TestCase):
         self.assertIn("1 MB", body["detail"])
         self.assertEqual(headers["cache-control"], "no-store")
 
+    def test_responses_include_baseline_security_headers(self):
+        status, _body, headers = self.call_with_headers("GET", "/health")
+
+        self.assertEqual(status, 200)
+        self.assertEqual(headers["x-content-type-options"], "nosniff")
+        self.assertEqual(headers["x-frame-options"], "DENY")
+        self.assertEqual(headers["referrer-policy"], "no-referrer")
+        self.assertEqual(headers["content-security-policy"], "frame-ancestors 'none'")
+        self.assertIn("camera=()", headers["permissions-policy"])
+        self.assertIn("x-request-id", headers)
+
+    def test_authentication_and_error_responses_are_not_cached(self):
+        login_status, _login_body, login_headers = self.call_with_headers(
+            "POST",
+            "/users/login",
+            {"email": "missing@example.com", "password": "incorrect-password"},
+        )
+        missing_status, _missing_body, missing_headers = self.call_with_headers(
+            "GET",
+            "/route-that-does-not-exist",
+        )
+
+        self.assertEqual(login_status, 401)
+        self.assertEqual(login_headers["cache-control"], "no-store")
+        self.assertEqual(login_headers["pragma"], "no-cache")
+        self.assertEqual(missing_status, 404)
+        self.assertEqual(missing_headers["cache-control"], "no-store")
+
     def register_and_login(self, name, email):
         register_status, user = self.call(
             "POST",
@@ -310,6 +338,21 @@ class ApiFlowTests(unittest.TestCase):
 
         self.assertEqual(status, 401)
         self.assertIn("detail", body)
+
+    def test_logout_revokes_the_token_on_the_server(self):
+        _user, token = self.register_and_login(
+            "Logout User", "logout-user@example.com"
+        )
+
+        before_status, _before = self.call("GET", "/users/me", token=token)
+        logout_status, logout_body = self.call("POST", "/auth/logout", token=token)
+        after_status, after_body = self.call("GET", "/users/me", token=token)
+
+        self.assertEqual(before_status, 200)
+        self.assertEqual(logout_status, 204)
+        self.assertIsNone(logout_body)
+        self.assertEqual(after_status, 401)
+        self.assertIn("closed", after_body["detail"])
 
     def test_account_deletion_requires_current_password(self):
         user, token = self.register_and_login(
@@ -609,6 +652,13 @@ class ApiFlowTests(unittest.TestCase):
         self.assertEqual(ready, {"status": "ready", "database": "ok"})
         self.assertEqual(unavailable_status, 503)
         self.assertEqual(unavailable["detail"], "Database is unavailable")
+
+    def test_readiness_rejects_an_incomplete_database_schema(self):
+        with patch("backend.main.missing_required_tables", return_value={"properties"}):
+            status, body = self.call("GET", "/ready")
+
+        self.assertEqual(status, 503)
+        self.assertEqual(body["detail"], "Database schema is not ready")
 
     def test_every_response_includes_a_unique_request_id(self):
         first_status, _first_body, first_headers = self.call_with_headers(

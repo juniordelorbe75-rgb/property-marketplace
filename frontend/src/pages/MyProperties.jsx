@@ -76,15 +76,15 @@ function MyProperties() {
 
         if (!response.ok) {
           throw new Error(
-            getApiError(data, "Failed to load properties")
+            getApiError(data, "No pudimos cargar sus propiedades")
           )
         }
 
         if (!statsResponse.ok) {
-          throw new Error(getApiError(statsData, "Failed to load seller statistics"))
+          throw new Error(getApiError(statsData, "No pudimos cargar las estadísticas del anunciante"))
         }
         if (!engagementResponse.ok) {
-          throw new Error(getApiError(engagementData, "Failed to load listing engagement"))
+          throw new Error(getApiError(engagementData, "No pudimos cargar la actividad de los anuncios"))
         }
 
         setProperties(data)
@@ -112,7 +112,7 @@ function MyProperties() {
     if (!token || statusPendingIdsRef.current.has(property.id)) return
     if (property.safety_hold) {
       setStatusMessage("")
-      setStatusError("This listing is on a safety hold. You can correct its details, but only a safety administrator can release it.")
+      setStatusError("Este anuncio tiene una retención de seguridad. Puede corregir sus datos, pero solamente un administrador de seguridad puede liberarlo.")
       return
     }
 
@@ -139,7 +139,7 @@ function MyProperties() {
         return
       }
       if (!response.ok) {
-        throw new Error(getApiError(data, "Failed to update listing availability"))
+        throw new Error(getApiError(data, "No pudimos actualizar la disponibilidad del anuncio"))
       }
 
       setProperties((current) => current.map((item) => item.id === data.id ? data : item))
@@ -150,8 +150,8 @@ function MyProperties() {
       } : current)
       setStatusMessage(
         nextStatus === "available"
-          ? `${property.title} is now available.`
-          : `${property.title} is now unavailable.`,
+          ? `${property.title} ahora está disponible.`
+          : `${property.title} ahora no está disponible.`,
       )
     } catch (updateError) {
       console.error("Availability update error:", updateError)
@@ -170,25 +170,25 @@ function MyProperties() {
     <main className="my-properties-page">
       <header className="my-properties-header">
         <div>
-          <p className="my-properties-eyebrow">Seller dashboard</p>
-          <h1>My Listings</h1>
-          <p>Manage the properties you have listed on the marketplace.</p>
+          <p className="my-properties-eyebrow">Panel del anunciante</p>
+          <h1>Mis propiedades</h1>
+          <p>Administre las propiedades que ha publicado en HabitaRD.</p>
         </div>
 
         <Link className="add-property-link" to="/create-property">
-          + Add Property
+          + Agregar propiedad
         </Link>
       </header>
 
       {loading && (
-        <p className="my-properties-message">Loading your properties...</p>
+        <p className="my-properties-message">Cargando sus propiedades...</p>
       )}
 
       {error && (
         <section className="my-properties-error" role="alert">
           <p>{error}</p>
           <button type="button" onClick={() => setLoadAttempt((current) => current + 1)}>
-            Try again
+            Intentar de nuevo
           </button>
         </section>
       )}
@@ -197,22 +197,22 @@ function MyProperties() {
       {statusError && <p className="my-properties-error" role="alert">{statusError}</p>}
 
       {!loading && !error && stats && (
-        <section className="seller-stats" aria-label="Seller statistics">
-          <div><strong>{stats.total_listings}</strong><span>Total listings</span></div>
-          <div><strong>{stats.available_listings}</strong><span>Available</span></div>
-          <div><strong>{stats.unavailable_listings}</strong><span>Unavailable</span></div>
-          <div><strong>{stats.favorites_received}</strong><span>Favorites</span></div>
-          <div><strong>{stats.inquiries_received}</strong><span>Inquiries</span></div>
-          <div><strong>{stats.pending_inquiries}</strong><span>Pending</span></div>
+        <section className="seller-stats" aria-label="Estadísticas del anunciante">
+          <div><strong>{stats.total_listings}</strong><span>Total de anuncios</span></div>
+          <div><strong>{stats.available_listings}</strong><span>Disponibles</span></div>
+          <div><strong>{stats.unavailable_listings}</strong><span>No disponibles</span></div>
+          <div><strong>{stats.favorites_received}</strong><span>Favoritos</span></div>
+          <div><strong>{stats.inquiries_received}</strong><span>Consultas</span></div>
+          <div><strong>{stats.pending_inquiries}</strong><span>Pendientes</span></div>
         </section>
       )}
 
       {!loading && !error && properties.length === 0 && (
         <section className="my-properties-empty">
-          <h2>No listings yet</h2>
-          <p>Create your first property listing to start reaching buyers.</p>
+          <h2>Todavía no tiene propiedades publicadas</h2>
+          <p>Publique su primera propiedad para comenzar a recibir consultas.</p>
           <Link className="add-property-link" to="/create-property">
-            Create Your First Listing
+            Publicar mi primera propiedad
           </Link>
         </section>
       )}
@@ -221,15 +221,15 @@ function MyProperties() {
         <section>
           <div className="listing-tools">
             <label className="listing-search">
-              <span>Find one of your listings</span>
+              <span>Buscar entre sus propiedades</span>
               <input
                 type="search"
                 value={listingQuery}
                 onChange={(event) => setListingQuery(event.target.value)}
-                placeholder="Title, location, or PM-000123"
+                placeholder="Título, ubicación o PM-000123"
               />
             </label>
-            <div className="listing-filters" aria-label="Filter your listings">
+            <div className="listing-filters" aria-label="Filtrar sus propiedades">
               {SELLER_LISTING_FILTERS.map((filter) => (
                 <button
                   key={filter}
@@ -238,7 +238,7 @@ function MyProperties() {
                   aria-pressed={listingFilter === filter}
                   onClick={() => setListingFilter(filter)}
                 >
-                  {filter === "attention" ? "Needs attention" : `${filter.charAt(0).toUpperCase()}${filter.slice(1)}`}
+                  {{ all: "Todas", available: "Disponibles", unavailable: "No disponibles", attention: "Requieren atención" }[filter]}
                   <span>{listingFilterCounts[filter]}</span>
                 </button>
               ))}
@@ -246,14 +246,14 @@ function MyProperties() {
           </div>
 
           <p className="listing-count" aria-live="polite">
-            Showing {visibleProperties.length} of {properties.length} {properties.length === 1 ? "listing" : "listings"}
+            Mostrando {visibleProperties.length} de {properties.length} {properties.length === 1 ? "propiedad" : "propiedades"}
           </p>
 
           {visibleProperties.length === 0 ? (
             <div className="my-properties-no-results">
-              <h2>No matching listings</h2>
-              <p>Try another title, location, reference, or status.</p>
-              <button type="button" onClick={() => { setListingQuery(""); setListingFilter("all") }}>Clear filters</button>
+              <h2>No encontramos propiedades</h2>
+              <p>Pruebe con otro título, ubicación, referencia o estado.</p>
+              <button type="button" onClick={() => { setListingQuery(""); setListingFilter("all") }}>Limpiar filtros</button>
             </div>
           ) : <div className="my-properties-grid">
             {visibleProperties.map((property) => (
@@ -275,21 +275,21 @@ function MyProperties() {
                   createdAt={property.created_at}
                   updatedAt={property.updated_at}
                 />
-                <div className="listing-engagement" aria-label={`Engagement for ${property.title}`}>
-                  <span>♥ {engagementByProperty[property.id]?.favorites || 0} favorites</span>
-                  <span>✉ {engagementByProperty[property.id]?.inquiries || 0} inquiries</span>
+                <div className="listing-engagement" aria-label={`Actividad de ${property.title}`}>
+                  <span>♥ {engagementByProperty[property.id]?.favorites || 0} favoritos</span>
+                  <span>✉ {engagementByProperty[property.id]?.inquiries || 0} consultas</span>
                   <span className={engagementByProperty[property.id]?.pending_inquiries ? "needs-attention" : ""}>
-                    {engagementByProperty[property.id]?.pending_inquiries || 0} pending
+                    {engagementByProperty[property.id]?.pending_inquiries || 0} pendientes
                   </span>
                   {(engagementByProperty[property.id]?.inquiries || 0) > 0 && (
                     <Link to={`/inquiries?property=${formatPropertyReference(property.id)}`}>
-                      View inquiries
+                      Ver consultas
                     </Link>
                   )}
                 </div>
                 {property.safety_hold && (
                   <p className="listing-safety-hold" role="status">
-                    Safety hold active: hidden from discovery and new inquiries. Open the listing to correct its details.
+                    Retención de seguridad activa: la propiedad no aparece en búsquedas ni acepta consultas nuevas. Abra el anuncio para corregir sus datos.
                   </p>
                 )}
                 <button
@@ -299,12 +299,12 @@ function MyProperties() {
                   disabled={statusPendingIds.has(property.id) || property.safety_hold}
                 >
                   {property.safety_hold
-                    ? "Safety hold active"
+                    ? "Retención de seguridad activa"
                     : statusPendingIds.has(property.id)
-                    ? "Updating..."
+                    ? "Actualizando..."
                     : property.status === "available"
-                      ? "Mark unavailable"
-                      : "Mark available"}
+                      ? "Marcar como no disponible"
+                      : "Marcar como disponible"}
                 </button>
               </div>
             ))}

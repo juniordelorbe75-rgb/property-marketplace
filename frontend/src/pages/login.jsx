@@ -51,7 +51,7 @@ function Login() {
         body: JSON.stringify({ email, password }),
       })
       const data = await readApiResponse(response)
-      if (!response.ok) throw new Error(getApiError(data, "Login failed"))
+      if (!response.ok) throw new Error(getApiError(data, "No pudimos iniciar la sesión"))
 
       login(data.access_token)
       queueLoginWelcome("returning")
@@ -66,22 +66,22 @@ function Login() {
 
   return (
     <AuthLayout>
-      <p className="auth-card-eyebrow">Welcome back</p>
-      <h1>Sign in to your account</h1>
+      <p className="auth-card-eyebrow">Bienvenido nuevamente</p>
+      <h1>Inicie sesión en su cuenta</h1>
 
-      <p className="auth-intro">Continue managing your saved properties and conversations.</p>
+      <p className="auth-intro">Continúe administrando sus propiedades guardadas y conversaciones.</p>
 
       {location.state?.sessionExpired && (
         <p className="auth-session-note" role="status">
-          Your session expired or was revoked. Log in again to continue safely.
+          Su sesión venció o fue revocada. Inicie sesión nuevamente para continuar de forma segura.
         </p>
       )}
 
-      {returnTo !== "/" && <p className="auth-return-note">After login, you will return to where you left off.</p>}
+      {returnTo !== "/" && <p className="auth-return-note">Después de iniciar sesión, regresará al punto donde estaba.</p>}
 
       <form className="auth-form" onSubmit={handleLogin}>
         <div className="auth-field">
-          <label htmlFor="login-email">Email</label>
+          <label htmlFor="login-email">Correo electrónico</label>
 
           <input
             id="login-email"
@@ -95,44 +95,44 @@ function Login() {
 
         <PasswordInput
           id="login-password"
-          label="Password"
+          label="Contraseña"
           value={password}
           onChange={(event) => setPassword(event.target.value)}
           autoComplete="current-password"
         />
 
-        <div className="auth-forgot-link"><Link to="/forgot-password">Forgot your password?</Link></div>
+        <div className="auth-forgot-link"><Link to="/forgot-password">¿Olvidó su contraseña?</Link></div>
 
         {error && <p className="auth-error" role="alert">{error}</p>}
 
         <button className="auth-submit" type="submit" disabled={loading}>
-          {loading ? "Logging in..." : "Login"}
+          {loading ? "Iniciando sesión..." : "Iniciar sesión"}
         </button>
       </form>
 
       {providersLoaded && providers.length > 0 && (
-        <section className="social-login" aria-label="Social sign-in options">
-          <p><span>or continue with</span></p>
+        <section className="social-login" aria-label="Opciones de inicio de sesión social">
+          <p><span>o continuar con</span></p>
           {providers.map((provider) => (
             <button
               key={provider.id}
               type="button"
               disabled={!provider.enabled}
-              title={provider.enabled ? `Continue with ${provider.name}` : `${provider.name} sign-in is not configured yet`}
+              title={provider.enabled ? `Continuar con ${provider.name}` : `El acceso con ${provider.name} todavía no está configurado`}
               onClick={() => socialLogin(provider.id)}
             >
-              Continue with {provider.name}{provider.enabled ? "" : " — coming soon"}
+              Continuar con {provider.name}{provider.enabled ? "" : " — próximamente"}
             </button>
           ))}
           {!providers.some((provider) => provider.enabled) && (
-            <small className="social-login-note">Social sign-in will activate when the marketplace administrator finishes provider setup.</small>
+            <small className="social-login-note">El acceso social se activará cuando el administrador termine de configurar los proveedores.</small>
           )}
         </section>
       )}
 
       <p className="auth-switch">
-        Need an account?{" "}
-        <Link to="/register" state={{ returnTo }}>Register</Link>
+        ¿Necesita una cuenta?{" "}
+        <Link to="/register" state={{ returnTo }}>Registrarse</Link>
       </p>
     </AuthLayout>
   )

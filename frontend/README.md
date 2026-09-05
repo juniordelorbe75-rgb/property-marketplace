@@ -1,6 +1,6 @@
-# Property Marketplace Frontend
+# Sitio web de HabitaRD
 
-This directory contains the React and Vite client for Property Marketplace. See the repository's [main README](../README.md) for complete setup, architecture, security, and backend instructions.
+Este directorio contiene el sitio web de HabitaRD desarrollado con React y Vite. Consulte el [README principal](../README.md) para conocer la configuración, arquitectura, seguridad e instrucciones del servidor.
 
 ## Commands
 

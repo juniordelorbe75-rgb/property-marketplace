@@ -36,7 +36,7 @@ function Register() {
     setError("")
 
     if (password !== confirmPassword) {
-      setError("Passwords do not match.")
+      setError("Las contraseñas no coinciden.")
       return
     }
 
@@ -66,7 +66,7 @@ function Register() {
 
       if (!response.ok) {
         throw new Error(
-          getApiError(data, "Registration failed")
+          getApiError(data, "No pudimos completar el registro")
         )
       }
 
@@ -90,7 +90,7 @@ function Register() {
       throw new Error(
         getApiError(
           loginData,
-          "Account created, but automatic login failed"
+          "La cuenta fue creada, pero no pudimos iniciar la sesión automáticamente"
         )
       )
     }
@@ -110,15 +110,15 @@ function Register() {
 
   return (
     <AuthLayout wide>
-      <p className="auth-card-eyebrow">Join the marketplace</p>
-      <h1>Create your account</h1>
+      <p className="auth-card-eyebrow">Únase al mercado</p>
+      <h1>Cree su cuenta</h1>
 
-      <p className="auth-intro">Save properties, contact owners, and manage listings securely.</p>
+      <p className="auth-intro">Guarde propiedades, contacte a propietarios y administre anuncios de forma segura.</p>
 
       <form className="auth-form" onSubmit={handleRegister}>
 
         <div className="auth-field">
-          <label htmlFor="register-first-name">First name</label>
+          <label htmlFor="register-first-name">Nombre</label>
 
           <input
             type="text"
@@ -134,28 +134,28 @@ function Register() {
         </div>
 
         <div className="auth-field">
-          <label htmlFor="register-middle-name">Middle name <span>(optional)</span></label>
+          <label htmlFor="register-middle-name">Segundo nombre <span>(opcional)</span></label>
           <input id="register-middle-name" type="text" value={middleName} onChange={(event) => setMiddleName(event.target.value)} autoComplete="additional-name" maxLength={100} />
         </div>
 
         <div className="auth-field">
-          <label htmlFor="register-last-name">Last name</label>
+          <label htmlFor="register-last-name">Apellido</label>
           <input id="register-last-name" type="text" value={lastName} onChange={(event) => setLastName(event.target.value)} autoComplete="family-name" maxLength={100} required />
         </div>
 
         <div className="auth-field">
-          <label htmlFor="register-date-of-birth">Date of birth</label>
+          <label htmlFor="register-date-of-birth">Fecha de nacimiento</label>
           <input id="register-date-of-birth" type="date" value={dateOfBirth} onChange={(event) => setDateOfBirth(event.target.value)} max={new Date().toISOString().slice(0, 10)} autoComplete="bday" required />
         </div>
 
         <div className="auth-field">
-          <label htmlFor="register-bio">About you <span>(optional)</span></label>
-          <textarea id="register-bio" value={bio} onChange={(event) => setBio(event.target.value)} maxLength={1000} rows={5} placeholder="Tell other marketplace members a little about yourself." />
-          <small>{bio.length}/1000 characters</small>
+          <label htmlFor="register-bio">Sobre usted <span>(opcional)</span></label>
+          <textarea id="register-bio" value={bio} onChange={(event) => setBio(event.target.value)} maxLength={1000} rows={5} placeholder="Cuénteles un poco sobre usted a otros miembros del mercado." />
+          <small>{bio.length}/1000 caracteres</small>
         </div>
 
         <div className="auth-field">
-          <label htmlFor="register-email">Email</label>
+          <label htmlFor="register-email">Correo electrónico</label>
 
           <input
             id="register-email"
@@ -171,19 +171,19 @@ function Register() {
 
         <PasswordInput
           id="register-password"
-          label="Password"
+          label="Contraseña"
           value={password}
           onChange={(event) => setPassword(event.target.value)}
           autoComplete="new-password"
           describedBy="new-password-help"
           minLength={8}
         />
-        <small id="new-password-help" className="password-help">Use at least 8 characters. A password manager can create and save a unique password for you.</small>
+        <small id="new-password-help" className="password-help">Use al menos 8 caracteres. Un administrador de contraseñas puede crear y guardar una contraseña única para usted.</small>
 
         <div>
           <PasswordInput
             id="register-confirm-password"
-            label="Confirm password"
+            label="Confirmar contraseña"
             value={confirmPassword}
             onChange={(event) => setConfirmPassword(event.target.value)}
             autoComplete="new-password"
@@ -193,8 +193,8 @@ function Register() {
           />
           <small id="confirm-password-help">
             {confirmPassword && password !== confirmPassword
-              ? "Passwords do not match."
-              : "Enter the same password again."}
+              ? "Las contraseñas no coinciden."
+              : "Escriba nuevamente la misma contraseña."}
           </small>
         </div>
 
@@ -206,16 +206,16 @@ function Register() {
           disabled={loading || !confirmPassword || password !== confirmPassword}
         >
           {loading
-            ? "Creating Account..."
-            : "Create Account"}
+            ? "Creando cuenta..."
+            : "Crear cuenta"}
         </button>
 
       </form>
 
       <p className="auth-switch">
-        Already have an account?{" "}
+        ¿Ya tiene una cuenta?{" "}
         <Link to="/login" state={{ returnTo }}>
-          Login
+          Iniciar sesión
         </Link>
       </p>
     </AuthLayout>

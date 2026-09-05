@@ -2,17 +2,17 @@
 setlocal
 cd /d "%~dp0"
 
-echo Starting Property Marketplace...
+echo Iniciando HabitaRD...
 echo.
-echo Keep both server windows open while using the app.
-echo Closing either window will disconnect that part of the app.
+echo Mantenga abiertas ambas ventanas mientras utiliza la aplicación.
+echo Si cierra una ventana, se desconectará esa parte de la aplicación.
 echo.
 
-start "Property Marketplace API" cmd /k ".venv\Scripts\python.exe -m uvicorn backend.main:app --reload --host 127.0.0.1 --port 8000"
-start "Property Marketplace Frontend" cmd /k "cd /d frontend && npm run dev -- --host 127.0.0.1"
+start "HabitaRD API" cmd /k ".venv\Scripts\python.exe -m uvicorn backend.main:app --reload --host 127.0.0.1 --port 8000"
+start "HabitaRD Web" cmd /k "cd /d frontend && npm run dev -- --host 127.0.0.1"
 
-echo Backend:  http://127.0.0.1:8000
-echo Frontend: http://127.0.0.1:5173
+echo Servidor:  http://127.0.0.1:8000
+echo Sitio web: http://127.0.0.1:5173
 echo.
-echo Open the Frontend address in your browser.
+echo Abra la dirección del sitio web en su navegador.
 pause

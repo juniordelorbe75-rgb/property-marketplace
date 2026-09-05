@@ -14,8 +14,8 @@ import {
   saveListingDraft,
 } from "../utils/listingDraft"
 import { moveImageToCover, removeImageAt } from "../utils/imageOrder"
-import DominicanLocationSuggestions from "../components/DominicanLocationSuggestions"
 import { buildPropertyMapUrl, isMapLocationDetailed } from "../utils/propertyMap"
+import { buildDominicanLocation, DOMINICAN_PROVINCES } from "../utils/dominicanLocations"
 
 function CreateProperty() {
   const navigate = useNavigate()
@@ -35,6 +35,9 @@ function CreateProperty() {
   const [listingType, setListingType] = useState(initialDraft?.listingType || "sale")
   const [amenities, setAmenities] = useState(initialDraft?.amenities || [])
   const [location, setLocation] = useState(initialDraft?.location || "")
+  const [province, setProvince] = useState(initialDraft?.province || "")
+  const [municipality, setMunicipality] = useState(initialDraft?.municipality || "")
+  const [sector, setSector] = useState(initialDraft?.sector || "")
   const [propertyType, setPropertyType] = useState(initialDraft?.propertyType || "")
   const [bedrooms, setBedrooms] = useState(initialDraft?.bedrooms || "")
   const [bathrooms, setBathrooms] = useState(initialDraft?.bathrooms || "1")
@@ -58,6 +61,7 @@ function CreateProperty() {
     const timer = window.setTimeout(() => {
       saveListingDraft(draftOwnerId, {
         title, description, imageUrl, price, currency, listingType, amenities, location,
+        province, municipality, sector,
         propertyType, bedrooms, bathrooms, squareFeet, status,
         idempotencyKey,
       })
@@ -65,11 +69,12 @@ function CreateProperty() {
     return () => window.clearTimeout(timer)
   }, [
     amenities, bathrooms, bedrooms, currency, description, draftOwnerId, imageUrl,
-    idempotencyKey, listingType, location, price, propertyType, squareFeet, status, title,
+    idempotencyKey, listingType, location, municipality, price, propertyType, province,
+    sector, squareFeet, status, title,
   ])
 
   function discardDraft() {
-    if (!window.confirm("Discard this unfinished property listing?")) return
+    if (!window.confirm("¿Descartar este anuncio de propiedad sin terminar?")) return
     clearListingDraft(draftOwnerId)
     setTitle("")
     setDescription("")
@@ -79,6 +84,9 @@ function CreateProperty() {
     setListingType("sale")
     setAmenities([])
     setLocation("")
+    setProvince("")
+    setMunicipality("")
+    setSector("")
     setPropertyType("")
     setBedrooms("")
     setBathrooms("1")
@@ -101,17 +109,17 @@ function CreateProperty() {
     if (!files.length) return
 
     if (files.length > 8) {
-      setError("Choose no more than 8 pictures.")
+      setError("Seleccione un máximo de 8 fotos.")
       event.target.value = ""
       return
     }
     if (files.some((file) => !["image/jpeg", "image/png", "image/webp"].includes(file.type))) {
-      setError("Every picture must be a JPG, PNG, or WebP image.")
+      setError("Todas las fotos deben estar en formato JPG, PNG o WebP.")
       event.target.value = ""
       return
     }
     if (files.some((file) => file.size > 5 * 1024 * 1024)) {
-      setError("Each picture must be no larger than 5 MB.")
+      setError("Cada foto debe pesar como máximo 5 MB.")
       event.target.value = ""
       return
     }
@@ -138,7 +146,7 @@ function CreateProperty() {
     return new Promise((resolve, reject) => {
       const reader = new FileReader()
       reader.onload = () => resolve(reader.result.split(",")[1])
-      reader.onerror = () => reject(new Error("Could not read the selected image."))
+      reader.onerror = () => reject(new Error("No pudimos leer la imagen seleccionada."))
       reader.readAsDataURL(file)
     })
   }
@@ -154,7 +162,7 @@ function CreateProperty() {
       }),
     })
     const data = await readApiResponse(response)
-    if (!response.ok) throw new Error(getApiError(data, "Failed to upload image"))
+    if (!response.ok) throw new Error(getApiError(data, "No pudimos subir la imagen"))
     return data.image_url
   }
 
@@ -188,17 +196,18 @@ function CreateProperty() {
     event.preventDefault()
     const token = localStorage.getItem("access_token")
     if (!token) {
-      setError("You must be logged in to create a property.")
+      setError("Debe iniciar sesión para publicar una propiedad.")
       return
     }
 
     if (!imageFiles.length && !imageUrl.trim()) {
-      setError("Add at least one property picture before publishing.")
+      setError("Agregue al menos una foto de la propiedad antes de publicar.")
       return
     }
 
     setError("")
     setLoading(true)
+    const structuredLocation = buildDominicanLocation({ sector, municipality, province })
     const hasNewUploads = imageFiles.length > 0
     try {
       const uploadedImageUrls = await uploadImages(token)
@@ -218,7 +227,11 @@ function CreateProperty() {
           currency,
           listing_type: listingType,
           amenities,
-          location,
+          location: structuredLocation,
+          country_code: "DO",
+          province,
+          municipality,
+          sector,
           property_type: propertyType,
           bedrooms: Number(bedrooms),
           bathrooms: Number(bathrooms),
@@ -231,7 +244,7 @@ function CreateProperty() {
         if (hasNewUploads) {
           await Promise.all(uploadedImageUrls.map((url) => deleteUnusedUpload(token, url)))
         }
-        throw new Error(getApiError(data, "Failed to create property"))
+        throw new Error(getApiError(data, "No pudimos publicar la propiedad"))
       }
       if (hasNewUploads) {
         const usedImages = new Set(data.image_urls || [])
@@ -242,7 +255,7 @@ function CreateProperty() {
         )
       }
       clearListingDraft(draftOwnerId)
-      alert("Property created successfully!")
+      alert("¡Propiedad publicada correctamente!")
       navigate(`/properties/${data.id}`)
     } catch (submitError) {
       console.error("Error creating property:", submitError)
@@ -255,53 +268,53 @@ function CreateProperty() {
   return (
     <div className="create-property-page">
       <div className="create-property-container">
-        <h1>Create Property</h1>
-        <p>List your property on the marketplace.</p>
+        <h1>Publicar una propiedad</h1>
+        <p>Presente su propiedad de forma clara y profesional en HabitaRD.</p>
         {draftRestored && (
           <div className="draft-restored" role="status">
             <div>
-              <strong>Draft restored</strong>
-              <p>Your saved details are back. Please reselect any picture files.</p>
+              <strong>Borrador recuperado</strong>
+              <p>Recuperamos los datos guardados. Vuelva a seleccionar las fotos.</p>
             </div>
-            <button type="button" onClick={discardDraft}>Discard draft</button>
+            <button type="button" onClick={discardDraft}>Descartar borrador</button>
           </div>
         )}
         <form onSubmit={handleSubmit}>
           <div className="form-group">
-            <label>Title</label>
-            <input type="text" value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Beautiful family home" required />
+            <label>Título</label>
+            <input type="text" value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Hermosa vivienda familiar" required />
           </div>
           <div className="form-group">
-            <label>Description (optional)</label>
-            <textarea value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Describe the property, neighborhood, and important features" rows="5" maxLength="2000" />
+            <label>Descripción (opcional)</label>
+            <textarea value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Describa la propiedad, el sector y sus características principales" rows="5" maxLength="2000" />
           </div>
           <div className="form-group">
-            <label>Property pictures</label>
+            <label>Fotos de la propiedad</label>
             <label className="image-upload-button">
-              Choose pictures
+              Seleccionar fotos
               <input type="file" multiple accept="image/jpeg,image/png,image/webp" onChange={handleImageFiles} />
             </label>
-            <span className="image-upload-help">Required · up to 8 JPG, PNG, or WebP pictures · 5 MB each · first picture is the cover</span>
+            <span className="image-upload-help">Obligatorias · hasta 8 fotos JPG, PNG o WebP · 5 MB cada una · la primera será la portada</span>
             {imagePreviews.length > 0 && (
               <div className="image-preview-list">
                 {imagePreviews.map((preview, index) => (
                   <span className="image-preview-item" key={preview}>
-                    <img src={preview} alt={`Selected property preview ${index + 1}`} />
-                    <span>{index === 0 ? "Cover" : `Picture ${index + 1}`}</span>
+                    <img src={preview} alt={`Vista previa de la propiedad ${index + 1}`} />
+                    <span>{index === 0 ? "Portada" : `Foto ${index + 1}`}</span>
                     {index > 0 && (
                       <button type="button" onClick={() => makeSelectedImageCover(index)}>
-                        Make cover
+                        Usar como portada
                       </button>
                     )}
                     <button type="button" onClick={() => removeSelectedImage(index)}>
-                      Remove
+                      Eliminar
                     </button>
                   </span>
                 ))}
-                <button type="button" className="remove-image-button" onClick={clearSelectedImages}>Remove pictures</button>
+                <button type="button" className="remove-image-button" onClick={clearSelectedImages}>Eliminar fotos</button>
               </div>
             )}
-            <span className="image-or">or paste an image URL</span>
+            <span className="image-or">o pegue el enlace de una imagen</span>
             <input
               type="url"
               value={imageUrl}
@@ -314,46 +327,56 @@ function CreateProperty() {
             />
           </div>
           <div className="form-group">
-            <label>Listing For</label>
+            <label>Modalidad</label>
             <select value={listingType} onChange={(event) => setListingType(event.target.value)}>
-              <option value="sale">For Sale</option><option value="rent">For Rent</option>
+              <option value="sale">En venta</option><option value="rent">En alquiler</option>
             </select>
           </div>
           <div className="form-group">
-            <label>Currency</label>
+            <label>Moneda</label>
             <select value={currency} onChange={(event) => setCurrency(event.target.value)}>
-              <option value="USD">US Dollars (US$)</option>
-              <option value="DOP">Dominican Pesos (RD$)</option>
+              <option value="USD">Dólares estadounidenses (US$)</option>
+              <option value="DOP">Pesos dominicanos (RD$)</option>
             </select>
           </div>
-          <div className="form-group"><label>{listingType === "rent" ? "Monthly Rent" : "Sale Price"}</label><input type="number" value={price} onChange={(event) => setPrice(event.target.value)} placeholder={listingType === "rent" ? "2200" : "350000"} required /></div>
+          <div className="form-group"><label>{listingType === "rent" ? "Alquiler mensual" : "Precio de venta"}</label><input type="number" value={price} onChange={(event) => setPrice(event.target.value)} placeholder={listingType === "rent" ? "2200" : "350000"} required /></div>
           <div className="form-group">
-            <label>Location</label>
-            <input type="text" list="dominican-location-suggestions" value={location} onChange={(event) => setLocation(event.target.value)} placeholder="Sector, city/province, country" required />
-            <p className="location-help">Add enough area detail for a useful map search. A private street address is not required.</p>
-            {location.trim() && (
+            <label>Provincia o Distrito Nacional</label>
+            <select value={province} onChange={(event) => setProvince(event.target.value)} required>
+              <option value="">Seleccione una provincia</option>
+              {DOMINICAN_PROVINCES.map((item) => <option value={item} key={item}>{item}</option>)}
+            </select>
+          </div>
+          <div className="form-group">
+            <label>Municipio o ciudad</label>
+            <input type="text" value={municipality} onChange={(event) => setMunicipality(event.target.value)} placeholder="Santo Domingo" maxLength="100" required />
+          </div>
+          <div className="form-group">
+            <label>Sector o vecindario (opcional)</label>
+            <input type="text" value={sector} onChange={(event) => setSector(event.target.value)} placeholder="Piantini" maxLength="100" />
+            <p className="location-help">Indique solamente el área pública. No publique una dirección residencial privada.</p>
+            {(province || municipality || sector) && (
               <div className="location-map-preview">
-                {!isMapLocationDetailed(location) && (
-                  <span>Add a city/province or country to make this map search more reliable.</span>
+                {!isMapLocationDetailed(buildDominicanLocation({ sector, municipality, province })) && (
+                  <span>Agregue el municipio y la provincia para mejorar la búsqueda en el mapa.</span>
                 )}
-                <a href={buildPropertyMapUrl(location)} target="_blank" rel="noreferrer">
-                  Preview map search ↗
+                <a href={buildPropertyMapUrl(buildDominicanLocation({ sector, municipality, province }))} target="_blank" rel="noreferrer">
+                  Ver búsqueda en el mapa ↗
                 </a>
               </div>
             )}
-            <DominicanLocationSuggestions />
           </div>
           <div className="form-group">
-            <label>Property Type</label>
+            <label>Tipo de propiedad</label>
             <select value={propertyType} onChange={(event) => setPropertyType(event.target.value)} required>
-              <option value="">Select type</option><option value="House">House</option><option value="Villa">Villa</option><option value="Apartment">Apartment</option><option value="Condo">Condo</option>
+              <option value="">Seleccione el tipo</option><option value="House">Casa</option><option value="Villa">Villa</option><option value="Apartment">Apartamento</option><option value="Condo">Condominio</option>
             </select>
           </div>
-          <div className="form-group"><label>Bedrooms</label><input type="number" min="1" value={bedrooms} onChange={(event) => setBedrooms(event.target.value)} required /></div>
-          <div className="form-group"><label>Bathrooms</label><input type="number" min="0" max="100" value={bathrooms} onChange={(event) => setBathrooms(event.target.value)} required /></div>
-          <div className="form-group"><label>Square Feet (optional)</label><input type="number" min="0" max="10000000" value={squareFeet} onChange={(event) => setSquareFeet(event.target.value)} placeholder="1800" /></div>
+          <div className="form-group"><label>Habitaciones</label><input type="number" min="1" value={bedrooms} onChange={(event) => setBedrooms(event.target.value)} required /></div>
+          <div className="form-group"><label>Baños</label><input type="number" min="0" max="100" value={bathrooms} onChange={(event) => setBathrooms(event.target.value)} required /></div>
+          <div className="form-group"><label>Pies cuadrados (opcional)</label><input type="number" min="0" max="10000000" value={squareFeet} onChange={(event) => setSquareFeet(event.target.value)} placeholder="1800" /></div>
           <fieldset className="amenities-fieldset">
-            <legend>Amenities (optional)</legend>
+            <legend>Comodidades (opcional)</legend>
             <div className="amenities-options">
               {PROPERTY_AMENITIES.map((amenity) => (
                 <label key={amenity}>
@@ -368,11 +391,11 @@ function CreateProperty() {
             </div>
           </fieldset>
           <div className="form-group">
-            <label>Status</label>
-            <select value={status} onChange={(event) => setStatus(event.target.value)}><option value="available">Available</option><option value="unavailable">Unavailable</option></select>
+            <label>Estado</label>
+            <select value={status} onChange={(event) => setStatus(event.target.value)}><option value="available">Disponible</option><option value="unavailable">No disponible</option></select>
           </div>
           {error && <p className="form-error">{error}</p>}
-          <button type="submit" disabled={loading}>{loading ? "Creating..." : "Create Property"}</button>
+          <button type="submit" disabled={loading}>{loading ? "Publicando..." : "Publicar propiedad"}</button>
         </form>
       </div>
     </div>

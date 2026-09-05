@@ -8,6 +8,7 @@ from backend.auth.token import decode_access_token
 from backend.db import get_db
 from backend.repositories import user_repository
 from backend.config import parse_admin_user_ids
+from backend.db_models.revoked_token import RevokedTokenDB
 
 oauth2_scheme = HTTPBearer()
 
@@ -53,6 +54,9 @@ def get_current_user_id(
             status_code=401,
             detail="This session is no longer valid. Please log in again.",
         )
+
+    if db.get(RevokedTokenDB, payload.get("jti")) is not None:
+        raise HTTPException(status_code=401, detail="This session has been closed.")
 
     return current_user_id
 

@@ -16,10 +16,10 @@ import {
 import "./SafetyReports.css"
 
 const STATUS_LABELS = {
-  submitted: "Submitted",
-  reviewing: "Reviewing",
-  resolved: "Resolved",
-  dismissed: "Dismissed",
+  submitted: "Recibido",
+  reviewing: "En revisión",
+  resolved: "Resuelto",
+  dismissed: "Desestimado",
 }
 
 const EMPTY_PAGE = {
@@ -33,7 +33,7 @@ const EMPTY_PAGE = {
 
 function formatReportDate(value) {
   const date = new Date(value)
-  return Number.isNaN(date.getTime()) ? "Date unavailable" : date.toLocaleString()
+  return Number.isNaN(date.getTime()) ? "Fecha no disponible" : date.toLocaleString("es-DO")
 }
 
 function SafetyReports() {
@@ -69,7 +69,7 @@ function SafetyReports() {
         setReportPage(EMPTY_PAGE)
         return
       }
-      if (!response.ok) throw new Error(getApiError(data, "Failed to load safety reports"))
+      if (!response.ok) throw new Error(getApiError(data, "No pudimos cargar los reportes de seguridad"))
 
       const normalized = normalizeReportPage(data)
       if (page > normalized.totalPages) {
@@ -114,7 +114,7 @@ function SafetyReports() {
     const draft = drafts[report.id]
     if (!draft || updatingId !== null) return
     if (["resolved", "dismissed"].includes(draft.status) && draft.note.trim().length < 3) {
-      setError("Add a short review note before closing a report.")
+      setError("Agregue una nota breve antes de cerrar el reporte.")
       return
     }
 
@@ -135,7 +135,7 @@ function SafetyReports() {
         }),
       })
       const data = await readApiResponse(response)
-      if (!response.ok) throw new Error(getApiError(data, "Failed to update safety report"))
+      if (!response.ok) throw new Error(getApiError(data, "No pudimos actualizar el reporte de seguridad"))
       setLoadAttempt((current) => current + 1)
     } catch (updateError) {
       setError(updateError.message)
@@ -149,8 +149,8 @@ function SafetyReports() {
     if (!action || updatingId !== null || holdingId !== null) return
 
     const confirmed = window.confirm(action.held
-      ? "Temporarily remove this listing from discovery and block new inquiries?"
-      : "Release this listing from safety hold?")
+      ? "¿Ocultar temporalmente este anuncio de las búsquedas y bloquear consultas nuevas?"
+      : "¿Liberar este anuncio de la retención de seguridad?")
     if (!confirmed) return
 
     setHoldingId(report.id)
@@ -166,7 +166,7 @@ function SafetyReports() {
         body: JSON.stringify({ held: action.held }),
       })
       const data = await readApiResponse(response)
-      if (!response.ok) throw new Error(getApiError(data, "Failed to update listing safety hold"))
+      if (!response.ok) throw new Error(getApiError(data, "No pudimos actualizar la retención de seguridad"))
       setLoadAttempt((current) => current + 1)
     } catch (holdError) {
       setError(holdError.message)
@@ -178,9 +178,9 @@ function SafetyReports() {
   if (accessDenied) {
     return (
       <main className="safety-page safety-access-denied">
-        <h1>Administrator access required</h1>
-        <p>This moderation queue is available only to explicitly configured safety administrators.</p>
-        <Link to="/">Return to marketplace</Link>
+        <h1>Se requiere acceso administrativo</h1>
+        <p>Esta sección está disponible únicamente para administradores de seguridad autorizados.</p>
+        <Link to="/">Volver a HabitaRD</Link>
       </main>
     )
   }
@@ -189,17 +189,17 @@ function SafetyReports() {
     <main className="safety-page">
       <header className="safety-header">
         <div>
-          <p className="safety-eyebrow">Marketplace safety</p>
-          <h1>Listing Reports</h1>
-          <p>Review buyer concerns using the saved listing evidence. Decisions do not automatically edit or remove listings.</p>
+          <p className="safety-eyebrow">Seguridad de HabitaRD</p>
+          <h1>Reportes de propiedades</h1>
+          <p>Revise las inquietudes usando la evidencia guardada del anuncio. Las decisiones no modifican ni eliminan propiedades automáticamente.</p>
         </div>
         <button type="button" onClick={() => setLoadAttempt((current) => current + 1)} disabled={loading}>
-          {loading ? "Refreshing…" : "Refresh"}
+          {loading ? "Actualizando…" : "Actualizar"}
         </button>
       </header>
 
-      <nav className="safety-filters" aria-label="Report status filters">
-        <button className={statusFilter === "" ? "active" : ""} type="button" onClick={() => chooseFilter("")}>All <span>{reportPage.counts.all}</span></button>
+      <nav className="safety-filters" aria-label="Filtros por estado del reporte">
+        <button className={statusFilter === "" ? "active" : ""} type="button" onClick={() => chooseFilter("")}>Todos <span>{reportPage.counts.all}</span></button>
         {REPORT_STATUSES.map((status) => (
           <button className={statusFilter === status ? "active" : ""} type="button" key={status} onClick={() => chooseFilter(status)}>
             {STATUS_LABELS[status]} <span>{reportPage.counts[status]}</span>
@@ -210,16 +210,16 @@ function SafetyReports() {
       {error && (
         <div className="safety-error" role="alert">
           <span>{error}</span>
-          <button type="button" onClick={() => setLoadAttempt((current) => current + 1)}>Reload queue</button>
+          <button type="button" onClick={() => setLoadAttempt((current) => current + 1)}>Recargar reportes</button>
         </div>
       )}
 
       {loading && reportPage.items.length === 0 ? (
-        <p className="safety-empty">Loading safety reports…</p>
+        <p className="safety-empty">Cargando reportes de seguridad…</p>
       ) : reportPage.items.length === 0 ? (
-        <p className="safety-empty">No reports match this status.</p>
+        <p className="safety-empty">No hay reportes con este estado.</p>
       ) : (
-        <section className="safety-report-list" aria-label="Safety reports">
+        <section className="safety-report-list" aria-label="Reportes de seguridad">
           {reportPage.items.map((report) => {
             const draft = drafts[report.id] || { status: report.status, note: report.moderator_note || "" }
             const unchanged = draft.status === report.status && draft.note.trim() === (report.moderator_note || "")
@@ -229,7 +229,7 @@ function SafetyReports() {
                 <div className="safety-report-topline">
                   <div>
                     <span className={`safety-status ${report.status}`}>{STATUS_LABELS[report.status]}</span>
-                    <strong>Report #{report.id}</strong>
+                    <strong>Reporte #{report.id}</strong>
                     <span>{formatReportDate(report.created_at)}</span>
                   </div>
                   <span>{REPORT_REASON_LABELS[report.reason] || report.reason}</span>
@@ -237,40 +237,40 @@ function SafetyReports() {
 
                 <div className="safety-report-grid">
                   <div>
-                    <span>Listing</span>
+                    <span>Propiedad</span>
                     {report.property_id ? (
                       <Link to={`/properties/${report.property_id}`}>{report.listing_title} · {formatPropertyReference(report.listing_id)}</Link>
                     ) : (
-                      <strong>{report.listing_title} · {formatPropertyReference(report.listing_id)} (removed)</strong>
+                      <strong>{report.listing_title} · {formatPropertyReference(report.listing_id)} (eliminada)</strong>
                     )}
                   </div>
-                  <div><span>Listing owner</span><strong>{report.listing_owner_name} · Account #{report.listing_owner_id}</strong></div>
-                  <div><span>Reported by</span><strong>{report.reporter_name} · Account #{report.reporter_id}</strong></div>
-                  <div><span>Last reviewer</span><strong>{report.reviewer_name || "Not reviewed yet"}</strong></div>
+                  <div><span>Propietario del anuncio</span><strong>{report.listing_owner_name} · Cuenta #{report.listing_owner_id}</strong></div>
+                  <div><span>Reportado por</span><strong>{report.reporter_name} · Cuenta #{report.reporter_id}</strong></div>
+                  <div><span>Último revisor</span><strong>{report.reviewer_name || "Todavía no revisado"}</strong></div>
                 </div>
 
                 <div className="safety-report-details">
-                  <span>Buyer details</span>
-                  <p>{report.details || "No additional details were provided."}</p>
+                  <span>Detalles del usuario</span>
+                  <p>{report.details || "No se proporcionaron detalles adicionales."}</p>
                 </div>
 
                 <div className={`safety-hold-control${report.listing_on_safety_hold ? " active" : ""}`}>
                   <div>
-                    <strong>{report.listing_on_safety_hold ? "Safety hold active" : "Listing safety control"}</strong>
-                    <span>A hold hides the listing from discovery and pauses new inquiries without deleting it. The seller can still correct its details.</span>
+                    <strong>{report.listing_on_safety_hold ? "Retención de seguridad activa" : "Control de seguridad del anuncio"}</strong>
+                    <span>La retención oculta el anuncio y pausa consultas nuevas sin eliminarlo. El anunciante todavía puede corregir sus datos.</span>
                   </div>
                   <button
                     type="button"
                     onClick={() => toggleSafetyHold(report)}
                     disabled={!holdAction || updatingId !== null || holdingId !== null}
                   >
-                    {holdingId === report.id ? "Updating…" : holdAction?.label || "Listing removed"}
+                    {holdingId === report.id ? "Actualizando…" : holdAction?.label || "Anuncio eliminado"}
                   </button>
                 </div>
 
                 <div className="safety-review-controls">
                   <label>
-                    <span>Decision</span>
+                    <span>Decisión</span>
                     <select value={draft.status} onChange={(event) => updateDraft(report.id, "status", event.target.value)} disabled={updatingId !== null}>
                       {getModerationStatusOptions(report.status).map((status) => (
                         <option key={status} value={status}>{STATUS_LABELS[status]}</option>
@@ -278,12 +278,12 @@ function SafetyReports() {
                     </select>
                   </label>
                   <label className="safety-review-note">
-                    <span>Review note</span>
-                    <textarea value={draft.note} onChange={(event) => updateDraft(report.id, "note", event.target.value)} maxLength="1000" rows="3" disabled={updatingId !== null} placeholder="Record what was checked and any next step." />
+                    <span>Nota de revisión</span>
+                    <textarea value={draft.note} onChange={(event) => updateDraft(report.id, "note", event.target.value)} maxLength="1000" rows="3" disabled={updatingId !== null} placeholder="Indique qué se verificó y el próximo paso, si corresponde." />
                     <small>{draft.note.length}/1000</small>
                   </label>
                   <button type="button" onClick={() => saveReview(report)} disabled={updatingId !== null || unchanged}>
-                    {updatingId === report.id ? "Saving…" : "Save Review"}
+                    {updatingId === report.id ? "Guardando…" : "Guardar revisión"}
                   </button>
                 </div>
               </article>
@@ -293,10 +293,10 @@ function SafetyReports() {
       )}
 
       {reportPage.totalPages > 1 && (
-        <nav className="safety-pagination" aria-label="Safety report pages">
-          <button type="button" disabled={page <= 1 || loading} onClick={() => setPage((current) => current - 1)}>Previous</button>
-          <span>Page {reportPage.page} of {reportPage.totalPages}</span>
-          <button type="button" disabled={page >= reportPage.totalPages || loading} onClick={() => setPage((current) => current + 1)}>Next</button>
+        <nav className="safety-pagination" aria-label="Páginas de reportes de seguridad">
+          <button type="button" disabled={page <= 1 || loading} onClick={() => setPage((current) => current - 1)}>Anterior</button>
+          <span>Página {reportPage.page} de {reportPage.totalPages}</span>
+          <button type="button" disabled={page >= reportPage.totalPages || loading} onClick={() => setPage((current) => current + 1)}>Siguiente</button>
         </nav>
       )}
     </main>

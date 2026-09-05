@@ -1,0 +1,39 @@
+.sources-page { max-width: 1120px; margin: 0 auto; padding: 42px 22px 72px; color: var(--ink, #172033); }
+.sources-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; margin-bottom: 24px; }
+.sources-header h1 { margin: 3px 0 7px; font-size: clamp(2rem, 4vw, 2.5rem); letter-spacing: -0.035em; }
+.sources-header p { max-width: 720px; margin: 0; color: #596579; line-height: 1.55; }
+.sources-eyebrow { color: #176b4d !important; font-size: .75rem; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; }
+.sources-header button { padding: 10px 15px; border: 1px solid #cbd5e1; border-radius: 10px; background: white; color: #334155; cursor: pointer; font: inherit; font-weight: 750; }
+.sources-header button:disabled { cursor: not-allowed; opacity: .55; }
+.sources-summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 24px; }
+.sources-summary article { padding: 17px; border: 1px solid #dce4e1; border-radius: 14px; background: #fff; box-shadow: 0 8px 24px rgba(20, 53, 43, .055); }
+.sources-summary span, .sources-summary strong { display: block; }
+.sources-summary span { color: #68766f; font-size: .84rem; font-weight: 700; }
+.sources-summary strong { margin-top: 5px; color: #163f32; font-size: 1.75rem; }
+.sources-list { display: grid; gap: 17px; }
+.source-card { padding: 21px; border: 1px solid #dce4e1; border-radius: 16px; background: white; box-shadow: 0 9px 28px rgba(15, 45, 36, .06); }
+.source-card-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 22px; }
+.source-card h2 { margin: 8px 0 4px; font-size: 1.25rem; }
+.source-card-heading p { margin: 0; color: #64748b; line-height: 1.45; }
+.source-health { display: inline-flex; padding: 5px 9px; border-radius: 999px; font-size: .75rem; font-weight: 800; }
+.source-health.healthy { background: #dcfce7; color: #166534; }
+.source-health.waiting { background: #dbeafe; color: #1d4ed8; }
+.source-health.stale, .source-health.expired { background: #ffedd5; color: #9a3412; }
+.source-health.permission { background: #fee2e2; color: #991b1b; }
+.source-inventory { min-width: 105px; padding: 11px 13px; border-radius: 11px; background: #f0f7f4; text-align: right; }
+.source-inventory strong, .source-inventory span { display: block; }
+.source-inventory strong { color: #176b4d; font-size: 1.35rem; }
+.source-inventory span { color: #64748b; font-size: .75rem; }
+.source-health-detail { margin: 16px 0; padding: 11px 13px; border-left: 4px solid #78b89f; background: #f6faf8; color: #42564f; }
+.source-details { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 0; }
+.source-details div { min-width: 0; padding: 12px; border-radius: 10px; background: #f8faf9; }
+.source-details dt { margin-bottom: 5px; color: #68766f; font-size: .75rem; font-weight: 800; text-transform: uppercase; }
+.source-details dd { margin: 0; overflow-wrap: anywhere; color: #263b34; font-size: .9rem; font-weight: 650; }
+.source-details a, .sources-access-denied a { color: #176b4d; font-weight: 800; }
+.sources-error { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 18px; padding: 13px 15px; border: 1px solid #fecaca; border-radius: 10px; background: #fef2f2; color: #991b1b; }
+.sources-error button { border: 0; background: transparent; color: inherit; cursor: pointer; font: inherit; font-weight: 800; text-decoration: underline; }
+.sources-empty { display: grid; gap: 5px; padding: 48px 24px; border: 1px dashed #bdcbc5; border-radius: 14px; color: #64748b; text-align: center; }
+.sources-access-denied { text-align: center; }
+.sources-access-denied p { color: #64748b; }
+@media (max-width: 800px) { .sources-summary { grid-template-columns: repeat(2, 1fr); } .source-details { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 560px) { .sources-page { padding: 28px 14px 52px; } .sources-header, .source-card-heading { flex-direction: column; } .sources-header button, .source-inventory { width: 100%; box-sizing: border-box; } .source-inventory { text-align: left; } .source-details { grid-template-columns: 1fr; } }

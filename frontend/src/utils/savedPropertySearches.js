@@ -5,6 +5,12 @@ import {
 
 const STORAGE_KEY = "property_marketplace_saved_searches"
 const MAX_SAVED_SEARCHES = 6
+const PROPERTY_TYPE_LABELS = { House: "Casa", Villa: "Villa", Apartment: "Apartamento", Condo: "Condominio" }
+const AMENITY_LABELS = {
+  Garage: "Garaje", Pool: "Piscina", Yard: "Patio", Balcony: "Balcón",
+  Gym: "Gimnasio", "Air Conditioning": "Aire acondicionado",
+  Furnished: "Amueblada", "Pet Friendly": "Acepta mascotas",
+}
 
 function canonicalQuery(input) {
   const parsed = readPropertySearchParams(input)
@@ -17,19 +23,19 @@ export function describePropertySearch(input) {
 
   if (search.reference) parts.push(search.reference)
   if (search.location) parts.push(search.location)
-  if (search.listingType) parts.push(search.listingType === "rent" ? "For Rent" : "For Sale")
-  if (search.propertyType) parts.push(search.propertyType)
-  if (search.currency) parts.push(search.currency === "DOP" ? "Dominican Pesos" : "US Dollars")
+  if (search.listingType) parts.push(search.listingType === "rent" ? "En alquiler" : "En venta")
+  if (search.propertyType) parts.push(PROPERTY_TYPE_LABELS[search.propertyType] || search.propertyType)
+  if (search.currency) parts.push(search.currency === "DOP" ? "Pesos dominicanos" : "Dólares estadounidenses")
   const pricePrefix = search.currency === "DOP" ? "RD$" : "US$"
-  if (search.minPrice) parts.push(`From ${pricePrefix}${Number(search.minPrice).toLocaleString()}`)
-  if (search.maxPrice) parts.push(`Up to ${pricePrefix}${Number(search.maxPrice).toLocaleString()}`)
-  if (search.bedrooms) parts.push(`${search.bedrooms}+ beds`)
-  if (search.bathrooms) parts.push(`${search.bathrooms}+ baths`)
-  if (search.amenity) parts.push(search.amenity)
-  if (search.minSquareFeet) parts.push(`${Number(search.minSquareFeet).toLocaleString()}+ sq ft`)
-  if (search.status) parts.push(search.status === "available" ? "Available" : "Unavailable")
+  if (search.minPrice) parts.push(`Desde ${pricePrefix}${Number(search.minPrice).toLocaleString("es-DO")}`)
+  if (search.maxPrice) parts.push(`Hasta ${pricePrefix}${Number(search.maxPrice).toLocaleString("es-DO")}`)
+  if (search.bedrooms) parts.push(`${search.bedrooms}+ habitaciones`)
+  if (search.bathrooms) parts.push(`${search.bathrooms}+ baños`)
+  if (search.amenity) parts.push(AMENITY_LABELS[search.amenity] || search.amenity)
+  if (search.minSquareFeet) parts.push(`${Number(search.minSquareFeet).toLocaleString("es-DO")}+ pies²`)
+  if (search.status) parts.push(search.status === "available" ? "Disponible" : "No disponible")
 
-  return parts.join(" · ") || "All properties"
+  return parts.join(" · ") || "Todas las propiedades"
 }
 
 export function readSavedPropertySearches(storage = localStorage) {

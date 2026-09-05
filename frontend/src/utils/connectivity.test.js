@@ -11,7 +11,7 @@ test("treats only an explicit offline signal as offline", () => {
 })
 
 test("provides clear notices only when connection state needs attention", () => {
-  assert.match(getConnectivityNotice("offline").message, /changes cannot be sent/i)
-  assert.match(getConnectivityNotice("restored").message, /connection restored/i)
+  assert.match(getConnectivityNotice("offline").message, /cambios todavía no pueden enviarse/i)
+  assert.match(getConnectivityNotice("restored").message, /conexión restablecida/i)
   assert.equal(getConnectivityNotice("online"), null)
 })

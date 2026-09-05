@@ -1,4 +1,4 @@
-# Property Marketplace
+# HabitaRD
 
 A full-stack marketplace for discovering, listing, saving, and discussing properties. Every authenticated account can act as both a buyer and a seller.
 

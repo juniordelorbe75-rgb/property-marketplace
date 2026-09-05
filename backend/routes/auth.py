@@ -1,23 +1,41 @@
 import os
 import secrets
+from datetime import datetime, timezone
 from urllib.parse import urlencode
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from fastapi.security import HTTPAuthorizationCredentials
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, Field
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from backend.auth.security import hash_password
 from backend.auth.social import PROVIDERS, begin_flow, consume_flow, create_login_code, consume_login_code, fetch_profile, provider_options
-from backend.auth.token import create_access_token
+from backend.auth.dependencies import get_current_user_id, oauth2_scheme
+from backend.auth.token import create_access_token, decode_access_token
 from backend.db import get_db
 from backend.db_models.social_identity import SocialIdentityDB
 from backend.db_models.user import UserDB
+from backend.db_models.revoked_token import RevokedTokenDB
 from backend.repositories.transaction import commit_or_rollback
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
+
+
+@router.post("/logout", status_code=204)
+def logout(
+    credentials: HTTPAuthorizationCredentials = Depends(oauth2_scheme),
+    _user_id: int = Depends(get_current_user_id),
+    db: Session = Depends(get_db),
+):
+    payload = decode_access_token(credentials.credentials)
+    expires_at = datetime.fromtimestamp(payload["exp"], tz=timezone.utc)
+    db.execute(delete(RevokedTokenDB).where(RevokedTokenDB.expires_at <= datetime.now(timezone.utc)))
+    db.add(RevokedTokenDB(jti=payload["jti"], expires_at=expires_at))
+    commit_or_rollback(db)
+    return Response(status_code=204)
 
 
 class CodeExchange(BaseModel):

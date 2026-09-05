@@ -1,7 +1,7 @@
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from backend import image_storage
 
@@ -62,6 +62,40 @@ class ImageStorageTests(unittest.TestCase):
         self.assertFalse(deleted)
         self.assertIn("locked_image.png", logs.output[0])
         self.assertIn("locked", logs.output[0])
+
+
+    def test_s3_upload_and_delete_use_the_same_object_key(self):
+        client = Mock()
+        settings = {
+            "PROPERTY_IMAGE_STORAGE": "s3",
+            "OBJECT_STORAGE_BUCKET": "habitard-images",
+            "OBJECT_STORAGE_ACCESS_KEY_ID": "access",
+            "OBJECT_STORAGE_SECRET_ACCESS_KEY": "secret",
+            "OBJECT_STORAGE_PUBLIC_BASE_URL": "https://images.habitard.test",
+        }
+        image_url = image_storage.store_property_image(
+            "7_home.png", b"image", "image/png", settings=settings, client=client
+        )
+        self.assertEqual(image_url, "https://images.habitard.test/property-images/7_home.png")
+        self.assertTrue(image_storage.delete_uploaded_property_image(
+            image_url, settings=settings, client=client
+        ))
+        self.assertEqual(client.put_object.call_args.kwargs["Key"], "property-images/7_home.png")
+        client.delete_object.assert_called_once_with(
+            Bucket="habitard-images", Key="property-images/7_home.png"
+        )
+
+    def test_s3_configuration_rejects_missing_or_insecure_values(self):
+        with self.assertRaises(RuntimeError):
+            image_storage.validate_object_storage_settings({"PROPERTY_IMAGE_STORAGE": "s3"})
+        with self.assertRaises(RuntimeError):
+            image_storage.validate_object_storage_settings({
+                "PROPERTY_IMAGE_STORAGE": "s3",
+                "OBJECT_STORAGE_BUCKET": "bucket",
+                "OBJECT_STORAGE_ACCESS_KEY_ID": "access",
+                "OBJECT_STORAGE_SECRET_ACCESS_KEY": "secret",
+                "OBJECT_STORAGE_PUBLIC_BASE_URL": "http://images.example.test",
+            })
 
 
 if __name__ == "__main__":

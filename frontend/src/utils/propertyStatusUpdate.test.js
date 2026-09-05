@@ -16,6 +16,10 @@ test("changes only status while preserving the complete listing payload", () => 
     listing_type: "sale",
     amenities: ["Pool"],
     location: "Austin, Texas",
+    country_code: "DO",
+    province: "Distrito Nacional",
+    municipality: "Santo Domingo",
+    sector: "Piantini",
     property_type: "House",
     bedrooms: 3,
     bathrooms: 2,
@@ -30,5 +34,7 @@ test("changes only status while preserving the complete listing payload", () => 
   assert.equal(update.currency, "DOP")
   assert.deepEqual(update.image_urls, property.image_urls)
   assert.deepEqual(update.amenities, property.amenities)
+  assert.equal(update.province, "Distrito Nacional")
+  assert.equal(update.municipality, "Santo Domingo")
   assert.equal("id" in update, false)
 })

@@ -9,7 +9,7 @@ export async function shareProperty(property, capabilities, currentUrl) {
   const url = buildPropertyShareUrl(property?.id, currentUrl)
   const title = typeof property?.title === "string" && property.title
     ? property.title
-    : "Property listing"
+    : "Anuncio de propiedad"
   const location = typeof property?.location === "string" ? property.location : ""
   const shareData = {
     title,

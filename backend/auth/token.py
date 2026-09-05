@@ -1,9 +1,10 @@
 import os
+import secrets
 from datetime import datetime, timedelta, timezone
 
 from jose import JWTError, jwt
 from dotenv import load_dotenv
-from backend.config import validate_secret_key
+from backend.config import parse_bounded_integer_setting, validate_secret_key
 
 load_dotenv()
 
@@ -11,7 +12,13 @@ load_dotenv()
 SECRET_KEY = validate_secret_key(os.getenv("SECRET_KEY"))
 
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 120
+ACCESS_TOKEN_EXPIRE_MINUTES = parse_bounded_integer_setting(
+    "ACCESS_TOKEN_EXPIRE_MINUTES",
+    os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES"),
+    default=60,
+    minimum=5,
+    maximum=1440,
+)
 TOKEN_ISSUER = "property-marketplace-api"
 TOKEN_AUDIENCE = "property-marketplace-web"
 TOKEN_TYPE = "access"
@@ -32,6 +39,7 @@ def create_access_token(data: dict):
         "iss": TOKEN_ISSUER,
         "aud": TOKEN_AUDIENCE,
         "token_type": TOKEN_TYPE,
+        "jti": secrets.token_urlsafe(24),
     })
 
     return jwt.encode(
@@ -61,6 +69,7 @@ def decode_access_token(token: str):
                 "require_iss": True,
                 "require_aud": True,
                 "require_sub": True,
+                "require_jti": True,
             },
         )
 

@@ -22,7 +22,7 @@ function Favorites() {
     const token = localStorage.getItem("access_token")
 
     if (!token) {
-      setLoadError("Please log in to see your favorites.")
+      setLoadError("Inicie sesión para ver sus favoritos.")
       setLoading(false)
       return
     }
@@ -49,7 +49,7 @@ function Favorites() {
       }
 
       if (!response.ok) {
-        throw new Error(getApiError(data, "Failed to load favorites"))
+        throw new Error(getApiError(data, "No pudimos cargar sus favoritos"))
       }
 
       setFavorites(data)
@@ -99,7 +99,7 @@ function Favorites() {
 
       if (!response.ok) {
         const data = await readApiResponse(response)
-        throw new Error(getApiError(data, "Failed to remove favorite"))
+        throw new Error(getApiError(data, "No pudimos eliminar el favorito"))
       }
 
       setFavorites((currentFavorites) =>
@@ -121,16 +121,16 @@ function Favorites() {
   }
 
   if (loading) {
-    return <p>Loading favorites...</p>
+    return <p>Cargando favoritos...</p>
   }
 
   if (loadError) {
     return (
       <div className="favorites-load-error" role="alert">
-        <h1>Favorites</h1>
+        <h1>Favoritos</h1>
         <p>{loadError}</p>
         <button type="button" onClick={() => setLoadAttempt((current) => current + 1)}>
-          Try again
+          Intentar de nuevo
         </button>
       </div>
     )
@@ -139,16 +139,16 @@ function Favorites() {
   return (
     <div className="properties-page">
       <div className="properties-header">
-        <h1>My Favorites</h1>
-        <p>Properties you've saved.</p>
+        <h1>Mis favoritos</h1>
+        <p>Propiedades que ha guardado.</p>
       </div>
 
       {actionError && <p className="favorites-action-error" role="alert">{actionError}</p>}
 
       {favorites.length === 0 ? (
         <div>
-          <p>You haven't saved any properties yet.</p>
-          <Link to="/">Browse Properties</Link>
+          <p>Todavía no ha guardado ninguna propiedad.</p>
+          <Link to="/">Explorar propiedades</Link>
         </div>
       ) : (
         <div className="properties-grid">
@@ -179,7 +179,7 @@ function Favorites() {
                   onClick={() => removeFavorite(property.id)}
                   disabled={removingIds.has(property.id)}
                 >
-                  {removingIds.has(property.id) ? "Removing..." : "Remove Favorite"}
+                  {removingIds.has(property.id) ? "Eliminando..." : "Eliminar de favoritos"}
                 </button>
               </div>
             )

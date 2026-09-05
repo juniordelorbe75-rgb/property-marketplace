@@ -3,7 +3,6 @@ from binascii import Error as Base64Error
 from io import BytesIO
 import os
 from pathlib import Path
-import tempfile
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
@@ -12,13 +11,20 @@ from PIL import Image, UnidentifiedImageError
 from backend.auth.dependencies import get_current_user_id
 from backend.auth.request_throttle import consume_rate_limit, retry_after_detail
 from backend.db import get_db
+from backend.image_storage import (
+    UPLOAD_DIRECTORY,
+    delete_uploaded_property_image,
+    property_image_url,
+    store_property_image,
+)
 from backend.models import PropertyImageUpload, PropertyImageUploadResponse
 from backend.repositories import property_repository
+from backend.request_identity import client_address, parse_trusted_proxy_networks
 from sqlalchemy.orm import Session
 
 
 router = APIRouter(prefix="/uploads", tags=["Uploads"])
-UPLOAD_DIRECTORY = Path(__file__).resolve().parents[1] / "uploads" / "property-images"
+TRUSTED_PROXY_NETWORKS = parse_trusted_proxy_networks(os.getenv("TRUSTED_PROXY_IPS"))
 MAX_IMAGE_BYTES = 5 * 1024 * 1024
 IMAGE_FORMATS = {
     "image/jpeg": (".jpg", b"\xff\xd8\xff", "JPEG"),
@@ -36,9 +42,9 @@ def upload_property_image(
     request: Request,
     current_user_id: int = Depends(get_current_user_id),
 ):
-    client_address = request.client.host if request.client else "unknown"
+    request_address = client_address(request, TRUSTED_PROXY_NETWORKS)
     retry_after = consume_rate_limit(
-        "property-image-upload", client_address, limit=30, window_seconds=15 * 60
+        "property-image-upload", request_address, limit=30, window_seconds=15 * 60
     )
     if retry_after is not None:
         raise HTTPException(
@@ -102,27 +108,10 @@ def upload_property_image(
             detail="Image is corrupt or cannot be decoded",
         ) from error
 
-    UPLOAD_DIRECTORY.mkdir(parents=True, exist_ok=True)
     image_name = f"{current_user_id}_{uuid4().hex}{extension}"
-    final_path = UPLOAD_DIRECTORY / image_name
-    temporary_path = None
-    try:
-        with tempfile.NamedTemporaryFile(
-            mode="wb",
-            dir=UPLOAD_DIRECTORY,
-            prefix=".upload-",
-            suffix=".tmp",
-            delete=False,
-        ) as temporary_file:
-            temporary_path = Path(temporary_file.name)
-            temporary_file.write(image_data)
-            temporary_file.flush()
-            os.fsync(temporary_file.fileno())
-        os.replace(temporary_path, final_path)
-    finally:
-        if temporary_path is not None:
-            temporary_path.unlink(missing_ok=True)
-    return {"image_url": f"/uploads/property-images/{image_name}"}
+    return {"image_url": store_property_image(
+        image_name, image_data, upload.content_type, directory=UPLOAD_DIRECTORY
+    )}
 
 
 @router.delete("/property-images/{image_name}", status_code=204)
@@ -136,17 +125,14 @@ def delete_unused_property_image(
     ):
         raise HTTPException(status_code=403, detail="You do not own this upload")
 
-    image_url = f"/uploads/property-images/{image_name}"
+    image_url = property_image_url(image_name)
     if property_repository.is_image_url_in_use(session, image_url):
         raise HTTPException(
             status_code=409,
             detail="This upload is attached to a property",
         )
 
-    image_path = UPLOAD_DIRECTORY / image_name
-    try:
-        image_path.unlink()
-    except FileNotFoundError as error:
-        raise HTTPException(status_code=404, detail="Upload not found") from error
+    if not delete_uploaded_property_image(image_url, directory=UPLOAD_DIRECTORY):
+        raise HTTPException(status_code=404, detail="Upload not found")
 
     return Response(status_code=204)

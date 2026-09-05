@@ -27,6 +27,18 @@ test("uses native sharing and preserves the canonical search URL", async () => {
   assert.equal(shared.url, "https://market.example/?listing_type=rent&bedrooms=2")
 })
 
+test("shares the homepage with general HabitaRD copy", async () => {
+  let shared
+  await shareSearchPage(
+    { share: async (data) => { shared = data } },
+    "https://market.example/",
+  )
+
+  assert.equal(shared.title, "HabitaRD")
+  assert.equal(shared.text, "Encuentre, alquile o venda propiedades en toda la República Dominicana con HabitaRD.")
+  assert.equal(shared.url, "https://market.example/")
+})
+
 test("falls back from clipboard to manual search-page sharing", async () => {
   let copied
   const clipboard = await shareSearchPage(

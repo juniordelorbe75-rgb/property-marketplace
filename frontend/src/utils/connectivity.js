@@ -6,14 +6,14 @@ export function getConnectivityNotice(state) {
   if (state === "offline") {
     return {
       tone: "offline",
-      message: "You appear to be offline. Loaded information is still available, but changes cannot be sent yet.",
+      message: "Parece que no tiene conexión. La información cargada sigue disponible, pero los cambios todavía no pueden enviarse.",
     }
   }
 
   if (state === "restored") {
     return {
       tone: "restored",
-      message: "Connection restored. You can safely continue.",
+      message: "Conexión restablecida. Puede continuar con seguridad.",
     }
   }
 

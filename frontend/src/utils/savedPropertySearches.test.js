@@ -24,7 +24,7 @@ test("saves canonical searches, removes pages, and deduplicates", () => {
   assert.equal(saved.length, 1)
   assert.equal(saved[0].query, "location=Miami&property_type=House")
   assert.match(saved[0].label, /Miami/)
-  assert.match(saved[0].label, /House/)
+  assert.match(saved[0].label, /Casa/)
 })
 
 test("rejects corrupt storage and unsupported saved filters", () => {
@@ -45,7 +45,7 @@ test("describes and removes saved searches", () => {
 
   assert.equal(
     describePropertySearch(saved[0].query),
-    "For Rent · Dominican Pesos · Up to RD$3,000 · 2+ beds",
+    "En alquiler · Pesos dominicanos · Hasta RD$3,000 · 2+ habitaciones",
   )
   assert.deepEqual(removeSavedPropertySearch(storage, saved[0].query), [])
 })

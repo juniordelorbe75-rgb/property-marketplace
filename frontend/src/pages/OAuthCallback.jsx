@@ -26,7 +26,7 @@ function OAuthCallback() {
     })
       .then(async (response) => {
         const data = await readApiResponse(response)
-        if (!response.ok) throw new Error(getApiError(data, "Social sign-in failed"))
+        if (!response.ok) throw new Error(getApiError(data, "No pudimos completar el acceso social"))
         return data
       })
       .then((data) => {
@@ -39,8 +39,8 @@ function OAuthCallback() {
 
   return (
     <main className="auth-callback">
-      <h1>{error ? "Sign-in could not be completed" : "Completing sign-in…"}</h1>
-      {error && <><p role="alert">{error}</p><Link to="/login">Return to login</Link></>}
+      <h1>{error ? "No pudimos completar el inicio de sesión" : "Completando inicio de sesión…"}</h1>
+      {error && <><p role="alert">{error}</p><Link to="/login">Volver al inicio de sesión</Link></>}
     </main>
   )
 }

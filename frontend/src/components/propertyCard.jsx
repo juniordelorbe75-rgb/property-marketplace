@@ -24,6 +24,9 @@ function PropertyCard({
   isFavorite = false,
   favoriteLoading = false,
   onToggleFavorite,
+  externalUrl,
+  attribution,
+  areaSqm,
 }) {
   const freshness = getListingFreshness(createdAt, updatedAt)
 
@@ -39,7 +42,7 @@ function PropertyCard({
             onClick={() => onToggleFavorite(id)}
             disabled={favoriteLoading}
             aria-pressed={isFavorite}
-            aria-label={`${isFavorite ? "Remove" : "Save"} ${title} ${isFavorite ? "from" : "to"} favorites`}
+            aria-label={`${isFavorite ? "Quitar" : "Guardar"} ${title} ${isFavorite ? "de" : "en"} favoritos`}
           >
             {favoriteLoading ? "…" : isFavorite ? "♥" : "♡"}
           </button>
@@ -49,7 +52,7 @@ function PropertyCard({
       <div className="property-card-content">
 
         <div className="property-listing-type">
-          {listingType === "rent" ? "For Rent" : "For Sale"}
+          {listingType === "rent" ? "En alquiler" : "En venta"}
         </div>
 
         <div
@@ -62,15 +65,19 @@ function PropertyCard({
           }`}
         >
           {safetyHold
-            ? "Safety Hold"
+            ? "En revisión"
             : status === "available"
-            ? "Available"
-            : "Unavailable"}
+            ? "Disponible"
+            : "No disponible"}
         </div>
 
         <h2>{title}</h2>
 
-        <p className="property-reference">{formatPropertyReference(id)}</p>
+        {externalUrl ? (
+          <p className="property-reference">Anuncio verificado de un aliado</p>
+        ) : (
+          <p className="property-reference">{formatPropertyReference(id)}</p>
+        )}
 
         <p className="property-location">
           📍 {location}
@@ -84,6 +91,7 @@ function PropertyCard({
           {squareFeet > 0 && (
             <span>📐 {Number(squareFeet).toLocaleString()} sq ft</span>
           )}
+          {areaSqm > 0 && <span>📐 {Number(areaSqm).toLocaleString()} m²</span>}
           <span>🏠 {propertyType}</span>
         </div>
 
@@ -92,10 +100,14 @@ function PropertyCard({
             {formatPropertyPrice(price, currency, listingType)}
           </strong>
 
-          <Link to={`/properties/${id}`}>
-            View Property →
-          </Link>
+          {externalUrl ? (
+            <a href={externalUrl} target="_blank" rel="noreferrer">Ver en la fuente ↗</a>
+          ) : (
+            <Link to={`/properties/${id}`}>Ver propiedad →</Link>
+          )}
         </div>
+
+        {attribution && <p className="property-attribution">{attribution}</p>}
 
       </div>
     </div>

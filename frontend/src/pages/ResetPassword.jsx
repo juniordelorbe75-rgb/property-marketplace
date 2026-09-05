@@ -23,7 +23,7 @@ function ResetPassword() {
     event.preventDefault()
     if (loading) return
     if (password !== confirmation) {
-      setError("Passwords do not match")
+      setError("Las contraseñas no coinciden")
       return
     }
     setError("")
@@ -35,7 +35,7 @@ function ResetPassword() {
         body: JSON.stringify({ token, new_password: password }),
       })
       const data = await readApiResponse(response)
-      if (!response.ok) throw new Error(getApiError(data, "Could not reset your password"))
+      if (!response.ok) throw new Error(getApiError(data, "No pudimos restablecer su contraseña"))
       login(data.access_token)
       queueLoginWelcome("returning")
       navigate("/account", { replace: true, state: { passwordReset: true } })
@@ -48,26 +48,26 @@ function ResetPassword() {
 
   if (!token) {
     return (
-      <AuthLayout eyebrow="Account recovery">
-        <h1>Reset link missing</h1>
-        <p className="auth-error" role="alert">This password reset link is incomplete.</p>
-        <p className="auth-switch"><Link to="/forgot-password">Request a new link</Link></p>
+      <AuthLayout eyebrow="Recuperación de cuenta">
+        <h1>Falta el enlace de recuperación</h1>
+        <p className="auth-error" role="alert">Este enlace de recuperación está incompleto.</p>
+        <p className="auth-switch"><Link to="/forgot-password">Solicitar un enlace nuevo</Link></p>
       </AuthLayout>
     )
   }
 
   return (
-    <AuthLayout eyebrow="Account recovery">
-        <p className="auth-card-eyebrow">Secure recovery</p>
-        <h1>Create a new password</h1>
-        <p className="auth-intro">Use at least 8 characters and choose a password you don’t use elsewhere.</p>
+    <AuthLayout eyebrow="Recuperación de cuenta">
+        <p className="auth-card-eyebrow">Recuperación segura</p>
+        <h1>Crear una contraseña nueva</h1>
+        <p className="auth-intro">Use al menos 8 caracteres y una contraseña que no utilice en otros servicios.</p>
         <form className="auth-form" onSubmit={handleSubmit}>
-          <PasswordInput id="reset-password" label="New password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="new-password" minLength={8} />
-          <PasswordInput id="reset-password-confirmation" label="Confirm new password" value={confirmation} onChange={(event) => setConfirmation(event.target.value)} autoComplete="new-password" minLength={8} invalid={Boolean(confirmation) && password !== confirmation} />
+          <PasswordInput id="reset-password" label="Contraseña nueva" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="new-password" minLength={8} />
+          <PasswordInput id="reset-password-confirmation" label="Confirmar contraseña nueva" value={confirmation} onChange={(event) => setConfirmation(event.target.value)} autoComplete="new-password" minLength={8} invalid={Boolean(confirmation) && password !== confirmation} />
           {error && <p className="auth-error" role="alert">{error}</p>}
-          <button className="auth-submit" type="submit" disabled={loading || password.length < 8 || password !== confirmation}>{loading ? "Resetting..." : "Reset password"}</button>
+          <button className="auth-submit" type="submit" disabled={loading || password.length < 8 || password !== confirmation}>{loading ? "Restableciendo..." : "Restablecer contraseña"}</button>
         </form>
-        <p className="auth-switch"><Link to="/login">Back to login</Link></p>
+        <p className="auth-switch"><Link to="/login">Volver a iniciar sesión</Link></p>
     </AuthLayout>
   )
 }

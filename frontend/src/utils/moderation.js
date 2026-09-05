@@ -1,12 +1,12 @@
 export const REPORT_STATUSES = ["submitted", "reviewing", "resolved", "dismissed"]
 
 export const REPORT_REASON_LABELS = {
-  suspected_scam: "Suspected scam or fraud",
-  misleading_information: "Misleading or incorrect information",
-  duplicate_listing: "Duplicate listing",
-  already_unavailable: "Property is no longer available",
-  inappropriate_content: "Inappropriate content",
-  other: "Other safety concern",
+  suspected_scam: "Posible estafa o fraude",
+  misleading_information: "Información engañosa o incorrecta",
+  duplicate_listing: "Anuncio duplicado",
+  already_unavailable: "La propiedad ya no está disponible",
+  inappropriate_content: "Contenido inapropiado",
+  other: "Otro asunto de seguridad",
 }
 
 export function getModerationStatusOptions(status) {
@@ -28,7 +28,7 @@ export function getSafetyHoldAction(report) {
   const held = !report.listing_on_safety_hold
   return {
     held,
-    label: held ? "Place Safety Hold" : "Release Safety Hold",
+    label: held ? "Aplicar retención de seguridad" : "Liberar retención de seguridad",
   }
 }
 

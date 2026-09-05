@@ -6,6 +6,7 @@ os.environ.setdefault("DATABASE_URL", "sqlite+pysqlite:///:memory:")
 os.environ.setdefault("SECRET_KEY", "test-only-secret-key-32-characters-long")
 
 from sqlalchemy import create_engine, inspect, text
+from sqlalchemy.orm import Session
 
 import backend.db as database
 from backend.db_models.base import Base
@@ -68,6 +69,12 @@ class SchemaSafetyTests(unittest.TestCase):
             "currency",
             {column["name"] for column in inspector.get_columns("properties")},
         )
+        property_columns = {
+            column["name"] for column in inspector.get_columns("properties")
+        }
+        self.assertTrue(
+            {"country_code", "province", "municipality", "sector"}.issubset(property_columns)
+        )
         self.assertIn(
             "creation_key",
             {column["name"] for column in inspector.get_columns("inquiry_messages")},
@@ -82,6 +89,15 @@ class SchemaSafetyTests(unittest.TestCase):
                 index["name"] for index in inspector.get_indexes(table_name)
             }
             self.assertTrue(expected_names.issubset(actual_names))
+
+    def test_readiness_detects_missing_required_tables(self):
+        with self.engine.begin() as connection:
+            connection.execute(text("DROP TABLE listing_feed_audit"))
+
+        with Session(self.engine) as session:
+            missing = database.missing_required_tables(session)
+
+        self.assertIn("listing_feed_audit", missing)
 
 
 if __name__ == "__main__":

@@ -15,7 +15,8 @@
 .account-header h1 {
   margin: 0 0 8px;
   font-size: 32px;
-  color: #111827;
+  color: #122d23;
+  letter-spacing: -.035em;
 }
 
 .account-header p {
@@ -25,11 +26,11 @@
 
 .account-section {
   background: white;
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  padding: 28px;
+  border: 1px solid #dce6e1;
+  border-radius: 18px;
+  padding: 30px;
   margin-bottom: 24px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 8px 28px rgba(18, 45, 34, .06);
 }
 
 .account-section h2 {
@@ -59,7 +60,7 @@
   width: 100%;
   padding: 11px 13px;
   border: 1px solid #d1d5db;
-  border-radius: 7px;
+  border-radius: 10px;
   font-size: 15px;
   background: white;
 }
@@ -67,8 +68,8 @@
 .form-group input:focus,
 .form-group textarea:focus {
   outline: none;
-  border-color: #2563eb;
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+  border-color: #1f654c;
+  box-shadow: 0 0 0 3px rgba(31, 101, 76, .12);
 }
 
 .form-group small {
@@ -79,9 +80,9 @@
 
 .primary-button {
   border: none;
-  border-radius: 7px;
+  border-radius: 10px;
   padding: 11px 18px;
-  background: #2563eb;
+  background: #1f654c;
   color: white;
   font-size: 15px;
   font-weight: 600;
@@ -89,7 +90,8 @@
 }
 
 .primary-button:hover {
-  background: #1d4ed8;
+  background: #154936;
+  transform: translateY(-1px);
 }
 
 .primary-button:disabled {

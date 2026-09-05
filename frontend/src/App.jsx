@@ -22,6 +22,10 @@ import PublicProfile from "./pages/PublicProfile"
 import ForgotPassword from "./pages/ForgotPassword"
 import ResetPassword from "./pages/ResetPassword"
 import VerifyEmail from "./pages/VerifyEmail"
+import Footer from "./components/Footer"
+import TrustPage from "./pages/TrustPage"
+import RouteMetadata from "./components/RouteMetadata"
+import DataSources from "./pages/DataSources"
 
 function protectedPage(page) {
   return (
@@ -35,11 +39,14 @@ function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
+        <a className="skip-link" href="#contenido-principal">Saltar al contenido principal</a>
+        <RouteMetadata />
         <Navbar />
         <ConnectionStatus />
         <LoginWelcome />
 
-        <Routes>
+        <div id="contenido-principal" tabIndex={-1}>
+          <Routes>
           <Route
             path="/"
             element={<Properties />}
@@ -73,6 +80,10 @@ function App() {
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/verify-email" element={<VerifyEmail />} />
+          <Route path="/about" element={<TrustPage />} />
+          <Route path="/data-partners" element={<TrustPage />} />
+          <Route path="/privacy" element={<TrustPage />} />
+          <Route path="/terms" element={<TrustPage />} />
 
           <Route
             path="/auth/callback"
@@ -115,6 +126,11 @@ function App() {
           />
 
           <Route
+            path="/data-sources"
+            element={protectedPage(<DataSources />)}
+          />
+
+          <Route
             path="/my-reports"
             element={protectedPage(<MySafetyReports />)}
           />
@@ -123,7 +139,9 @@ function App() {
             path="*"
             element={<NotFound />}
           />
-        </Routes>
+          </Routes>
+        </div>
+        <Footer />
       </BrowserRouter>
     </AuthProvider>
   )

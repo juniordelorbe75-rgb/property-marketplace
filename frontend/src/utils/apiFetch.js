@@ -19,18 +19,18 @@ export function getRequestFailureMessage({
   timedOut = false,
 } = {}) {
   if (!isOnline) {
-    return "You appear to be offline. Reconnect and try again."
+    return "Parece que no tiene conexión. Vuelva a conectarse e inténtelo nuevamente."
   }
 
   if (isWrite) {
     return timedOut
-      ? "The request timed out before confirmation. Check the latest information before trying again."
-      : "The connection was interrupted before confirmation. Check the latest information before trying again."
+      ? "La solicitud agotó el tiempo antes de confirmarse. Revise la información más reciente antes de intentarlo nuevamente."
+      : "La conexión se interrumpió antes de confirmar la operación. Revise la información más reciente antes de intentarlo nuevamente."
   }
 
   return timedOut
-    ? "The request timed out. Please check your connection and the servers, then try again."
-    : "Could not reach the marketplace. Please check your connection and the servers, then try again."
+    ? "La solicitud agotó el tiempo de espera. Revise su conexión e inténtelo nuevamente."
+    : "No pudimos comunicarnos con HabitaRD. Revise su conexión e inténtelo nuevamente."
 }
 
 export function getRetryDelayMs(response, retryIndex) {

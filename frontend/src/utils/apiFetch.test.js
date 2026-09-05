@@ -81,15 +81,15 @@ test("retries temporary reads but never replays writes", async () => {
 })
 
 test("explains offline, read, and unconfirmed write failures differently", () => {
-  assert.match(getRequestFailureMessage({ isOnline: false }), /offline/i)
-  assert.match(getRequestFailureMessage(), /could not reach/i)
+  assert.match(getRequestFailureMessage({ isOnline: false }), /no tiene conexión/i)
+  assert.match(getRequestFailureMessage(), /no pudimos comunicarnos/i)
   assert.match(
     getRequestFailureMessage({ isWrite: true }),
-    /before confirmation.*check the latest information/i,
+    /antes de confirmar.*información más reciente/i,
   )
   assert.match(
     getRequestFailureMessage({ isWrite: true, timedOut: true }),
-    /timed out before confirmation/i,
+    /agotó el tiempo antes de confirmarse/i,
   )
 })
 
@@ -106,7 +106,7 @@ test("does not send a request while the browser reports offline", async () => {
   }
 
   try {
-    await assert.rejects(apiFetch("/properties/"), /offline/i)
+    await assert.rejects(apiFetch("/properties/"), /no tiene conexión/i)
     assert.equal(fetchCalls, 0)
   } finally {
     globalThis.fetch = originalFetch
@@ -154,7 +154,7 @@ test("does not replay an interrupted write and warns about missing confirmation"
   try {
     await assert.rejects(
       apiFetch("/inquiries/1/messages", { method: "POST" }),
-      /before confirmation.*check the latest information/i,
+      /antes de confirmar.*información más reciente/i,
     )
     assert.equal(fetchCalls, 1)
   } finally {

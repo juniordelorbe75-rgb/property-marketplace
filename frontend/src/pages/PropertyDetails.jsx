@@ -33,12 +33,12 @@ const INQUIRY_PROMPTS = [
 ]
 
 const REPORT_REASONS = [
-  ["suspected_scam", "Suspected scam or fraud"],
-  ["misleading_information", "Misleading or incorrect information"],
-  ["duplicate_listing", "Duplicate listing"],
-  ["already_unavailable", "Property is no longer available"],
-  ["inappropriate_content", "Inappropriate content"],
-  ["other", "Other safety concern"],
+  ["suspected_scam", "Posible estafa o fraude"],
+  ["misleading_information", "Información engañosa o incorrecta"],
+  ["duplicate_listing", "Anuncio duplicado"],
+  ["already_unavailable", "La propiedad ya no está disponible"],
+  ["inappropriate_content", "Contenido inapropiado"],
+  ["other", "Otra preocupación de seguridad"],
 ]
 
 function PropertyDetails() {
@@ -137,7 +137,7 @@ function PropertyDetails() {
       )
 
       if (!response.ok) {
-        throw new Error("Unable to verify the signed-in account.")
+        throw new Error("No pudimos verificar la cuenta que inició sesión.")
       }
 
       const data = await readApiResponse(response)
@@ -175,7 +175,7 @@ function PropertyDetails() {
       )
 
       if (!response.ok) {
-        throw new Error("Unable to verify whether this listing is already saved.")
+        throw new Error("No pudimos verificar si esta propiedad ya está guardada.")
       }
 
       const data = await readApiResponse(response)
@@ -199,7 +199,7 @@ function PropertyDetails() {
       const data = await readApiResponse(response)
 
       if (!response.ok) {
-        throw new Error(getApiError(data, "Property not found"))
+        throw new Error(getApiError(data, "Propiedad no encontrada"))
       }
 
       setProperty(data)
@@ -312,7 +312,7 @@ function PropertyDetails() {
     }
 
     if (!inquiryMessage.trim()) {
-      setError("Please enter a message.")
+      setError("Escriba un mensaje.")
       return
     }
 
@@ -339,7 +339,7 @@ function PropertyDetails() {
 
       if (!response.ok) {
         throw new Error(
-          getApiError(data, "Failed to send inquiry")
+          getApiError(data, "No pudimos enviar la consulta")
         )
       }
 
@@ -387,7 +387,7 @@ function PropertyDetails() {
       return
     }
     if (!reportReason) {
-      setError("Choose why this listing should be reviewed.")
+      setError("Seleccione el motivo por el que debe revisarse este anuncio.")
       return
     }
 
@@ -413,7 +413,7 @@ function PropertyDetails() {
       const data = await readApiResponse(response)
 
       if (!response.ok) {
-        throw new Error(getApiError(data, "Failed to submit report"))
+        throw new Error(getApiError(data, "No pudimos enviar el reporte"))
       }
 
       setReportSuccess(data.id)
@@ -455,7 +455,7 @@ function PropertyDetails() {
 
       if (!response.ok) {
         throw new Error(
-          getApiError(data, "Failed to update favorite")
+          getApiError(data, "No pudimos actualizar el favorito")
         )
       }
 
@@ -472,12 +472,12 @@ function PropertyDetails() {
   async function handleShare() {
     const result = await shareProperty(property, navigator, window.location.href)
     if (result.method === "clipboard") {
-      setShareMessage("Property link copied.")
+      setShareMessage("Enlace de la propiedad copiado.")
     } else if (result.method === "manual") {
-      window.prompt("Copy this property link:", result.url)
-      setShareMessage("Property link ready to copy.")
+      window.prompt("Copie este enlace de la propiedad:", result.url)
+      setShareMessage("El enlace de la propiedad está listo para copiarse.")
     } else if (result.method === "native") {
-      setShareMessage("Property shared.")
+      setShareMessage("Propiedad compartida.")
     }
   }
 
@@ -553,7 +553,7 @@ function PropertyDetails() {
     return new Promise((resolve, reject) => {
       const reader = new FileReader()
       reader.onload = () => resolve(reader.result.split(",")[1])
-      reader.onerror = () => reject(new Error("Could not read the selected image."))
+      reader.onerror = () => reject(new Error("No pudimos leer la imagen seleccionada."))
       reader.readAsDataURL(file)
     })
   }
@@ -569,7 +569,7 @@ function PropertyDetails() {
       }),
     })
     const data = await readApiResponse(response)
-    if (!response.ok) throw new Error(getApiError(data, "Failed to upload image"))
+    if (!response.ok) throw new Error(getApiError(data, "No pudimos cargar la imagen"))
     return data.image_url
   }
 
@@ -604,7 +604,7 @@ function PropertyDetails() {
     const token = localStorage.getItem("access_token")
 
     if (!token) {
-      setError("Please log in to update this property.")
+      setError("Inicie sesión para actualizar esta propiedad.")
       return
     }
 
@@ -647,6 +647,10 @@ function PropertyDetails() {
           listing_type: listingType,
           amenities,
           location,
+          country_code: property.country_code || "DO",
+          province: property.province || "",
+          municipality: property.municipality || "",
+          sector: property.sector || "",
           property_type: propertyType,
           bedrooms: Number(bedrooms),
           bathrooms: Number(bathrooms),
@@ -659,7 +663,7 @@ function PropertyDetails() {
         if (hasNewUploads) {
           await Promise.all(uploadedImageUrls.map((url) => deleteUnusedUpload(token, url)))
         }
-        throw new Error(getApiError(data, "Failed to update property"))
+        throw new Error(getApiError(data, "No pudimos actualizar la propiedad"))
       }
 
       setProperty(data)
@@ -668,7 +672,7 @@ function PropertyDetails() {
       setImageUrls(data.image_urls || (data.image_url ? [data.image_url] : []))
       clearSelectedImages()
       setEditing(false)
-      alert("Property updated successfully!")
+      alert("¡Propiedad actualizada correctamente!")
     } catch (updateError) {
       console.error("Update error:", updateError)
       setError(updateError.message)
@@ -681,7 +685,7 @@ function PropertyDetails() {
     const token = localStorage.getItem("access_token")
 
     if (!token) {
-      setError("Please log in to delete this property.")
+      setError("Inicie sesión para eliminar esta propiedad.")
       return
     }
 
@@ -708,7 +712,7 @@ function PropertyDetails() {
       const data = await readApiResponse(response)
 
       if (!response.ok) {
-        throw new Error(getApiError(data, "Failed to delete property"))
+        throw new Error(getApiError(data, "No pudimos eliminar la propiedad"))
       }
 
       navigate("/my-properties", { replace: true })
@@ -720,24 +724,24 @@ function PropertyDetails() {
   }
 
   if (loading) {
-    return <p>Loading property...</p>
+    return <p>Cargando propiedad...</p>
   }
 
   if (error && !property) {
     return (
       <div className="property-load-failure" role="alert">
-        <h1>Unable to load property</h1>
+        <h1>No pudimos cargar la propiedad</h1>
         <p>{error}</p>
         <button type="button" onClick={() => setPropertyLoadAttempt((current) => current + 1)}>
           Try again
         </button>
-        <Link to="/">Back to properties</Link>
+        <Link to="/">Volver a las propiedades</Link>
       </div>
     )
   }
 
   if (!property) {
-    return <h1>Property not found</h1>
+    return <h1>Propiedad no encontrada</h1>
   }
 
   const isOwner =
@@ -767,7 +771,7 @@ function PropertyDetails() {
 
         <div className="property-edit-form">
 
-          <h1>Edit Property</h1>
+          <h1>Editar propiedad</h1>
 
           <form onSubmit={handleUpdate}>
 
@@ -802,11 +806,11 @@ function PropertyDetails() {
                   {imageUrls.map((url, index) => (
                     <span className="property-edit-gallery-item" key={url}>
                       <img src={url} alt={`Property ${index + 1}`} />
-                      <span>{index === 0 ? "Cover" : `Picture ${index + 1}`}</span>
+                      <span>{index === 0 ? "Portada" : `Imagen ${index + 1}`}</span>
                       {index > 0 && (
-                        <button type="button" onClick={() => makeCoverImage(index)}>Make cover</button>
+                        <button type="button" onClick={() => makeCoverImage(index)}>Usar como portada</button>
                       )}
-                      <button type="button" onClick={() => removeExistingImage(index)}>Remove</button>
+                      <button type="button" onClick={() => removeExistingImage(index)}>Eliminar</button>
                     </span>
                   ))}
                 </span>
@@ -815,14 +819,14 @@ function PropertyDetails() {
                 Add pictures
                 <input type="file" multiple accept="image/jpeg,image/png,image/webp" onChange={handleImageFiles} />
               </span>
-              <small>Required · keep or add at least one picture · up to 8 total · JPG, PNG, or WebP · 5 MB each</small>
+              <small>Obligatorio · conserve o agregue al menos una imagen · máximo 8 · JPG, PNG o WebP · 5 MB cada una</small>
               {imagePreviews.length > 0 && (
                 <span className="property-edit-new-images">
                   {imagePreviews.map((preview, index) => (
                     <span className="property-edit-gallery-item" key={preview}>
                       <img src={preview} alt={`New property preview ${index + 1}`} />
                       <span>
-                        {index === 0 && newImagesAreCover ? "New cover" : `New picture ${index + 1}`}
+                        {index === 0 && newImagesAreCover ? "Nueva portada" : `Nueva imagen ${index + 1}`}
                       </span>
                       {!(index === 0 && newImagesAreCover) && (
                         <button type="button" onClick={() => makeNewImageCover(index)}>
@@ -834,10 +838,10 @@ function PropertyDetails() {
                       </button>
                     </span>
                   ))}
-                  <button type="button" onClick={clearSelectedImages}>Cancel new pictures</button>
+                  <button type="button" onClick={clearSelectedImages}>Cancelar imágenes nuevas</button>
                 </span>
               )}
-              <span className="property-edit-image-or">or add one image URL</span>
+              <span className="property-edit-image-or">o agregue la dirección de una imagen</span>
               <input
                 type="url"
                 value={imageUrl}
@@ -852,21 +856,21 @@ function PropertyDetails() {
             <label>
               Listing For
               <select value={listingType} onChange={(event) => setListingType(event.target.value)}>
-                <option value="sale">For Sale</option>
-                <option value="rent">For Rent</option>
+                <option value="sale">En venta</option>
+                <option value="rent">En alquiler</option>
               </select>
             </label>
 
             <label>
               Currency
               <select value={currency} onChange={(event) => setCurrency(event.target.value)}>
-                <option value="USD">US Dollars (US$)</option>
-                <option value="DOP">Dominican Pesos (RD$)</option>
+                <option value="USD">Dólares estadounidenses (US$)</option>
+                <option value="DOP">Pesos dominicanos (RD$)</option>
               </select>
             </label>
 
             <label>
-              {listingType === "rent" ? "Monthly Rent" : "Sale Price"}
+              {listingType === "rent" ? "Alquiler mensual" : "Precio de venta"}
               <input
                 type="number"
                 value={price}
@@ -897,7 +901,7 @@ function PropertyDetails() {
             {location.trim() && (
               <div className="property-edit-location-preview">
                 {!isMapLocationDetailed(location) && (
-                  <span>Add a city/province or country to make this map search more reliable.</span>
+                  <span>Agregue una ciudad, provincia o país para mejorar la búsqueda en el mapa.</span>
                 )}
                 <a href={buildPropertyMapUrl(location)} target="_blank" rel="noreferrer">
                   Preview map search ↗
@@ -915,10 +919,10 @@ function PropertyDetails() {
                 }
                 required
               >
-                <option value="House">House</option>
+                <option value="House">Casa</option>
                 <option value="Villa">Villa</option>
-                <option value="Apartment">Apartment</option>
-                <option value="Condo">Condo</option>
+                <option value="Apartment">Apartamento</option>
+                <option value="Condo">Condominio</option>
               </select>
             </label>
 
@@ -979,13 +983,13 @@ function PropertyDetails() {
                 </option>
 
                 <option value="unavailable">
-                  Unavailable
+                  No disponible
                 </option>
               </select>
             </label>
 
             <fieldset className="property-edit-amenities">
-              <legend>Amenities (optional)</legend>
+              <legend>Amenidades (opcional)</legend>
               <div className="property-edit-amenities-options">
                 {PROPERTY_AMENITIES.map((amenity) => (
                   <label key={amenity}>
@@ -1003,7 +1007,7 @@ function PropertyDetails() {
             <div>
 
               <button type="submit" disabled={updateLoading}>
-                {updateLoading ? "Saving..." : "Save Changes"}
+                {updateLoading ? "Guardando..." : "Guardar cambios"}
               </button>
 
               <button
@@ -1038,7 +1042,7 @@ function PropertyDetails() {
                     type="button"
                     className="property-gallery-arrow property-gallery-arrow-previous"
                     onClick={() => showAdjacentImage(-1)}
-                    aria-label="Show previous property picture"
+                    aria-label="Mostrar imagen anterior de la propiedad"
                   >
                     ‹
                   </button>
@@ -1046,7 +1050,7 @@ function PropertyDetails() {
                     type="button"
                     className="property-gallery-arrow property-gallery-arrow-next"
                     onClick={() => showAdjacentImage(1)}
-                    aria-label="Show next property picture"
+                    aria-label="Mostrar imagen siguiente de la propiedad"
                   >
                     ›
                   </button>
@@ -1054,7 +1058,7 @@ function PropertyDetails() {
               )}
             </div>
             {property.image_urls?.length > 1 && (
-              <div className="property-gallery-thumbnails" aria-label="Property pictures">
+              <div className="property-gallery-thumbnails" aria-label="Imágenes de la propiedad">
                 {property.image_urls.map((url, index) => (
                   <button
                     type="button"
@@ -1074,8 +1078,8 @@ function PropertyDetails() {
 
             {property.safety_hold && (
               <div className="property-safety-hold" role="status">
-                <strong>This listing is temporarily unavailable during a safety review.</strong>
-                <span>It is hidden from discovery and new inquiries are paused. The owner can still correct the listing details.</span>
+                <strong>Este anuncio no está disponible temporalmente mientras se revisa su seguridad.</strong>
+                <span>Está oculto de las búsquedas y las consultas nuevas están pausadas. El propietario todavía puede corregir sus detalles.</span>
               </div>
             )}
 
@@ -1103,7 +1107,7 @@ function PropertyDetails() {
             <p className="property-owner">
               Listed by {property.owner_name}
               {property.owner_profile_public && (
-                <> · <Link to={`/profiles/${property.owner_id}`}>View profile</Link></>
+                <> · <Link to={`/profiles/${property.owner_id}`}>Ver perfil</Link></>
               )}
             </p>
 
@@ -1130,7 +1134,7 @@ function PropertyDetails() {
             </p>
 
             <p className="property-listing-label">
-              {property.listing_type === "rent" ? "For Rent" : "For Sale"}
+              {property.listing_type === "rent" ? "En alquiler" : "En venta"}
             </p>
 
             <div className="property-info">
@@ -1138,13 +1142,13 @@ function PropertyDetails() {
               <div>
                 <span>🛏</span>
                 <strong>{property.bedrooms}</strong>
-                <p>Bedrooms</p>
+                <p>Habitaciones</p>
               </div>
 
               <div>
                 <span>🛁</span>
                 <strong>{property.bathrooms}</strong>
-                <p>Bathrooms</p>
+                <p>Baños</p>
               </div>
 
               {property.square_feet > 0 && (
@@ -1153,26 +1157,26 @@ function PropertyDetails() {
                   <strong>
                     {Number(property.square_feet).toLocaleString()}
                   </strong>
-                  <p>Square Feet</p>
+                  <p>Pies cuadrados</p>
                 </div>
               )}
 
               <div>
                 <span>🏠</span>
                 <strong>{property.property_type}</strong>
-                <p>Property Type</p>
+                <p>Tipo de propiedad</p>
               </div>
 
               <div>
                 <span>●</span>
                 <strong>
                   {property.safety_hold
-                    ? "Safety Hold"
+                    ? "En revisión"
                     : ["available", "open"].includes(property.status?.toLowerCase())
-                    ? "Available"
-                    : "Unavailable"}
+                    ? "Disponible"
+                    : "No disponible"}
                 </strong>
-                <p>Status</p>
+                <p>Estado</p>
               </div>
 
             </div>
@@ -1194,7 +1198,7 @@ function PropertyDetails() {
                   onClick={toggleReportForm}
                   disabled={reportLoading}
                 >
-                  {showReport ? "Close Report" : "Report Listing"}
+                  {showReport ? "Cerrar reporte" : "Reportar anuncio"}
                 </button>
               )}
 
@@ -1204,8 +1208,8 @@ function PropertyDetails() {
                     onClick={toggleInquiryForm}
                   >
                     {showInquiry
-                      ? "Close"
-                      : "Contact Owner"}
+                      ? "Cerrar"
+                      : "Contactar al propietario"}
                   </button>
 
                   {(favoriteStatus === "guest" || favoriteStatus === "ready") && (
@@ -1215,18 +1219,18 @@ function PropertyDetails() {
                       disabled={favoriteLoading}
                     >
                       {favoriteLoading
-                        ? "Saving..."
+                        ? "Guardando..."
                         : isFavorite
                           ? "❤️ Favorited"
                           : "♡ Favorite"}
                     </button>
                   )}
                   {favoriteStatus === "loading" && (
-                    <span className="favorite-state" role="status">Checking saved status…</span>
+                    <span className="favorite-state" role="status">Comprobando favorito…</span>
                   )}
                   {favoriteStatus === "error" && (
                     <span className="favorite-state favorite-state-error" role="alert">
-                      Saved status unavailable.
+                      El estado del favorito no está disponible.
                       <button type="button" onClick={() => setFavoriteAttempt((current) => current + 1)}>
                         Retry
                       </button>
@@ -1248,22 +1252,22 @@ function PropertyDetails() {
                       beginEditing()
                     }
                   >
-                    Edit Property
+                    Editar propiedad
                   </button>
 
                   <button onClick={handleDelete} disabled={deleteLoading || updateLoading}>
-                    {deleteLoading ? "Deleting..." : "Delete Property"}
+                    {deleteLoading ? "Eliminando..." : "Eliminar propiedad"}
                   </button>
                 </>
               )}
 
               {identityStatus === "loading" && (
-                <span className="identity-status" role="status">Checking account access…</span>
+                <span className="identity-status" role="status">Comprobando acceso a la cuenta…</span>
               )}
 
               {identityStatus === "error" && (
                 <span className="identity-status identity-error" role="alert">
-                  Account access could not be verified.
+                  No pudimos verificar el acceso a la cuenta.
                   <button type="button" onClick={() => setIdentityAttempt((current) => current + 1)}>
                     Try again
                   </button>
@@ -1277,10 +1281,10 @@ function PropertyDetails() {
             {reportSuccess && (
               <div className="report-success" role="status">
                 <div>
-                  <strong>Report recorded.</strong>
+                  <strong>Reporte registrado.</strong>
                   <span>Safety report #{reportSuccess} was saved. You do not need to submit it again.</span>
                 </div>
-                <Link to="/my-reports">View my reports</Link>
+                <Link to="/my-reports">Ver mis reportes</Link>
               </div>
             )}
 
@@ -1288,14 +1292,14 @@ function PropertyDetails() {
               <div className="report-form">
                 <div className="report-form-heading">
                   <div>
-                    <h2>Report this listing</h2>
-                    <p>Use this for safety, accuracy, duplicate, or availability concerns.</p>
+                    <h2>Reportar este anuncio</h2>
+                    <p>Utilice esta opción para informar problemas de seguridad, exactitud, duplicidad o disponibilidad.</p>
                   </div>
                   <span>Reference {formatPropertyReference(property.id)}</span>
                 </div>
 
                 <form onSubmit={handleReport}>
-                  <label htmlFor="report-reason">Reason</label>
+                  <label htmlFor="report-reason">Motivo</label>
                   <select
                     id="report-reason"
                     value={reportReason}
@@ -1303,18 +1307,18 @@ function PropertyDetails() {
                     disabled={reportLoading}
                     required
                   >
-                    <option value="">Choose a reason</option>
+                    <option value="">Seleccione un motivo</option>
                     {REPORT_REASONS.map(([value, label]) => (
                       <option key={value} value={value}>{label}</option>
                     ))}
                   </select>
 
-                  <label htmlFor="report-details">Additional details (optional)</label>
+                  <label htmlFor="report-details">Detalles adicionales (opcional)</label>
                   <textarea
                     id="report-details"
                     value={reportDetails}
                     onChange={(event) => setReportDetails(event.target.value)}
-                    placeholder="Describe what concerned you. Do not include passwords or payment information."
+                    placeholder="Describa su inquietud. No incluya contraseñas ni información de pago."
                     rows="4"
                     maxLength="1000"
                     disabled={reportLoading}
@@ -1324,7 +1328,7 @@ function PropertyDetails() {
                     <span>{reportDetails.length}/1000</span>
                     <div>
                       <button type="submit" disabled={reportLoading || !reportReason}>
-                        {reportLoading ? "Submitting..." : "Submit Report"}
+                        {reportLoading ? "Enviando..." : "Enviar reporte"}
                       </button>
                       <button
                         type="button"
@@ -1342,8 +1346,8 @@ function PropertyDetails() {
             {inquirySuccess && (
               <div className="inquiry-success" role="status">
                 <div>
-                  <strong>Inquiry sent successfully.</strong>
-                  <span>You can continue messaging the owner from your inquiries.</span>
+                  <strong>Consulta enviada correctamente.</strong>
+                  <span>Puede continuar la conversación con el propietario desde sus consultas.</span>
                 </div>
                 <Link to={`/inquiries?property=${formatPropertyReference(inquirySuccess.propertyId)}`}>
                   Open conversation
@@ -1356,17 +1360,17 @@ function PropertyDetails() {
 
                 <div className="inquiry-form-heading">
                   <div>
-                    <h2>Contact owner</h2>
-                    <p>Ask about availability, a viewing, or any property details.</p>
+                    <h2>Contactar al propietario</h2>
+                    <p>Pregunte sobre disponibilidad, visitas o cualquier detalle de la propiedad.</p>
                   </div>
                   <span>Reference {formatPropertyReference(property.id)}</span>
                 </div>
 
                 <form onSubmit={handleInquiry}>
 
-                  <label htmlFor="owner-message">Your message</label>
+                  <label htmlFor="owner-message">Su mensaje</label>
 
-                  <div className="inquiry-quick-prompts" aria-label="Suggested messages">
+                  <div className="inquiry-quick-prompts" aria-label="Mensajes sugeridos">
                     {INQUIRY_PROMPTS.map((prompt) => (
                       <button
                         type="button"
@@ -1412,8 +1416,8 @@ function PropertyDetails() {
                       disabled={inquiryLoading || !inquiryMessage.trim()}
                     >
                       {inquiryLoading
-                        ? "Sending..."
-                        : "Send Inquiry"}
+                        ? "Enviando..."
+                        : "Enviar consulta"}
                     </button>
 
                     <button

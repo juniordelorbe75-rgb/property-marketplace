@@ -13,6 +13,9 @@ from backend.db_models.report import ListingReportDB
 from backend.db_models.social_identity import SocialIdentityDB
 from backend.db_models.password_reset import PasswordResetTokenDB
 from backend.db_models.email_verification import EmailVerificationTokenDB
+from backend.db_models.external_listing import ExternalListingDB, ListingFeedAuditDB, ListingSourceDB
+from backend.db_models.revoked_token import RevokedTokenDB
+from backend.config import database_engine_options, parse_app_environment
 
 load_dotenv()
 
@@ -26,12 +29,8 @@ if not DATABASE_URL:
 
 engine = create_engine(
     DATABASE_URL,
-    pool_pre_ping=True,
-    hide_parameters=True,
+    **database_engine_options(DATABASE_URL),
 )
-
-Base.metadata.create_all(bind=engine)
-
 
 def ensure_schema_safety():
     with engine.begin() as connection:
@@ -158,6 +157,18 @@ def ensure_schema_safety():
                     """
                 )
             )
+
+        dominican_location_columns = (
+            ("country_code", "VARCHAR(2) NOT NULL DEFAULT 'DO'"),
+            ("province", "VARCHAR(100) NOT NULL DEFAULT ''"),
+            ("municipality", "VARCHAR(100) NOT NULL DEFAULT ''"),
+            ("sector", "VARCHAR(100) NOT NULL DEFAULT ''"),
+        )
+        for column_name, column_definition in dominican_location_columns:
+            if column_name not in property_columns:
+                connection.execute(text(
+                    f"ALTER TABLE properties ADD COLUMN {column_name} {column_definition}"
+                ))
 
         if "created_at" not in property_columns:
             connection.execute(
@@ -343,6 +354,24 @@ def ensure_schema_safety():
                     """
                 )
             )
+
+        source_columns = {
+            column["name"]
+            for column in inspect(connection).get_columns("listing_sources")
+        }
+        source_safety_columns = (
+            ("approval_status", "VARCHAR(20) NOT NULL DEFAULT 'pending'"),
+            ("permission_document_url", "VARCHAR(2000)"),
+            ("permission_approved_at", "TIMESTAMP WITH TIME ZONE"),
+            ("permission_expires_at", "TIMESTAMP WITH TIME ZONE"),
+            ("approved_by_id", "INTEGER"),
+            ("stale_after_hours", "INTEGER NOT NULL DEFAULT 48"),
+        )
+        for column_name, column_definition in source_safety_columns:
+            if column_name not in source_columns:
+                connection.execute(text(
+                    f"ALTER TABLE listing_sources ADD COLUMN {column_name} {column_definition}"
+                ))
         if "reviewed_by_id" not in report_columns:
             connection.execute(
                 text(
@@ -413,6 +442,8 @@ def ensure_schema_safety():
             "ON properties (owner_id, created_at)",
             "CREATE INDEX IF NOT EXISTS ix_properties_safety_created "
             "ON properties (safety_hold, created_at)",
+            "CREATE INDEX IF NOT EXISTS ix_properties_dominican_location "
+            "ON properties (country_code, province, municipality)",
             "CREATE UNIQUE INDEX IF NOT EXISTS uq_properties_owner_creation_key "
             "ON properties (owner_id, creation_key)",
             "CREATE INDEX IF NOT EXISTS ix_inquiries_buyer_updated "
@@ -469,7 +500,18 @@ def ensure_schema_safety():
         )
 
 
-ensure_schema_safety()
+def apply_schema_updates() -> None:
+    Base.metadata.create_all(bind=engine)
+    ensure_schema_safety()
+
+
+def missing_required_tables(session: Session) -> set[str]:
+    existing_tables = set(inspect(session.connection()).get_table_names())
+    return set(Base.metadata.tables) - existing_tables
+
+
+if parse_app_environment(os.getenv("APP_ENV")) != "production":
+    apply_schema_updates()
 
 
 def get_db():

@@ -13,10 +13,14 @@ export function buildSearchPageShareUrl(currentUrl) {
 }
 
 export async function shareSearchPage(capabilities, currentUrl) {
+  const current = new URL(currentUrl)
   const url = buildSearchPageShareUrl(currentUrl)
+  const isUnfilteredHome = current.pathname === "/" && !current.search
   const shareData = {
-    title: "Property marketplace search",
-    text: "View these property search results.",
+    title: isUnfilteredHome ? "HabitaRD" : "Búsqueda en HabitaRD",
+    text: isUnfilteredHome
+      ? "Encuentre, alquile o venda propiedades en toda la República Dominicana con HabitaRD."
+      : "Vea estos resultados de propiedades.",
     url,
   }
 

@@ -32,3 +32,10 @@ export const DOMINICAN_PROVINCES = Object.freeze([
   "Santo Domingo",
   "Valverde",
 ])
+
+export function buildDominicanLocation({ sector = "", municipality = "", province = "" }) {
+  return [sector, municipality, province, "República Dominicana"]
+    .map((part) => String(part).trim().replace(/\s+/g, " "))
+    .filter(Boolean)
+    .join(", ")
+}

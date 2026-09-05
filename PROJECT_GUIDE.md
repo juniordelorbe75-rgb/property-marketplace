@@ -1,4 +1,4 @@
-# Property Marketplace Study Guide
+# Guía del proyecto HabitaRD
 
 This guide explains how the project fits together. You do not need to understand
 every file at once. Follow the study order near the bottom and run the examples as
@@ -611,7 +611,7 @@ The project currently has automated coverage for:
 - Listings support explicit US dollar (`USD` / `US$`) and Dominican peso (`DOP` / `RD$`) pricing across creation, editing, cards, details, favorites, drafts, and recently viewed history; price filters and sorting require a currency and use an indexed currency-price query
 - The sticky marketplace header includes active-route styling, a live pending-inquiry badge, and a keyboard-accessible mobile menu that closes after navigation, logout, or Escape
 - Every listing displays a stable public reference such as `PM-000123`; buyers can search the exact validated reference, making phone, family, agent, and messaging conversations less ambiguous
-- Create, edit, and buyer search location fields offer all 31 Dominican provinces plus the National District as accessible suggestions while remaining free text for sectors, neighborhoods, and future countries
+- New listings capture the Dominican province/National District, municipality or city, and optional sector separately; the server canonicalizes all 32 province-level divisions, rejects unknown values, and retains a public location summary for compatible search and map links
 - Property details can open the seller-provided location as a safe external map search without storing precise coordinates, embedding a tracking map, or requiring a map API key
 
 The login throttle combines client-and-email, account-wide, and client-wide
