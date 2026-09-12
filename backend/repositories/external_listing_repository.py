@@ -1,7 +1,7 @@
 import json
 from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session, selectinload
 
 from backend.db_models.external_listing import ExternalListingDB, ListingFeedAuditDB, ListingSourceDB
@@ -188,8 +188,21 @@ def _public_catalog_statement(
     property_type=None, listing_type=None, bedrooms=None, bathrooms=None,
     min_area_sqm=None,
 ):
-    statement = select(ExternalListingDB).where(
-        ExternalListingDB.is_public.is_(True), ExternalListingDB.status == "active"
+    now = datetime.now(timezone.utc)
+    statement = (
+        select(ExternalListingDB)
+        .join(ListingSourceDB, ExternalListingDB.source_id == ListingSourceDB.id)
+        .where(
+            ExternalListingDB.is_public.is_(True),
+            ExternalListingDB.status == "active",
+            ListingSourceDB.approved.is_(True),
+            ListingSourceDB.approval_status == "approved",
+            ListingSourceDB.permission_document_url.is_not(None),
+            or_(
+                ListingSourceDB.permission_expires_at.is_(None),
+                ListingSourceDB.permission_expires_at > now,
+            ),
+        )
     )
     if location:
         term = f"%{location}%"
