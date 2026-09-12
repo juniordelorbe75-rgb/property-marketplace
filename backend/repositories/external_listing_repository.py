@@ -1,7 +1,7 @@
 import json
 from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import func, select
+from sqlalchemy import Interval, func, literal, or_, select
 from sqlalchemy.orm import Session, selectinload
 
 from backend.db_models.external_listing import ExternalListingDB, ListingFeedAuditDB, ListingSourceDB
@@ -184,13 +184,36 @@ def withdraw_stale_listings(session: Session, now: datetime | None = None) -> in
 
 
 def _public_catalog_statement(
+    session: Session, *, now: datetime | None = None, source_id: int | None = None,
     location=None, min_price=None, max_price=None, currency=None,
     property_type=None, listing_type=None, bedrooms=None, bathrooms=None,
     min_area_sqm=None,
 ):
-    statement = select(ExternalListingDB).where(
-        ExternalListingDB.is_public.is_(True), ExternalListingDB.status == "active"
+    now = _as_utc(now or datetime.now(timezone.utc))
+    # Enforce visibility in the database query, before pagination. The cleanup
+    # worker updates stored flags and audit history but is not an access gate.
+    if session.get_bind().dialect.name == "sqlite":
+        fresh = func.julianday(ListingSourceDB.last_retrieved_at) > (
+            func.julianday(now) - ListingSourceDB.stale_after_hours / 24.0
+        )
+    else:
+        fresh = ListingSourceDB.last_retrieved_at > (
+            literal(now) - literal(timedelta(hours=1), type_=Interval()) * ListingSourceDB.stale_after_hours
+        )
+    statement = select(ExternalListingDB).join(
+        ListingSourceDB, ExternalListingDB.source_id == ListingSourceDB.id,
+    ).where(
+        ExternalListingDB.is_public.is_(True),
+        ExternalListingDB.status == "active",
+        ListingSourceDB.approved.is_(True),
+        ListingSourceDB.approval_status == "approved",
+        func.length(func.trim(ListingSourceDB.permission_document_url)) > 0,
+        or_(ListingSourceDB.permission_expires_at.is_(None), ListingSourceDB.permission_expires_at > now),
+        ListingSourceDB.last_retrieved_at <= now,
+        fresh,
     )
+    if source_id is not None:
+        statement = statement.where(ListingSourceDB.id == source_id)
     if location:
         term = f"%{location}%"
         statement = statement.where(
@@ -219,7 +242,7 @@ def _public_catalog_statement(
 
 def get_public_external_listings(session: Session, limit: int = 20, offset: int = 0, **filters):
     statement = (
-        _public_catalog_statement(**filters)
+        _public_catalog_statement(session, **filters)
         .options(selectinload(ExternalListingDB.source))
         .order_by(ExternalListingDB.source_updated_at.desc(), ExternalListingDB.id.desc())
         .offset(offset)
@@ -229,5 +252,5 @@ def get_public_external_listings(session: Session, limit: int = 20, offset: int 
 
 
 def count_public_external_listings(session: Session, **filters) -> int:
-    filtered = _public_catalog_statement(**filters).subquery()
+    filtered = _public_catalog_statement(session, **filters).subquery()
     return session.scalar(select(func.count()).select_from(filtered)) or 0

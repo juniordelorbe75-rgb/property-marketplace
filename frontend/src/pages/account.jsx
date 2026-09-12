@@ -5,12 +5,16 @@ import { getApiError } from "../utils/apiError"
 import { readApiResponse } from "../utils/apiResponse"
 import "./account.css"
 import { apiFetch } from "../utils/apiFetch"
+import { getAccountTypeLabel } from "../utils/accountTypes"
+import { getSellerCategoryLabel, getSellerRegistrationFields } from "../utils/sellerDetails"
+import SellerFields from "../components/SellerFields"
 
 function Account() {
   const navigate = useNavigate()
   const { login, logout } = useAuth()
 
   const [user, setUser] = useState(null)
+  const [sellerDetails, setSellerDetails] = useState({})
 
   const [firstName, setFirstName] = useState("")
   const [middleName, setMiddleName] = useState("")
@@ -47,6 +51,14 @@ function Account() {
   const [deleteError, setDeleteError] = useState("")
   const [verificationMessage, setVerificationMessage] = useState("")
   const [sendingVerification, setSendingVerification] = useState(false)
+  const [security, setSecurity] = useState(null)
+  const [securityPhone, setSecurityPhone] = useState("")
+  const [securityPassword, setSecurityPassword] = useState("")
+  const [securityCode, setSecurityCode] = useState("")
+  const [securityStep, setSecurityStep] = useState("")
+  const [securityBusy, setSecurityBusy] = useState(false)
+  const [securityMessage, setSecurityMessage] = useState("")
+  const [securityError, setSecurityError] = useState("")
 
   const displayName = [firstName, middleName, lastName].filter(Boolean).join(" ") || user?.name || "No proporcionado"
   const displayBirthDate = dateOfBirth
@@ -90,6 +102,7 @@ function Account() {
       }
 
       setUser(data)
+      setSellerDetails({ seller_category: data.seller_category || "", seller_phone: data.seller_phone || "", business_name: data.business_name || "" })
       setFirstName(data.first_name || data.name || "")
       setMiddleName(data.middle_name || "")
       setLastName(data.last_name || "")
@@ -99,6 +112,15 @@ function Account() {
       setPublicNameMode(data.public_name_mode === "full_name" ? "full_name" : "first_name")
       setPublicBioVisible(data.public_bio_visible === true)
       setEmail(data.email)
+
+      const securityResponse = await apiFetch("/auth/security/status", {
+        headers: { Authorization: `Bearer ${token}` },
+        signal,
+      })
+      const securityData = await readApiResponse(securityResponse)
+      if (!securityResponse.ok) throw new Error(getApiError(securityData, "No pudimos cargar la configuración de seguridad"))
+      setSecurity(securityData)
+      setSecurityPhone(securityData.phone_number || data.seller_phone || "")
 
     } catch (error) {
       if (signal.aborted) return
@@ -176,6 +198,7 @@ function Account() {
             last_name: lastName,
             date_of_birth: dateOfBirth,
             bio,
+            ...(user?.account_type === "seller" && editingProfile ? getSellerRegistrationFields("seller", sellerDetails) : {}),
             public_profile_enabled: publicProfileEnabled,
             public_name_mode: publicNameMode,
             public_bio_visible: publicBioVisible,
@@ -199,6 +222,7 @@ function Account() {
         login(data.access_token)
       }
       setUser(data)
+      setSellerDetails({ seller_category: data.seller_category || "", seller_phone: data.seller_phone || "", business_name: data.business_name || "" })
       setFirstName(data.first_name || data.name || "")
       setMiddleName(data.middle_name || "")
       setLastName(data.last_name || "")
@@ -208,6 +232,8 @@ function Account() {
       setPublicNameMode(data.public_name_mode === "full_name" ? "full_name" : "first_name")
       setPublicBioVisible(data.public_bio_visible === true)
       setEmail(data.email)
+
+      if (!security?.mfa_enabled && data.seller_phone) setSecurityPhone(data.seller_phone)
       setProfilePassword("")
 
       setProfileMessage(
@@ -336,6 +362,88 @@ function Account() {
     }
   }
 
+  async function securityRequest(path, body) {
+    const response = await apiFetch(path, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+        ...(body ? { "Content-Type": "application/json" } : {}),
+      },
+      ...(body ? { body: JSON.stringify(body) } : {}),
+    })
+    const data = await readApiResponse(response)
+    if (!response.ok) throw new Error(getApiError(data, "No pudimos actualizar la verificación en dos pasos"))
+    return data
+  }
+
+  async function sendSmsSetup() {
+    setSecurityBusy(true)
+    setSecurityError("")
+    setSecurityMessage("")
+    try {
+      await securityRequest("/auth/security/sms/setup", { phone: securityPhone })
+      setSecurityStep("enable")
+      setSecurityMessage("Código enviado. Llegará por SMS y vencerá en 10 minutos.")
+    } catch (error) {
+      setSecurityError(error.message)
+    } finally {
+      setSecurityBusy(false)
+    }
+  }
+
+  async function enableSmsMfa(event) {
+    event.preventDefault()
+    setSecurityBusy(true)
+    setSecurityError("")
+    try {
+      const data = await securityRequest("/auth/security/sms/enable", { password: securityPassword, code: securityCode })
+      login(data.access_token)
+      setSecurity((current) => ({ ...current, mfa_enabled: true, mfa_method: "sms", phone_number: securityPhone, phone_verified: true }))
+      setSecurityStep("")
+      setSecurityPassword("")
+      setSecurityCode("")
+      setSecurityMessage(data.message)
+    } catch (error) {
+      setSecurityError(error.message)
+    } finally {
+      setSecurityBusy(false)
+    }
+  }
+
+  async function sendSmsDisable() {
+    setSecurityBusy(true)
+    setSecurityError("")
+    setSecurityMessage("")
+    try {
+      await securityRequest("/auth/security/sms/disable/request")
+      setSecurityStep("disable")
+      setSecurityMessage("Código enviado al teléfono protegido. Escríbalo para confirmar.")
+    } catch (error) {
+      setSecurityError(error.message)
+    } finally {
+      setSecurityBusy(false)
+    }
+  }
+
+  async function disableSmsMfa(event) {
+    event.preventDefault()
+    setSecurityBusy(true)
+    setSecurityError("")
+    try {
+      const data = await securityRequest("/auth/security/sms/disable", { password: securityPassword, code: securityCode })
+      login(data.access_token)
+      setSecurity((current) => ({ ...current, mfa_enabled: false, mfa_method: null }))
+      setSecurityStep("")
+      setSecurityPassword("")
+      setSecurityCode("")
+      setSecurityMessage(data.message)
+    } catch (error) {
+      setSecurityError(error.message)
+    } finally {
+      setSecurityBusy(false)
+    }
+  }
+
   if (loading) {
     return (
       <div className="account-page">
@@ -401,6 +509,12 @@ function Account() {
 
           {!editingProfile && <>
             <div className="account-information profile-summary">
+              <div><span className="information-label">Tipo de cuenta</span><span className="information-value">{getAccountTypeLabel(user?.account_type)}</span></div>
+              {user?.account_type === "seller" && <>
+                <div><span className="information-label">Tipo de vendedor</span><span className="information-value">{getSellerCategoryLabel(user.seller_category)}</span></div>
+                <div><span className="information-label">Teléfono de contacto (privado)</span><span className="information-value">{user.seller_phone || "No proporcionado"}</span></div>
+                <div><span className="information-label">Empresa</span><span className="information-value">{user.business_name || "No proporcionada"}</span></div>
+              </>}
               <div><span className="information-label">Nombre completo</span><span className="information-value">{displayName}</span></div>
               <div><span className="information-label">Fecha de nacimiento</span><span className="information-value">{displayBirthDate}</span></div>
               <div><span className="information-label">Correo electrónico</span><span className="information-value">{email}</span></div>
@@ -410,6 +524,8 @@ function Account() {
           </>}
 
           {editingProfile && <form id="profile-form" onSubmit={handleProfileSubmit}>
+
+            {user?.account_type === "seller" && <SellerFields idPrefix="account" details={sellerDetails} onChange={setSellerDetails} disabled={savingProfile} />}
 
             <div className="form-group">
               <label htmlFor="first-name">Nombre</label>
@@ -491,6 +607,7 @@ function Account() {
                 setLastName(user?.last_name || "")
                 setDateOfBirth(user?.date_of_birth || "")
                 setBio(user?.bio || "")
+                setSellerDetails({ seller_category: user?.seller_category || "", seller_phone: user?.seller_phone || "", business_name: user?.business_name || "" })
                 setEmail(user?.email || "")
                 setProfilePassword("")
                 setProfileError("")
@@ -580,6 +697,68 @@ function Account() {
 
           </div>
 
+        </section>
+
+        <section className="account-section">
+          <h2>Verificación en dos pasos por SMS</h2>
+          <p className="section-description">
+            Además de su contraseña, HabitaRD solicitará un código enviado a su teléfono cada vez que inicie sesión.
+          </p>
+
+          {security?.mfa_enabled ? (
+            <div className="security-status-card">
+              <span className="security-badge">Activa</span>
+              <div><strong>Teléfono protegido</strong><p>{security.phone_number}</p></div>
+            </div>
+          ) : (
+            <div className="form-group security-phone-field">
+              <label htmlFor="security-phone">Teléfono móvil con código de país</label>
+              <input
+                id="security-phone"
+                type="tel"
+                autoComplete="tel"
+                value={securityPhone}
+                onChange={(event) => setSecurityPhone(event.target.value)}
+                placeholder="+1 809 555 0123"
+                disabled={user?.account_type === "seller" || securityBusy}
+              />
+              {user?.account_type === "seller" && <small>Para cambiar este número, actualice primero el teléfono de vendedor en su perfil.</small>}
+            </div>
+          )}
+
+          {!security?.sms_available && <p className="profile-confirmation">El envío de SMS debe configurarse en el servidor antes de activar esta opción.</p>}
+          {!user?.has_password && <p className="profile-confirmation">Primero cree una contraseña en la sección siguiente.</p>}
+          {securityMessage && <p className="success-message" role="status">{securityMessage}</p>}
+          {securityError && <p className="error-message" role="alert">{securityError}</p>}
+
+          {!security?.mfa_enabled && securityStep !== "enable" && (
+            <button className="primary-button" type="button" onClick={sendSmsSetup} disabled={securityBusy || !security?.sms_available || !user?.has_password || !securityPhone.trim()}>
+              {securityBusy ? "Enviando..." : "Enviar código y activar"}
+            </button>
+          )}
+
+          {security?.mfa_enabled && securityStep !== "disable" && (
+            <button className="secondary-button" type="button" onClick={sendSmsDisable} disabled={securityBusy}>
+              {securityBusy ? "Enviando..." : "Desactivar con un código"}
+            </button>
+          )}
+
+          {securityStep && (
+            <form className="security-code-form" onSubmit={securityStep === "enable" ? enableSmsMfa : disableSmsMfa}>
+              <div className="form-group">
+                <label htmlFor="security-code">Código del SMS</label>
+                <input id="security-code" inputMode="numeric" autoComplete="one-time-code" value={securityCode} onChange={(event) => setSecurityCode(event.target.value.replace(/\D/g, "").slice(0, 10))} minLength={4} maxLength={10} required />
+              </div>
+              <div className="form-group">
+                <label htmlFor="security-password">Contraseña actual</label>
+                <input id="security-password" type="password" autoComplete="current-password" value={securityPassword} onChange={(event) => setSecurityPassword(event.target.value)} maxLength={128} required />
+              </div>
+              <div className="edit-actions">
+                <button className="primary-button" type="submit" disabled={securityBusy || securityCode.length < 4 || !securityPassword}>{securityBusy ? "Confirmando..." : securityStep === "enable" ? "Activar protección" : "Desactivar protección"}</button>
+                <button className="secondary-button" type="button" disabled={securityBusy} onClick={() => { setSecurityStep(""); setSecurityCode(""); setSecurityPassword(""); setSecurityError("") }}>Cancelar</button>
+              </div>
+            </form>
+          )}
         </section>
 
         {/* PASSWORD */}

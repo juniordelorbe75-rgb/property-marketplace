@@ -1,6 +1,6 @@
 function supportSuffix(response) {
   const requestId = response.headers.get("x-request-id")
-  return requestId ? ` Support ID: ${requestId}` : ""
+  return requestId ? ` Código de soporte: ${requestId}` : ""
 }
 
 export async function readApiResponse(response) {
@@ -8,12 +8,12 @@ export async function readApiResponse(response) {
 
   if (!body.trim()) {
     if (response.status === 204) return null
-    throw new Error(`The server returned an empty response. Please try again.${supportSuffix(response)}`)
+    throw new Error(`El servidor devolvió una respuesta vacía. Intente de nuevo.${supportSuffix(response)}`)
   }
 
   try {
     return JSON.parse(body)
   } catch {
-    throw new Error(`The server returned an invalid response. Please try again.${supportSuffix(response)}`)
+    throw new Error(`El servidor devolvió una respuesta no válida. Intente de nuevo.${supportSuffix(response)}`)
   }
 }

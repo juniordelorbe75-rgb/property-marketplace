@@ -24,6 +24,8 @@ from backend.models import (
     PasswordResetRequest,
     PasswordResetConfirmation,
     EmailVerificationConfirmation,
+    SellerPhoneVerificationRequest,
+    SellerPhoneVerificationConfirmation,
 )
 from backend.services.user_service import (
     create_user,
@@ -36,6 +38,10 @@ from backend.services.user_service import (
 )
 from backend.services.password_reset_service import request_password_reset, reset_password
 from backend.services.email_verification_service import issue_email_verification, verify_email
+from backend.services.seller_phone_verification_service import (
+    confirm_seller_phone_verification,
+    request_seller_phone_verification,
+)
 
 from backend.db import get_db
 from backend.request_identity import client_address, parse_trusted_proxy_networks
@@ -65,6 +71,36 @@ def _combined_retry_after(*limits: tuple[str, str, int, int]) -> int | None:
         )) is not None
     ]
     return max(waits, default=None)
+
+
+@router.post("/seller-phone-verification/request")
+def request_seller_phone_code(
+    payload: SellerPhoneVerificationRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    request_address = client_address(request, TRUSTED_PROXY_NETWORKS)
+    retry_after = _combined_retry_after(
+        ("seller-phone-client", request_address, 5, 15 * 60),
+        ("seller-phone-number", _anonymous_rate_limit_key(payload.phone), 3, 60 * 60),
+    )
+    if retry_after is not None:
+        raise HTTPException(
+            429,
+            retry_after_detail("Demasiadas solicitudes de validación por SMS.", retry_after),
+            headers={"Retry-After": str(retry_after)},
+        )
+    return request_seller_phone_verification(db, payload.phone)
+
+
+@router.post("/seller-phone-verification/confirm")
+def confirm_seller_phone_code(
+    payload: SellerPhoneVerificationConfirmation,
+    db: Session = Depends(get_db),
+):
+    return confirm_seller_phone_verification(
+        db, payload.challenge_token, payload.code
+    )
 
 
 @router.post(
@@ -241,6 +277,9 @@ def update_me(
         public_bio_visible=user_data.public_bio_visible,
         email=user_data.email,
         current_password=user_data.current_password,
+        seller_category=user_data.seller_category,
+        seller_phone=user_data.seller_phone,
+        business_name=user_data.business_name,
     )
     response = UserUpdateResponse.model_validate(updated_user).model_dump()
     if email_changed:

@@ -99,6 +99,18 @@ class SchemaSafetyTests(unittest.TestCase):
 
         self.assertIn("listing_feed_audit", missing)
 
+    def test_seller_profile_migration_preserves_existing_accounts_and_is_idempotent(self):
+        with self.engine.begin() as connection:
+            connection.execute(text("INSERT INTO users (name, email, password, role) VALUES ('Existing Seller', 'existing@example.com', 'test-only', 'seller')"))
+            for name in ("seller_category", "seller_phone", "business_name"):
+                connection.execute(text(f"ALTER TABLE users DROP COLUMN {name}"))
+        with patch.object(database, "engine", self.engine):
+            database.ensure_schema_safety()
+            database.ensure_schema_safety()
+        with self.engine.connect() as connection:
+            row = connection.execute(text("SELECT name, role, seller_category, seller_phone, business_name FROM users WHERE email = 'existing@example.com'")).one()
+            self.assertEqual(tuple(row), ("Existing Seller", "seller", "", "", ""))
+
 
 if __name__ == "__main__":
     unittest.main()

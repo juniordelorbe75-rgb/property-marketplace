@@ -5,6 +5,25 @@
 .sources-eyebrow { color: #176b4d !important; font-size: .75rem; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; }
 .sources-header button { padding: 10px 15px; border: 1px solid #cbd5e1; border-radius: 10px; background: white; color: #334155; cursor: pointer; font: inherit; font-weight: 750; }
 .sources-header button:disabled { cursor: not-allowed; opacity: .55; }
+.sources-header-actions { display: flex; flex-wrap: wrap; gap: 8px; flex-shrink: 0; }
+.source-registration { margin-bottom: 24px; padding: 24px; border: 1px solid #bdcbc5; border-radius: 16px; background: #fff; }
+.source-registration h2 { margin: 0 0 8px; font-size: 1.4rem; }
+.source-registration > p { margin: 0 0 22px; color: #596579; line-height: 1.6; }
+.source-registration fieldset { padding: 0; margin: 0; border: 0; min-width: 0; }
+.source-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+.source-form-grid label { display: flex; flex-direction: column; gap: 7px; min-width: 0; font-size: 1rem; font-weight: 700; }
+.source-form-grid input { width: 100%; min-width: 0; box-sizing: border-box; padding: 12px; border: 1px solid #bdcbc5; border-radius: 9px; background: white; color: #172033; font: inherit; font-weight: 400; }
+.source-form-grid label span { font-size: .875rem; font-weight: 400; color: #596579; line-height: 1.5; }
+.source-form-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 22px; }
+.source-form-actions button { padding: 12px 18px; border: 1px solid #176b4d; border-radius: 10px; background: #176b4d; color: white; font: inherit; font-weight: 700; cursor: pointer; }
+.source-form-actions .source-cancel { background: white; color: #176b4d; }
+.source-registration fieldset:disabled { opacity: .65; }
+.source-registration fieldset:disabled button { cursor: wait; }
+.source-registration :focus-visible { outline: 3px solid #176b4d; outline-offset: 3px; }
+.source-registration .sources-error { margin: 20px 0 0; }
+.sources-success { padding: 14px 18px; border: 1px solid #a7d9bd; border-radius: 10px; background: #edf9f1; color: #185a3a; line-height: 1.6; }
+@media (max-width: 800px) { .sources-header { flex-wrap: wrap; } }
+@media (max-width: 560px) { .source-form-grid { grid-template-columns: 1fr; } .source-registration { padding: 18px; } .sources-header-actions, .source-form-actions button { width: 100%; } }
 .sources-summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 24px; }
 .sources-summary article { padding: 17px; border: 1px solid #dce4e1; border-radius: 14px; background: #fff; box-shadow: 0 8px 24px rgba(20, 53, 43, .055); }
 .sources-summary span, .sources-summary strong { display: block; }

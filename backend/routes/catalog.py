@@ -1,10 +1,11 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Literal
 from urllib.parse import urlsplit
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from backend.auth.dependencies import get_current_admin_user_id
@@ -18,12 +19,15 @@ from backend.repositories.external_listing_repository import (
     set_source_approval,
     withdraw_stale_listings,
 )
+from backend.repositories.transaction import commit_or_rollback
 
 
 router = APIRouter(prefix="/catalog", tags=["Catalog"])
 
 
 class SourceCreate(BaseModel):
+    model_config = {"str_strip_whitespace": True, "extra": "forbid"}
+
     source_key: str = Field(pattern=r"^[a-z0-9][a-z0-9_-]{1,63}$")
     name: str = Field(min_length=2, max_length=150)
     country_code: str = Field(min_length=2, max_length=2)
@@ -42,7 +46,7 @@ class SourceCreate(BaseModel):
     def require_https(cls, value: str) -> str:
         value = value.strip()
         parsed = urlsplit(value)
-        if parsed.scheme != "https" or not parsed.netloc:
+        if parsed.scheme != "https" or not parsed.hostname or parsed.username or parsed.password:
             raise ValueError("License URL must be HTTPS")
         return value
 
@@ -120,6 +124,7 @@ def public_external_catalog(
     session: Session = Depends(get_db),
 ):
     filters = dict(
+        now=datetime.now(timezone.utc),
         location=location, min_price=min_price, max_price=max_price, currency=currency,
         property_type=property_type, listing_type=listing_type, bedrooms=bedrooms,
         bathrooms=bathrooms, min_area_sqm=min_area_sqm,
@@ -134,18 +139,13 @@ def admin_sources(
     session: Session = Depends(get_db),
 ):
     sources = session.scalars(select(ListingSourceDB).order_by(ListingSourceDB.name)).all()
+    now = datetime.now(timezone.utc)
     result = []
     for source in sources:
         total_listings = session.scalar(
             select(func.count(ExternalListingDB.id)).where(ExternalListingDB.source_id == source.id)
         ) or 0
-        public_listings = session.scalar(
-            select(func.count(ExternalListingDB.id)).where(
-                ExternalListingDB.source_id == source.id,
-                ExternalListingDB.is_public.is_(True),
-                ExternalListingDB.status == "active",
-            )
-        ) or 0
+        public_listings = count_public_external_listings(session, source_id=source.id, now=now)
         latest_event = session.scalar(
             select(ListingFeedAuditDB)
             .where(ListingFeedAuditDB.source_id == source.id)
@@ -165,14 +165,25 @@ def admin_sources(
 @router.post("/admin/sources", response_model=SourceResponse, status_code=201)
 def create_source(
     data: SourceCreate,
-    _admin_user_id: int = Depends(get_current_admin_user_id),
+    admin_user_id: int = Depends(get_current_admin_user_id),
     session: Session = Depends(get_db),
 ):
     if session.scalar(select(ListingSourceDB).where(ListingSourceDB.source_key == data.source_key)):
         raise HTTPException(status_code=409, detail="A source with this key already exists")
     source = ListingSourceDB(**data.model_dump(), approved=False, approval_status="pending")
     session.add(source)
-    session.commit()
+    session.add(ListingFeedAuditDB(
+        source=source,
+        event_type="source_registered",
+        actor_user_id=admin_user_id,
+        details_json='{"approval_status": "pending"}',
+    ))
+    try:
+        commit_or_rollback(session)
+    except IntegrityError as error:
+        if session.scalar(select(ListingSourceDB).where(ListingSourceDB.source_key == data.source_key)):
+            raise HTTPException(status_code=409, detail="A source with this key already exists") from error
+        raise
     session.refresh(source)
     return source
 

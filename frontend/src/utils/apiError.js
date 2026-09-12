@@ -1,4 +1,5 @@
 const API_MESSAGE_TRANSLATIONS = {
+  "A source with this key already exists": "Ya existe un proveedor con ese identificador. Actualice la lista para revisar su registro.",
   "Invalid or expired token": "La sesión no es válida o ha vencido",
   "User account no longer exists": "La cuenta de usuario ya no existe",
   "This session is no longer valid. Please log in again.": "Esta sesión ya no es válida. Inicie sesión nuevamente.",

@@ -27,10 +27,24 @@ React page
 
 The response travels back through the same layers in reverse.
 
-All authenticated accounts can both buy and sell. The legacy database `role`
-column is retained for compatibility, but it is not part of the public account
-API and does not control permissions. Authentication and property ownership are
-the authorization rules.
+Registration offers Buyer (Comprador) and Seller (Vendedor). Partner registration
+is deferred until membership benefits are defined; the API rejects new Partner
+signups. Any existing Partner account remains readable without changing its type.
+The validated `account_type` is stored in the existing database `role` column
+and returned in private account responses; My Account displays its Spanish label.
+Older clients and social registration default to Buyer. Existing unrecognized
+legacy values also display as Buyer without changing their stored value.
+All authenticated accounts can still buy and sell. Account type describes the
+member's primary use and does not control permissions. Authentication and property
+ownership remain the authorization rules; Partner does not grant administrator
+access or authorize provider inventory.
+
+Seller registration additionally requires a seller category (owner, agent, or
+developer) and a contact phone with country code; business name is optional.
+Buyer registration omits these fields. Contact formatting is normalized, seller
+details remain private, and sellers can edit them in My Account. Profile updates
+that omit these fields preserve existing values. The idempotent schema update
+adds empty defaults for existing accounts without requiring them to register again.
 
 ## Backend Folders
 

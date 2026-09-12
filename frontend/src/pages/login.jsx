@@ -22,6 +22,8 @@ function Login() {
   const [loading, setLoading] = useState(false)
   const [providers, setProviders] = useState([])
   const [providersLoaded, setProvidersLoaded] = useState(false)
+  const [mfaChallenge, setMfaChallenge] = useState(location.state?.mfaChallenge || null)
+  const [mfaCode, setMfaCode] = useState("")
 
   useEffect(() => {
     apiFetch("/auth/providers")
@@ -53,6 +55,12 @@ function Login() {
       const data = await readApiResponse(response)
       if (!response.ok) throw new Error(getApiError(data, "No pudimos iniciar la sesión"))
 
+      if (data.mfa_required) {
+        setMfaChallenge(data)
+        setPassword("")
+        return
+      }
+
       login(data.access_token)
       queueLoginWelcome("returning")
       navigate(returnTo, { replace: true })
@@ -64,12 +72,39 @@ function Login() {
     }
   }
 
+  async function handleSecondFactor(event) {
+    event.preventDefault()
+    if (loading || !mfaChallenge) return
+    setError("")
+    setLoading(true)
+    try {
+      const response = await apiFetch("/auth/mfa/complete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ challenge_token: mfaChallenge.challenge_token, code: mfaCode }),
+      })
+      const data = await readApiResponse(response)
+      if (!response.ok) throw new Error(getApiError(data, "No pudimos verificar el código"))
+      login(data.access_token)
+      queueLoginWelcome("returning")
+      navigate(returnTo, { replace: true })
+    } catch (verificationError) {
+      setError(verificationError.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
   return (
     <AuthLayout>
-      <p className="auth-card-eyebrow">Bienvenido nuevamente</p>
-      <h1>Inicie sesión en su cuenta</h1>
+      <p className="auth-card-eyebrow">{mfaChallenge ? "Segundo paso" : "Bienvenido nuevamente"}</p>
+      <h1>{mfaChallenge ? "Confirme que es usted" : "Inicie sesión en su cuenta"}</h1>
 
-      <p className="auth-intro">Continúe administrando sus propiedades guardadas y conversaciones.</p>
+      <p className="auth-intro">
+        {mfaChallenge
+          ? `Escriba el código ${mfaChallenge.mfa_method === "sms" ? `enviado al número ${mfaChallenge.phone_hint || "registrado"}` : "de su aplicación de autenticación"}.`
+          : "Continúe administrando sus propiedades guardadas y conversaciones."}
+      </p>
 
       {location.state?.sessionExpired && (
         <p className="auth-session-note" role="status">
@@ -79,7 +114,30 @@ function Login() {
 
       {returnTo !== "/" && <p className="auth-return-note">Después de iniciar sesión, regresará al punto donde estaba.</p>}
 
-      <form className="auth-form" onSubmit={handleLogin}>
+      {mfaChallenge ? <form className="auth-form" onSubmit={handleSecondFactor}>
+        <div className="auth-field">
+          <label htmlFor="login-mfa-code">Código de verificación</label>
+          <input
+            id="login-mfa-code"
+            type="text"
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            value={mfaCode}
+            onChange={(event) => setMfaCode(event.target.value.replace(/\D/g, "").slice(0, 10))}
+            minLength={4}
+            maxLength={10}
+            autoFocus
+            required
+          />
+        </div>
+        {error && <p className="auth-error" role="alert">{error}</p>}
+        <button className="auth-submit" type="submit" disabled={loading || mfaCode.length < 4}>
+          {loading ? "Verificando..." : "Verificar e iniciar sesión"}
+        </button>
+        <button className="auth-link-button" type="button" disabled={loading} onClick={() => { setMfaChallenge(null); setMfaCode(""); setError("") }}>
+          Volver al inicio de sesión
+        </button>
+      </form> : <form className="auth-form" onSubmit={handleLogin}>
         <div className="auth-field">
           <label htmlFor="login-email">Correo electrónico</label>
 
@@ -108,9 +166,9 @@ function Login() {
         <button className="auth-submit" type="submit" disabled={loading}>
           {loading ? "Iniciando sesión..." : "Iniciar sesión"}
         </button>
-      </form>
+      </form>}
 
-      {providersLoaded && providers.length > 0 && (
+      {!mfaChallenge && providersLoaded && providers.length > 0 && (
         <section className="social-login" aria-label="Opciones de inicio de sesión social">
           <p><span>o continuar con</span></p>
           {providers.map((provider) => (
@@ -130,10 +188,10 @@ function Login() {
         </section>
       )}
 
-      <p className="auth-switch">
+      {!mfaChallenge && <p className="auth-switch">
         ¿Necesita una cuenta?{" "}
         <Link to="/register" state={{ returnTo }}>Registrarse</Link>
-      </p>
+      </p>}
     </AuthLayout>
   )
 }

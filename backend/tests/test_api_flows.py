@@ -220,6 +220,249 @@ class ApiFlowTests(unittest.TestCase):
             request(method, path, json_body, token, include_headers=True)
         )
 
+    def test_catalog_registration_requires_admin_and_stays_pending_with_audit(self):
+        admin, admin_token = self.register_and_login("Catalog Admin", "catalog-admin@example.com")
+        _, member_token = self.register_and_login("Catalog Member", "catalog-member@example.com")
+        payload = {
+            "source_key": "agency-cibao",
+            "name": "  Agencia Cibao  ",
+            "country_code": "DO",
+            "license_name": "Acuerdo de publicación",
+            "license_url": "https://agency.example/terms",
+            "attribution": "Cortesía de Agencia Cibao",
+            "stale_after_hours": 48,
+        }
+        path = "/catalog/admin/sources"
+        with patch.dict(os.environ, {"ADMIN_USER_IDS": str(admin["id"])}):
+            self.assertEqual(self.call("POST", path, payload)[0], 401)
+            self.assertEqual(self.call("POST", path, payload, member_token)[0], 403)
+            self.assertEqual(self.call("GET", path, token=member_token)[0], 403)
+            self.assertEqual(self.call("GET", path, token=admin_token), (200, []))
+            status, source = self.call("POST", path, payload, admin_token)
+            self.assertEqual(status, 201)
+            self.assertEqual(source["name"], "Agencia Cibao")
+            self.assertFalse(source["approved"])
+            self.assertEqual(source["approval_status"], "pending")
+            self.assertIsNone(source["permission_document_url"])
+            self.assertIsNone(source["approved_by_id"])
+            self.assertEqual(self.call("POST", path, payload, admin_token)[0], 409)
+            status, sources = self.call("GET", path, token=admin_token)
+            self.assertEqual(status, 200)
+            self.assertEqual(len(sources), 1)
+            self.assertEqual(sources[0]["public_listings"], 0)
+            self.assertEqual(sources[0]["latest_event_type"], "source_registered")
+            status, audit = self.call("GET", "/catalog/admin/audit", token=admin_token)
+            self.assertEqual(status, 200)
+            self.assertEqual(len(audit), 1)
+            self.assertEqual(audit[0]["actor_user_id"], admin["id"])
+            self.assertEqual(audit[0]["source_id"], source["id"])
+            self.assertEqual(self.call("GET", "/catalog/external"), (200, []))
+
+    def test_registration_account_types_persist_without_granting_admin_access(self):
+        from backend.db_models.user import UserDB
+
+        with patch.dict(os.environ, {"ADMIN_USER_IDS": ""}), patch("backend.services.email_verification_service._send"), patch("backend.services.user_service.consume_seller_phone_verification"):
+            for account_type in ("buyer", "seller"):
+                with self.subTest(account_type=account_type):
+                    email = f"{account_type}-type@example.com"
+                    status, user = self.call("POST", "/users/", {
+                        "name": "Account Type Test", "email": email,
+                        "password": "secure-password", "account_type": account_type,
+                        "phone_verification_token": "v" * 32,
+                        "role": "admin",
+                        **({"seller_category": "owner", "seller_phone": "+18095550123"} if account_type == "seller" else {}),
+                    })
+                    self.assertEqual(status, 200)
+                    self.assertEqual(user["account_type"], account_type)
+                    self.assertNotIn("role", user)
+                    self.assertNotIn("password", user)
+                    self.assertEqual(self.session.get(UserDB, user["id"]).role, account_type)
+                    status, login = self.call("POST", "/users/login", {"email": email, "password": "secure-password"})
+                    self.assertEqual(status, 200)
+                    token = login["access_token"]
+                    status, profile = self.call("GET", "/users/me", token=token)
+                    self.assertEqual(status, 200)
+                    self.assertEqual(profile["account_type"], account_type)
+                    status, updated = self.call("PUT", "/users/me", {"name": "Updated Account", "email": email}, token)
+                    self.assertEqual(status, 200)
+                    self.assertEqual(updated["account_type"], account_type)
+                    self.assertEqual(self.call("GET", "/catalog/admin/sources", token=token)[0], 403)
+                    self.assertEqual(self.call("GET", "/reports/admin/access", token=token)[0], 403)
+
+    def test_registration_rejects_unknown_account_types_and_defaults_legacy_clients(self):
+        from backend.db_models.user import UserDB
+
+        payload = {"name": "Legacy Client", "email": "legacy-type@example.com", "password": "secure-password"}
+        with patch("backend.services.email_verification_service._send"), patch("backend.services.user_service.consume_seller_phone_verification"):
+            for account_type in ("partner", "admin", "administrator", "Seller", "", None):
+                with self.subTest(account_type=account_type):
+                    status, _ = self.call("POST", "/users/", {**payload, "account_type": account_type})
+                    self.assertEqual(status, 422)
+            self.assertEqual(self.session.scalar(select(func.count()).select_from(UserDB)), 0)
+            status, user = self.call("POST", "/users/", payload)
+            self.assertEqual(status, 200)
+            self.assertEqual(user["account_type"], "buyer")
+            stored = self.session.get(UserDB, user["id"])
+            stored.role = "legacy-member"
+            self.session.commit()
+            status, login = self.call("POST", "/users/login", {"email": payload["email"], "password": payload["password"]})
+            self.assertEqual(status, 200)
+            status, profile = self.call("GET", "/users/me", token=login["access_token"])
+            self.assertEqual(status, 200)
+            self.assertEqual(profile["account_type"], "buyer")
+            self.assertEqual(stored.role, "legacy-member")
+
+    def test_seller_registration_requires_contact_details_and_accepts_each_category(self):
+        payload = {"name": "Seller Details", "email": "details@example.com", "password": "secure-password", "account_type": "seller"}
+        with patch("backend.services.email_verification_service._send"), patch("backend.services.user_service.consume_seller_phone_verification"):
+            for extra in [
+                {}, {"seller_category": "owner"}, {"seller_phone": "+18095550123"},
+                {"seller_category": "other", "seller_phone": "+18095550123"},
+                {"seller_category": "owner", "seller_phone": "8095550123"},
+                {"seller_category": "owner", "seller_phone": "+1"},
+                {"seller_category": "owner", "seller_phone": "+18095550123", "business_name": "x" * 151},
+            ]:
+                with self.subTest(extra=extra):
+                    self.assertEqual(self.call("POST", "/users/", {**payload, **extra})[0], 422)
+            for category in ("owner", "agent", "developer"):
+                status, user = self.call("POST", "/users/", {
+                    **payload, "email": f"{category}@example.com", "seller_category": category,
+                    "seller_phone": "+1 (809) 555-0123", "business_name": "  Casa Norte  ",
+                    "phone_verification_token": "v" * 32,
+                })
+                self.assertEqual(status, 200)
+                self.assertEqual(user["seller_category"], category)
+                self.assertEqual(user["seller_phone"], "+18095550123")
+                self.assertEqual(user["business_name"], "Casa Norte")
+
+    def test_seller_phone_must_be_validated_but_sms_2fa_stays_optional(self):
+        payload = {
+            "name": "Verified Seller",
+            "email": "verified-seller@example.com",
+            "password": "secure-password",
+            "account_type": "seller",
+            "seller_category": "owner",
+            "seller_phone": "+18095550123",
+        }
+        self.assertEqual(self.call("POST", "/users/", payload)[0], 422)
+
+        with (
+            patch("backend.services.seller_phone_verification_service.sms_configured", return_value=True),
+            patch("backend.services.seller_phone_verification_service.send_phone_code", return_value="VE" + "d" * 32),
+            patch("backend.services.seller_phone_verification_service.check_phone_code", return_value=True),
+            patch("backend.services.email_verification_service._send"),
+        ):
+            status, challenge = self.call(
+                "POST", "/users/seller-phone-verification/request", {"phone": payload["seller_phone"]}
+            )
+            self.assertEqual(status, 200)
+            status, proof = self.call(
+                "POST", "/users/seller-phone-verification/confirm",
+                {"challenge_token": challenge["challenge_token"], "code": "123456"},
+            )
+            self.assertEqual(status, 200)
+            status, user = self.call(
+                "POST", "/users/", {**payload, "phone_verification_token": proof["phone_verification_token"]}
+            )
+
+        self.assertEqual(status, 200)
+        self.assertEqual(user["seller_phone"], payload["seller_phone"])
+        login_status, login = self.call(
+            "POST", "/users/login", {"email": payload["email"], "password": payload["password"]}
+        )
+        self.assertEqual(login_status, 200)
+        self.assertIn("access_token", login)
+        self.assertNotIn("mfa_required", login)
+
+    def test_seller_details_are_editable_private_and_preserved_when_omitted(self):
+        payload = {
+            "first_name": "Ana", "last_name": "Perez", "date_of_birth": "1990-01-01",
+            "email": "seller-private@example.com", "password": "secure-password",
+            "account_type": "seller", "seller_category": "owner", "seller_phone": "+18095550123",
+            "phone_verification_token": "v" * 32,
+        }
+        with patch("backend.services.email_verification_service._send"), patch("backend.services.user_service.consume_seller_phone_verification"):
+            status, user = self.call("POST", "/users/", payload)
+        self.assertEqual(status, 200)
+        _, login = self.call("POST", "/users/login", {"email": payload["email"], "password": payload["password"]})
+        token = login["access_token"]
+        update = {"first_name": "Ana", "last_name": "Perez", "date_of_birth": "1990-01-01", "email": payload["email"], "public_profile_enabled": True}
+        status, edited = self.call("PUT", "/users/me", {
+            **update, "seller_category": "agent", "seller_phone": "+1 829 555 0123", "business_name": "  Nueva Agencia  ",
+        }, token)
+        self.assertEqual(status, 200)
+        self.assertEqual(edited["seller_phone"], "+18295550123")
+        self.assertEqual(edited["seller_category"], "agent")
+        self.assertEqual(edited["business_name"], "Nueva Agencia")
+        status, preserved = self.call("PUT", "/users/me", update, token)
+        self.assertEqual(status, 200)
+        self.assertEqual(preserved["seller_phone"], "+18295550123")
+        status, _ = self.call("PUT", "/users/me", {**update, "first_name": "Wrong", "seller_phone": ""}, token)
+        self.assertEqual(status, 422)
+        _, profile = self.call("GET", "/users/me", token=token)
+        self.assertEqual(profile["first_name"], "Ana")
+        self.assertEqual(profile["seller_phone"], "+18295550123")
+        status, public = self.call("GET", f"/users/{user['id']}/profile")
+        self.assertEqual(status, 200)
+        self.assertTrue({"seller_phone", "seller_category", "business_name"}.isdisjoint(public))
+
+    def test_buyer_registration_drops_hidden_seller_details(self):
+        with patch("backend.services.email_verification_service._send"):
+            status, user = self.call("POST", "/users/", {
+                "name": "Buyer Details", "email": "buyer-details@example.com", "password": "secure-password",
+                "account_type": "buyer", "seller_category": "agent", "seller_phone": "+18095550123", "business_name": "Hidden Company",
+            })
+        self.assertEqual(status, 200)
+        self.assertEqual(user["seller_phone"], "")
+        self.assertEqual(user["seller_category"], "")
+        self.assertEqual(user["business_name"], "")
+
+    def test_catalog_registration_rejects_approval_fields_and_invalid_metadata(self):
+        admin, token = self.register_and_login("Catalog Admin", "catalog-validation@example.com")
+        payload = {
+            "source_key": "agency-cibao", "name": "Agencia Cibao", "country_code": "DO",
+            "license_name": "Publisher agreement", "license_url": "https://agency.example/terms",
+            "attribution": "Courtesy of Agencia Cibao", "stale_after_hours": 48,
+        }
+        with patch.dict(os.environ, {"ADMIN_USER_IDS": str(admin["id"])}):
+            for change in [
+                {"approved": True}, {"approval_status": "approved"}, {"name": "   "},
+                {"license_name": "  "}, {"attribution": "  "}, {"source_key": "bad key"},
+                {"license_url": "http://agency.example/terms"},
+                {"license_url": "https://user:password@agency.example/terms"},
+                {"stale_after_hours": 0}, {"stale_after_hours": 721},
+            ]:
+                with self.subTest(change=change):
+                    status, _ = self.call("POST", "/catalog/admin/sources", {**payload, **change}, token)
+                    self.assertEqual(status, 422)
+            self.assertEqual(self.call("GET", "/catalog/admin/sources", token=token), (200, []))
+            self.assertEqual(self.call("GET", "/catalog/admin/audit", token=token), (200, []))
+
+    def test_catalog_api_hides_expired_inventory_and_updates_total_header_without_cleanup(self):
+        from datetime import datetime, timedelta, timezone
+        from backend.db_models.external_listing import ListingSourceDB, ExternalListingDB
+        from backend.repositories.external_listing_repository import import_feed_batch, set_source_approval
+        from backend.tests.test_external_listing_repository import feed_batch
+
+        import_feed_batch(self.session, feed_batch())
+        source = self.session.scalar(select(ListingSourceDB))
+        set_source_approval(
+            self.session, source, approved=True, actor_user_id=42,
+            permission_document_url="https://provider.example/signed-agreement",
+        )
+        import_feed_batch(self.session, feed_batch())
+        status, listings, headers = self.call_with_headers("GET", "/catalog/external?limit=1")
+        self.assertEqual(status, 200)
+        self.assertEqual(len(listings), 1)
+        self.assertEqual(headers["x-total-count"], "1")
+        source.permission_expires_at = datetime.now(timezone.utc) - timedelta(seconds=1)
+        self.session.commit()
+        status, listings, headers = self.call_with_headers("GET", "/catalog/external?limit=1")
+        self.assertEqual(status, 200)
+        self.assertEqual(listings, [])
+        self.assertEqual(headers["x-total-count"], "0")
+        self.assertTrue(self.session.scalar(select(ExternalListingDB)).is_public)
+
     def test_oversized_write_is_rejected_before_route_validation(self):
         status, body, headers = self.call_with_headers(
             "POST",

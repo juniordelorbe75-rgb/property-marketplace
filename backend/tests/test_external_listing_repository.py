@@ -1,11 +1,13 @@
 import os
 import unittest
-from datetime import datetime, timezone
+from unittest.mock import patch
+from datetime import datetime, timedelta, timezone
 
 os.environ.setdefault("DATABASE_URL", "sqlite+pysqlite:///:memory:")
 os.environ.setdefault("SECRET_KEY", "test-only-secret-key-32-characters-long")
 
 from sqlalchemy import create_engine, select
+from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
 from backend.db_models.base import Base
@@ -18,7 +20,7 @@ from backend.repositories.external_listing_repository import (
     set_source_approval,
     withdraw_stale_listings,
 )
-from backend.routes.catalog import admin_sources
+from backend.routes.catalog import SourceCreate, admin_sources, create_source
 
 
 def feed_batch(records=None):
@@ -70,6 +72,24 @@ class ExternalListingRepositoryTests(unittest.TestCase):
         result = import_feed_batch(self.session, feed_batch())
         self.assertEqual(result, {"created": 1, "updated": 0, "withdrawn": 0})
         self.assertEqual(get_public_external_listings(self.session), [])
+
+    def test_concurrent_registration_conflict_rolls_back_source_and_audit(self):
+        data = SourceCreate(
+            source_key="provider-one", name="Provider One", country_code="DO",
+            license_name="Publisher agreement", license_url="https://provider.example/terms",
+            attribution="Courtesy of Provider One",
+        )
+        source = create_source(data, admin_user_id=14, session=self.session)
+        # Simulate another transaction registering the key after the pre-check.
+        with patch.object(self.session, "scalar", side_effect=[None, source]):
+            with self.assertRaises(HTTPException) as raised:
+                create_source(data, admin_user_id=15, session=self.session)
+        self.assertEqual(raised.exception.status_code, 409)
+        self.assertTrue(self.session.is_active)
+        self.assertEqual(len(self.session.scalars(select(ListingSourceDB)).all()), 1)
+        audit = self.session.scalars(select(ListingFeedAuditDB)).all()
+        self.assertEqual(len(audit), 1)
+        self.assertEqual(audit[0].actor_user_id, 14)
 
     def test_approved_refresh_publishes_and_missing_record_withdraws(self):
         import_feed_batch(self.session, feed_batch())
@@ -233,6 +253,83 @@ class ExternalListingRepositoryTests(unittest.TestCase):
         )
         self.assertEqual(withdrawn, 1)
         self.assertEqual(get_public_external_listings(self.session), [])
+
+    def test_public_reads_hide_invalid_permission_and_stale_inventory_without_cleanup(self):
+        import_feed_batch(self.session, feed_batch())
+        source = self.session.scalar(select(ListingSourceDB))
+        set_source_approval(
+            self.session, source, approved=True, actor_user_id=42,
+            permission_document_url="https://provider.example/signed-agreement",
+        )
+        import_feed_batch(self.session, feed_batch())
+        now = datetime.now(timezone.utc)
+        valid = {
+            "approved": True, "approval_status": "approved",
+            "permission_document_url": "https://provider.example/signed-agreement",
+            "permission_expires_at": now + timedelta(days=1),
+            "last_retrieved_at": now - timedelta(hours=1), "stale_after_hours": 24,
+        }
+        audit_count = self.session.query(ListingFeedAuditDB).count()
+        for invalid in [
+            {"approved": False}, {"approval_status": "revoked"},
+            {"permission_document_url": None}, {"permission_document_url": "  "},
+            {"permission_expires_at": now},
+            {"permission_expires_at": now - timedelta(seconds=1)},
+            {"last_retrieved_at": None},
+            {"last_retrieved_at": now - timedelta(hours=24)},
+            {"last_retrieved_at": now - timedelta(hours=25)},
+            {"last_retrieved_at": now + timedelta(days=1)},
+        ]:
+            with self.subTest(invalid=invalid):
+                for key, value in {**valid, **invalid}.items():
+                    setattr(source, key, value)
+                self.session.commit()
+                self.assertEqual(get_public_external_listings(self.session, now=now), [])
+                self.assertEqual(count_public_external_listings(self.session, now=now), 0)
+                self.assertTrue(self.session.scalar(select(ExternalListingDB)).is_public)
+                self.assertEqual(self.session.query(ListingFeedAuditDB).count(), audit_count)
+
+    def test_public_reads_keep_fresh_inventory_and_match_pagination_counts(self):
+        now = datetime.now(timezone.utc)
+        for index, hours_old in enumerate([1, 25, 2]):
+            batch = feed_batch()
+            batch.source.source_key = f"provider-{index}"
+            import_feed_batch(self.session, batch)
+            source = self.session.scalar(select(ListingSourceDB).where(ListingSourceDB.source_key == batch.source.source_key))
+            set_source_approval(
+                self.session, source, approved=True, actor_user_id=42,
+                permission_document_url="https://provider.example/signed-agreement",
+                stale_after_hours=24,
+            )
+            import_feed_batch(self.session, batch)
+            source.last_retrieved_at = now - timedelta(hours=hours_old)
+            if index == 0:
+                source.permission_expires_at = now + timedelta(seconds=1)
+            self.session.commit()
+        page_one = get_public_external_listings(self.session, limit=1, offset=0, now=now)
+        page_two = get_public_external_listings(self.session, limit=1, offset=1, now=now)
+        self.assertEqual(count_public_external_listings(self.session, now=now), 2)
+        self.assertEqual(len(page_one), 1)
+        self.assertEqual(len(page_two), 1)
+        self.assertNotEqual(page_one[0].id, page_two[0].id)
+        self.assertEqual(get_public_external_listings(self.session, limit=1, offset=2, now=now), [])
+        self.assertEqual(count_public_external_listings(self.session, now=now, location="Santiago"), 0)
+        self.assertEqual(count_public_external_listings(self.session, now=now + timedelta(seconds=2)), 1)
+
+    def test_admin_public_count_excludes_expired_permission_without_cleanup(self):
+        import_feed_batch(self.session, feed_batch())
+        source = self.session.scalar(select(ListingSourceDB))
+        set_source_approval(
+            self.session, source, approved=True, actor_user_id=42,
+            permission_document_url="https://provider.example/signed-agreement",
+        )
+        import_feed_batch(self.session, feed_batch())
+        source.permission_expires_at = datetime.now(timezone.utc) - timedelta(seconds=1)
+        self.session.commit()
+        overview = admin_sources(_admin_user_id=42, session=self.session)
+        self.assertEqual(overview[0]["total_listings"], 1)
+        self.assertEqual(overview[0]["public_listings"], 0)
+        self.assertEqual(overview[0]["latest_event_type"], "feed_imported")
 
 
 if __name__ == "__main__":

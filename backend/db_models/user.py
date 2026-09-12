@@ -49,6 +49,9 @@ class UserDB(Base):
     last_name: Mapped[str] = mapped_column(String(100), nullable=False, default="", server_default="")
     date_of_birth: Mapped[date | None] = mapped_column(Date, nullable=True)
     bio: Mapped[str] = mapped_column(String(1000), nullable=False, default="", server_default="")
+    seller_category: Mapped[str] = mapped_column(String(20), nullable=False, default="", server_default="")
+    seller_phone: Mapped[str] = mapped_column(String(25), nullable=False, default="", server_default="")
+    business_name: Mapped[str] = mapped_column(String(150), nullable=False, default="", server_default="")
     public_profile_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
     public_name_mode: Mapped[str] = mapped_column(String(20), nullable=False, default="first_name", server_default="first_name")
     public_bio_visible: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
@@ -100,6 +103,11 @@ class UserDB(Base):
         cascade="all, delete-orphan",
         passive_deletes=True,
     )
+
+    @property
+    def account_type(self) -> str:
+        # The existing role column stores account preference, never authority.
+        return self.role if self.role in {"buyer", "seller", "partner"} else "buyer"
 
     @property
     def public_display_name(self) -> str:

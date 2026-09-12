@@ -14,12 +14,22 @@ from sqlalchemy.orm import Session
 from backend.auth.security import hash_password
 from backend.auth.social import PROVIDERS, begin_flow, consume_flow, create_login_code, consume_login_code, fetch_profile, provider_options
 from backend.auth.dependencies import get_current_user_id, oauth2_scheme
-from backend.auth.token import create_access_token, decode_access_token
+from backend.auth.token import decode_access_token
 from backend.db import get_db
 from backend.db_models.social_identity import SocialIdentityDB
 from backend.db_models.user import UserDB
 from backend.db_models.revoked_token import RevokedTokenDB
 from backend.repositories.transaction import commit_or_rollback
+from backend.models import normalize_seller_phone
+from backend.services.account_security_service import (
+    begin_phone_verification,
+    begin_sms_mfa_disable,
+    complete_mfa_login,
+    disable_sms_mfa,
+    enable_sms_mfa,
+    finish_primary_auth,
+    security_status,
+)
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -40,6 +50,26 @@ def logout(
 
 class CodeExchange(BaseModel):
     code: str = Field(min_length=20, max_length=200)
+
+
+class PhoneSetup(BaseModel):
+    phone: str = Field(min_length=8, max_length=40)
+
+    def normalized_phone(self):
+        try:
+            return normalize_seller_phone(self.phone)
+        except ValueError as error:
+            raise HTTPException(422, str(error)) from None
+
+
+class SmsMfaConfirmation(BaseModel):
+    password: str = Field(min_length=1, max_length=128)
+    code: str = Field(pattern=r"^[0-9]{4,10}$")
+
+
+class LoginMfaConfirmation(BaseModel):
+    challenge_token: str = Field(min_length=32, max_length=256)
+    code: str = Field(min_length=4, max_length=64)
 
 
 def _safe_return_to(value):
@@ -110,4 +140,34 @@ def exchange(payload: CodeExchange, db: Session = Depends(get_db)):
     user = db.get(UserDB, consume_login_code(payload.code))
     if user is None:
         raise HTTPException(400, "The account no longer exists")
-    return {"access_token": create_access_token({"sub": str(user.id), "gen": user.token_generation}), "token_type": "bearer"}
+    return finish_primary_auth(db, user)
+
+
+@router.get("/security/status")
+def get_security_status(user_id: int = Depends(get_current_user_id), db: Session = Depends(get_db)):
+    return security_status(db, user_id)
+
+
+@router.post("/security/sms/setup")
+def start_sms_setup(payload: PhoneSetup, user_id: int = Depends(get_current_user_id), db: Session = Depends(get_db)):
+    return begin_phone_verification(db, user_id, payload.normalized_phone())
+
+
+@router.post("/security/sms/enable")
+def confirm_sms_setup(payload: SmsMfaConfirmation, user_id: int = Depends(get_current_user_id), db: Session = Depends(get_db)):
+    return enable_sms_mfa(db, user_id, payload.password, payload.code)
+
+
+@router.post("/security/sms/disable/request")
+def request_sms_disable(user_id: int = Depends(get_current_user_id), db: Session = Depends(get_db)):
+    return begin_sms_mfa_disable(db, user_id)
+
+
+@router.post("/security/sms/disable")
+def confirm_sms_disable(payload: SmsMfaConfirmation, user_id: int = Depends(get_current_user_id), db: Session = Depends(get_db)):
+    return disable_sms_mfa(db, user_id, payload.password, payload.code)
+
+
+@router.post("/mfa/complete")
+def complete_login_second_factor(payload: LoginMfaConfirmation, db: Session = Depends(get_db)):
+    return complete_mfa_login(db, payload.challenge_token, payload.code)

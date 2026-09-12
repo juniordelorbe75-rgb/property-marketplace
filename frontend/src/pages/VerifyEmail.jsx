@@ -1,34 +1,29 @@
 import { useEffect, useState } from "react"
 import { Link, useSearchParams } from "react-router-dom"
-import { apiFetch } from "../utils/apiFetch"
-import { getApiError } from "../utils/apiError"
-import { readApiResponse } from "../utils/apiResponse"
+import { createEmailVerifier } from "../utils/emailVerification"
 import AuthLayout from "../components/AuthLayout"
 import "./auth.css"
 
 function VerifyEmail() {
   const [searchParams] = useSearchParams()
   const token = searchParams.get("token") || ""
-  const [status, setStatus] = useState(() => token
-    ? { loading: true, error: "" }
-    : { loading: false, error: "Este enlace de verificación está incompleto." })
+  const [verify] = useState(() => createEmailVerifier())
+  const [result, setResult] = useState(null)
+  const status = result?.token === token ? result : {
+    loading: Boolean(token),
+    error: token ? "" : "Este enlace de verificación está incompleto.",
+  }
 
   useEffect(() => {
     if (!token) return
     let active = true
-    apiFetch("/users/email-verification/confirm", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token }),
-    }).then(async (response) => {
-      const data = await readApiResponse(response)
-      if (!response.ok) throw new Error(getApiError(data, "No pudimos verificar su correo electrónico"))
-      if (active) setStatus({ loading: false, error: "" })
+    verify(token).then(() => {
+      if (active) setResult({ token, loading: false, error: "" })
     }).catch((error) => {
-      if (active) setStatus({ loading: false, error: error.message })
+      if (active) setResult({ token, loading: false, error: error.message })
     })
     return () => { active = false }
-  }, [token])
+  }, [token, verify])
 
   return (
     <AuthLayout eyebrow="Seguridad de la cuenta">

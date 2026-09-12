@@ -15,6 +15,7 @@ from backend.db_models.password_reset import PasswordResetTokenDB
 from backend.db_models.email_verification import EmailVerificationTokenDB
 from backend.db_models.external_listing import ExternalListingDB, ListingFeedAuditDB, ListingSourceDB
 from backend.db_models.revoked_token import RevokedTokenDB
+from backend.db_models.account_security import AccountSecurityDB, LoginChallengeDB, SellerPhoneVerificationDB
 from backend.config import database_engine_options, parse_app_environment
 
 load_dotenv()
@@ -34,9 +35,10 @@ engine = create_engine(
 
 def ensure_schema_safety():
     with engine.begin() as connection:
+        inspector = inspect(connection)
         user_columns = {
             column["name"]
-            for column in inspect(connection).get_columns("users")
+            for column in inspector.get_columns("users")
         }
         if "token_generation" not in user_columns:
             connection.execute(
@@ -63,6 +65,9 @@ def ensure_schema_safety():
             ("last_name", "VARCHAR(100) NOT NULL DEFAULT ''"),
             ("date_of_birth", "DATE"),
             ("bio", "VARCHAR(1000) NOT NULL DEFAULT ''"),
+            ("seller_category", "VARCHAR(20) NOT NULL DEFAULT ''"),
+            ("seller_phone", "VARCHAR(25) NOT NULL DEFAULT ''"),
+            ("business_name", "VARCHAR(150) NOT NULL DEFAULT ''"),
             ("public_profile_enabled", "BOOLEAN NOT NULL DEFAULT FALSE"),
             ("public_name_mode", "VARCHAR(20) NOT NULL DEFAULT 'first_name'"),
             ("public_bio_visible", "BOOLEAN NOT NULL DEFAULT FALSE"),
@@ -71,6 +76,33 @@ def ensure_schema_safety():
             if column_name not in user_columns:
                 connection.execute(text(
                     f"ALTER TABLE users ADD COLUMN {column_name} {column_definition}"
+                ))
+
+        account_security_columns = {
+            column["name"] for column in inspect(connection).get_columns("account_security")
+        }
+        account_security_updates = (
+            ("sms_mfa_enabled", "BOOLEAN NOT NULL DEFAULT FALSE"),
+            ("sms_mfa_sent_at", "TIMESTAMP WITH TIME ZONE"),
+            ("sms_mfa_window_at", "TIMESTAMP WITH TIME ZONE"),
+            ("sms_mfa_send_count", "INTEGER NOT NULL DEFAULT 0"),
+        )
+        for column_name, column_definition in account_security_updates:
+            if column_name not in account_security_columns:
+                connection.execute(text(
+                    f"ALTER TABLE account_security ADD COLUMN {column_name} {column_definition}"
+                ))
+
+        login_challenge_columns = {
+            column["name"] for column in inspect(connection).get_columns("login_challenges")
+        }
+        for column_name, column_definition in (
+            ("verification_sid", "VARCHAR(34)"),
+            ("phone_number", "VARCHAR(25)"),
+        ):
+            if column_name not in login_challenge_columns:
+                connection.execute(text(
+                    f"ALTER TABLE login_challenges ADD COLUMN {column_name} {column_definition}"
                 ))
 
         property_columns = {

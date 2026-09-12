@@ -31,6 +31,8 @@ A full-stack marketplace for discovering, listing, saving, and discussing proper
 - Whole-app render recovery and human-readable rate-limit wait times
 - Secure password recovery with expiring single-use links and session revocation
 - Email verification with 24-hour single-use links and protected resend controls
+- Optional SMS two-factor authentication with verified enrollment, short-lived login challenges, and delivery/attempt limits
+- Required SMS phone validation before seller account creation, without automatically enabling login 2FA
 - Account-scoped recovery and verification limits that prevent inbox flooding across different client addresses
 - Bounded recovery-token storage that removes superseded and consumed token hashes
 
@@ -86,6 +88,25 @@ the `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_FROM`, and
 `SMTP_USE_TLS` settings to deliver them by email. If `SMTP_HOST` is empty during
 local development, the backend prints the reset link in its terminal instead.
 
+### SMS two-factor authentication
+
+Create a Twilio Verify Service, then add its credentials to `.env`:
+
+```dotenv
+TWILIO_ACCOUNT_SID=AC...
+TWILIO_AUTH_TOKEN=...
+TWILIO_VERIFY_SERVICE_SID=VA...
+SMS_ALLOWED_PREFIXES=+1809,+1829,+1849
+```
+
+`SMS_ALLOWED_PREFIXES` is a comma-separated fraud-control allowlist. The default
+accepts Dominican Republic mobile prefixes; expand it deliberately when serving
+other countries. Restart the backend after changing these values. Seller
+registrations must validate their contact number with a one-time code. After
+registration, 2FA remains optional for both buyers and sellers and can be
+activated from **Mi cuenta**. Twilio trial accounts require each
+recipient number to be verified in Twilio before a test code can be delivered.
+
 To grant moderation access, copy the stable Account ID shown on the Account page into the comma-separated `ADMIN_USER_IDS` setting, then restart the backend. Leave it empty when no account should have administrator access; registration cannot choose or reuse an Account ID.
 
 Install the frontend:
@@ -138,7 +159,7 @@ npm run lint
 npm run build
 ```
 
-Current baseline: 91 backend tests and 73 frontend tests.
+Current baseline: 167 backend tests and 91 frontend tests.
 
 GitHub Actions runs the same backend suite plus frontend tests, lint, and production build for every pull request and every push to `main`. Runs use read-only repository permissions, locked npm dependencies, bounded execution times, and cancellation of superseded work.
 

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 import { Link } from "react-router-dom"
 
 import { useAuth } from "../context/AuthContext"
+import SourceRegistrationForm from "../components/SourceRegistrationForm"
 import { apiFetch } from "../utils/apiFetch"
 import { getApiError } from "../utils/apiError"
 import { readApiResponse } from "../utils/apiResponse"
@@ -9,6 +10,7 @@ import { getSourceHealth, normalizeDataSources } from "../utils/dataSources"
 import "./DataSources.css"
 
 const EVENT_LABELS = {
+  source_registered: "Proveedor registrado",
   feed_imported: "Inventario importado",
   source_approved: "Permiso aprobado",
   source_revoked: "Permiso revocado",
@@ -28,6 +30,8 @@ function DataSources() {
   const [error, setError] = useState("")
   const [accessDenied, setAccessDenied] = useState(false)
   const [attempt, setAttempt] = useState(0)
+  const [showRegistration, setShowRegistration] = useState(false)
+  const [success, setSuccess] = useState("")
 
   const loadSources = useCallback(async (signal) => {
     setLoading(true)
@@ -84,21 +88,34 @@ function DataSources() {
       <header className="sources-header">
         <div>
           <p className="sources-eyebrow">Control de publicación</p>
-          <h1>Fuentes de datos autorizadas</h1>
+          <h1>Fuentes de datos</h1>
           <p>Confirme permisos, vigencia e inventario antes de mostrar propiedades de aliados en HabitaRD.</p>
         </div>
-        <button type="button" onClick={() => setAttempt((value) => value + 1)} disabled={loading}>{loading ? "Actualizando…" : "Actualizar"}</button>
+        <div className="sources-header-actions">
+          <button type="button" onClick={() => setAttempt((value) => value + 1)} disabled={loading}>{loading ? "Actualizando…" : "Actualizar"}</button>
+          {!showRegistration && !loading && !error && <button type="button" onClick={() => { setShowRegistration(true); setSuccess("") }}>Registrar proveedor</button>}
+        </div>
       </header>
 
-      <section className="sources-summary" aria-label="Resumen de fuentes">
+      {success && <p className="sources-success" role="status">{success}</p>}
+      {showRegistration && <SourceRegistrationForm key={token} token={token}
+        onCancel={() => setShowRegistration(false)}
+        onCreated={(source) => {
+          setShowRegistration(false)
+          setSuccess(`${source.name} se registró como pendiente. Sus propiedades aún no están autorizadas para publicación.`)
+          setAttempt((value) => value + 1)
+        }}
+      />}
+
+      {!loading && !error && <section className="sources-summary" aria-label="Resumen de fuentes">
         <article><span>Fuentes listas</span><strong>{totals.ready}</strong></article>
         <article><span>Requieren permiso</span><strong>{totals.permission}</strong></article>
         <article><span>Inventario recibido</span><strong>{totals.inventory}</strong></article>
         <article><span>Visible al público</span><strong>{totals.public}</strong></article>
-      </section>
+      </section>}
 
       {error && <div className="sources-error" role="alert"><span>{error}</span><button type="button" onClick={() => setAttempt((value) => value + 1)}>Intentar de nuevo</button></div>}
-      {loading && sources.length === 0 ? <p className="sources-empty">Cargando fuentes autorizadas…</p> : sources.length === 0 ? (
+      {error ? null : loading ? <p className="sources-empty">Cargando fuentes autorizadas…</p> : sources.length === 0 ? (
         <div className="sources-empty"><strong>Todavía no hay fuentes registradas.</strong><span>Registre un proveedor únicamente después de confirmar sus condiciones de licencia y contacto oficial.</span></div>
       ) : (
         <section className="sources-list" aria-label="Fuentes de propiedades">

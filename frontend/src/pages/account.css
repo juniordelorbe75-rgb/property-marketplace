@@ -174,6 +174,11 @@
 .secondary-button:hover { background: #f8fafc; }
 .secondary-button:disabled { opacity: 0.6; cursor: not-allowed; }
 .password-mismatch { color: #b91c1c !important; }
+.security-phone-field { max-width: 480px; }
+.security-status-card { display: flex; align-items: center; gap: 14px; max-width: 480px; margin-bottom: 20px; padding: 15px; border: 1px solid #a7f3d0; border-radius: 10px; background: #ecfdf5; }
+.security-status-card p { margin: 3px 0 0; color: #475569; }
+.security-badge { padding: 5px 9px; border-radius: 999px; background: #047857; color: white; font-size: 12px; font-weight: 800; text-transform: uppercase; }
+.security-code-form { max-width: 480px; margin-top: 20px; padding-top: 20px; border-top: 1px solid #e2e8f0; }
 
 .information-link { color: #1d4ed8; }
 

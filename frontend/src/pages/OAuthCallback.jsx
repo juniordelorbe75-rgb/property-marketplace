@@ -30,6 +30,13 @@ function OAuthCallback() {
         return data
       })
       .then((data) => {
+        if (data.mfa_required) {
+          navigate("/login", {
+            replace: true,
+            state: { mfaChallenge: data, returnTo: getSafeReturnPath(params.get("return_to")) },
+          })
+          return
+        }
         login(data.access_token)
         queueLoginWelcome("returning")
         navigate(getSafeReturnPath(params.get("return_to")), { replace: true })

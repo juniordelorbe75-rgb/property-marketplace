@@ -36,6 +36,11 @@ then withdraw it while retaining the audit trail.
 `receive -> validate rights and schema -> stage -> deduplicate -> moderate -> publish`
 
 Published records retain source identity and never overwrite owner-managed listings.
+Every public search and public-inventory count checks current source approval,
+permission evidence, permission expiration, and the configured freshness window.
+Expired or stale inventory is excluded before pagination, even if the cleanup job
+has not run. The administrator's public count uses the same rule. These reads do
+not delete inventory or alter audit history; cleanup still records withdrawals.
 Refreshes are idempotent on `(source_key, external_id)`. Material changes create an
 audit event. Expired rights or takedown requests remove the public record promptly.
 
@@ -50,6 +55,11 @@ never be placed in frontend code.
 1. Receive written permission covering commercial display, photos, caching, attribution,
    lead routing, update frequency, and takedowns.
 2. Register the provider as a pending source through the administrator API.
+   Administrators can also use **Fuentes de datos → Registrar proveedor**. The form
+   records the provider identity, license URL, attribution, and freshness window for
+   Dominican inventory. Registration remains pending and records the administrator
+   in an audit event; it does not approve rights, import inventory, or publish listings.
+   Duplicate identifiers are rejected, including concurrent registration attempts.
 3. Record the signed permission URL, expiration date if any, and stale-feed window through
    the approval endpoint. This action is attributed to the authenticated administrator.
 4. Store the API key only as a server environment secret.

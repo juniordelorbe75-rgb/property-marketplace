@@ -4,10 +4,11 @@ from sqlalchemy.exc import IntegrityError
 from backend.models import UserCreate
 from backend.image_storage import delete_uploaded_property_image
 from backend.auth.security import hash_password, verify_password
-from backend.repositories import property_repository, user_repository
 from backend.auth.token import create_access_token
+from backend.repositories import property_repository, user_repository
 from backend.db_models.user import UserDB
 from backend.services.email_verification_service import issue_email_verification
+from backend.services.seller_phone_verification_service import consume_seller_phone_verification
 
 
 # Unknown accounts still perform one normal bcrypt verification so login timing
@@ -82,15 +83,9 @@ def login_user(
             detail="Invalid email or password"
         )
 
-    access_token = create_access_token({
-        "sub": str(user.id),
-        "gen": user.token_generation,
-    })
-
-    return {
-        "access_token": access_token,
-        "token_type": "bearer"
-    }
+    # Issue a full session only after any configured second factor succeeds.
+    from backend.services.account_security_service import finish_primary_auth
+    return finish_primary_auth(db, user)
 
 
 def create_user(
@@ -110,6 +105,11 @@ def create_user(
             detail="Email already registered"
         )
 
+    if user_data.account_type == "seller":
+        consume_seller_phone_verification(
+            db, user_data.phone_verification_token, user_data.seller_phone
+        )
+
     new_user = UserDB(
         name=user_data.name.strip(),
         first_name=user_data.first_name or "",
@@ -117,9 +117,12 @@ def create_user(
         last_name=user_data.last_name or "",
         date_of_birth=user_data.date_of_birth,
         bio=user_data.bio,
+        seller_category=user_data.seller_category,
+        seller_phone=user_data.seller_phone,
+        business_name=user_data.business_name,
         email=email,
         password=hash_password(user_data.password),
-        role="buyer"
+        role=user_data.account_type
     )
 
     try:
@@ -150,6 +153,9 @@ def update_current_user(
     public_name_mode: str = "first_name",
     public_bio_visible: bool = False,
     current_password: str | None = None,
+    seller_category: str | None = None,
+    seller_phone: str | None = None,
+    business_name: str | None = None,
 ):
     user = user_repository.get_user_by_id(
         db,
@@ -201,6 +207,19 @@ def update_current_user(
             detail="Email already registered"
         )
 
+    seller_updates = {
+        key: value for key, value in {
+            "seller_category": seller_category, "seller_phone": seller_phone,
+            "business_name": business_name,
+        }.items() if value is not None
+    }
+    if seller_updates:
+        if user.account_type != "seller":
+            raise HTTPException(422, "Los datos de vendedor solo corresponden a cuentas de vendedor.")
+        if not seller_updates.get("seller_category", user.seller_category) or not seller_updates.get("seller_phone", user.seller_phone):
+            raise HTTPException(422, "Seleccione el tipo de vendedor e indique un teléfono de contacto.")
+    for key, value in seller_updates.items():
+        setattr(user, key, value)
     user.name = name
     if first_name is not None or last_name is not None:
         user.first_name = first_name or ""
