@@ -1,506 +1,755 @@
-from fastapi import HTTPException
-from sqlalchemy.exc import IntegrityError
+import re
+from datetime import date, datetime, timezone
+from typing import Literal
+from urllib.parse import urlsplit
 
-from backend.models import UserCreate
-from backend.image_storage import (
-    delete_uploaded_property_image
-)
-from backend.auth.security import (
-    hash_password,
-    verify_password
-)
-from backend.repositories import (
-    property_repository,
-    user_repository
-)
-from backend.auth.token import create_access_token
-from backend.db_models.user import UserDB
-from backend.services.email_verification_service import (
-    issue_email_verification
-)
+from pydantic import BaseModel, Field, field_validator, model_validator
+
+from backend.location_data import normalize_dominican_province, normalize_location_part
 
 
-# Unknown accounts still perform one normal bcrypt
-# verification so login timing does not disclose
-# whether an email address is registered.
-DUMMY_PASSWORD_HASH = hash_password(
-    "timing-only-password-that-is-never-accepted"
-)
+EMAIL_PATTERN = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+BCRYPT_MAX_PASSWORD_BYTES = 72
+Amenity = Literal[
+    "Garage",
+    "Pool",
+    "Yard",
+    "Balcony",
+    "Gym",
+    "Air Conditioning",
+    "Furnished",
+    "Pet Friendly",
+]
+AccountType = Literal["buyer", "seller"]
+SellerCategory = Literal["owner", "agent", "developer"]
 
 
-def get_all_users(db):
-    return user_repository.get_all_users(db)
+def normalize_email(value: str) -> str:
+    normalized = value.strip().lower()
+
+    if not EMAIL_PATTERN.fullmatch(normalized):
+        raise ValueError("Enter a valid email address")
+
+    return normalized
 
 
-def get_user_by_email(db, email: str):
-    return user_repository.get_user_by_email(
-        db,
-        email
-    )
+def normalize_name(value: str) -> str:
+    normalized = value.strip()
+
+    if len(normalized) < 2:
+        raise ValueError("Name must be at least 2 characters")
+
+    return normalized
 
 
-def get_user_by_id(db, user_id: int):
+def normalize_name_part(value: str, label: str, required: bool = True) -> str:
+    normalized = " ".join(value.strip().split())
+    if required and len(normalized) < 1:
+        raise ValueError(f"{label} is required")
+    if len(normalized) > 100:
+        raise ValueError(f"{label} must be at most 100 characters")
+    return normalized
 
-    user = user_repository.get_user_by_id(
-        db,
-        user_id
-    )
 
-    if user is None:
-        raise HTTPException(
-            status_code=404,
-            detail="User not found"
+def normalize_seller_phone(value: str) -> str:
+    normalized = re.sub(r"[\s().-]", "", value.strip())
+    if not re.fullmatch(r"\+[1-9][0-9]{7,14}", normalized):
+        raise ValueError(
+            "Include a valid phone number with country code, "
+            "for example +1 809 555 0123"
+        )
+    return normalized
+
+
+def normalize_business_name(value: str) -> str:
+    return " ".join(value.strip().split())
+
+
+def validate_birth_date(value: date) -> date:
+    today = datetime.now(timezone.utc).date()
+    if value > today:
+        raise ValueError("Date of birth cannot be in the future")
+    if value.year < today.year - 120:
+        raise ValueError("Enter a valid date of birth")
+    return value
+
+
+def validate_new_password(value: str) -> str:
+    if len(value.encode("utf-8")) > BCRYPT_MAX_PASSWORD_BYTES:
+        raise ValueError("Password must be at most 72 UTF-8 bytes")
+    return value
+
+
+def normalize_property_text(
+    value: str,
+    field_name: str,
+    minimum_length: int,
+) -> str:
+    normalized = value.strip()
+
+    if len(normalized) < minimum_length:
+        raise ValueError(
+            f"{field_name} must be at least {minimum_length} characters"
         )
 
-    return user
+    return normalized
 
 
-def get_public_profile(
-    db,
-    user_id: int
-):
-    user = user_repository.get_user_by_id(
-        db,
-        user_id
-    )
+def normalize_image_url(value: str) -> str:
+    normalized = value.strip()
 
-    if (
-        user is None
-        or not user.public_profile_enabled
-    ):
-        raise HTTPException(
-            status_code=404,
-            detail="Public profile not available"
-        )
+    if not normalized:
+        return ""
 
-    return {
-        "id": user.id,
-        "display_name": user.public_display_name,
-        "bio": (
-            user.bio
-            if (
-                user.public_bio_visible
-                and user.bio
-            )
-            else None
-        ),
+    if normalized.startswith("/uploads/property-images/"):
+        return normalized
+
+    parsed = urlsplit(normalized)
+
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        raise ValueError("Image URL must be a valid HTTP or HTTPS URL")
+
+    return normalized
+
+
+class PropertyImageUpload(BaseModel):
+    filename: str = Field(min_length=1, max_length=255)
+    content_type: Literal["image/jpeg", "image/png", "image/webp"]
+    data: str = Field(min_length=1, max_length=8_000_000)
+
+
+class PropertyImageUploadResponse(BaseModel):
+    image_url: str
+
+
+class SellerDashboardStats(BaseModel):
+    total_listings: int
+    available_listings: int
+    unavailable_listings: int
+    favorites_received: int
+    inquiries_received: int
+    pending_inquiries: int
+
+
+class PropertyEngagement(BaseModel):
+    property_id: int
+    favorites: int
+    inquiries: int
+    pending_inquiries: int
+
+
+class ExternalProperty(BaseModel):
+    id: int
+    external_id: str
+    source_url: str
+    title: str
+    description: str
+    listing_type: str
+    status: str
+    price: float
+    currency: str
+    country_code: str
+    province: str
+    municipality: str
+    sector: str
+    property_type: str
+    bedrooms: int | None
+    bathrooms: float | None
+    area_sqm: float | None
+    image_urls: list[str]
+    source_updated_at: datetime
+    retrieved_at: datetime
+    source_name: str
+    attribution: str
+
+    @classmethod
+    def from_db(cls, item):
+        return cls.model_validate({
+            **{field: getattr(item, field) for field in cls.model_fields if field not in {"source_name", "attribution"}},
+            "source_name": item.source.name,
+            "attribution": item.source.attribution,
+        })
+
+
+class Property(BaseModel):
+    id: int
+    version: int
+    owner_id: int
+    owner_name: str
+    owner_profile_public: bool = False
+    title: str
+    description: str
+    image_url: str
+    image_urls: list[str] = Field(default_factory=list)
+    price: float
+    currency: Literal["USD", "DOP"]
+    listing_type: str
+    amenities: list[str] = Field(default_factory=list)
+    location: str
+    country_code: Literal["DO"] = "DO"
+    province: str = ""
+    municipality: str = ""
+    sector: str = ""
+    property_type: str
+    bedrooms: int
+    bathrooms: int
+    square_feet: int
+    status: str
+    safety_hold: bool = False
+    created_at: datetime
+    updated_at: datetime
+
+    @field_validator("location")
+    @classmethod
+    def normalize_location(cls, value):
+        return value.title()
+
+    model_config = {
+        "from_attributes": True
     }
 
 
-def login_user(
-    db,
-    email: str,
+class PropertyCreate(BaseModel):
+    title: str = Field(min_length=3, max_length=255)
+    description: str = Field(default="", max_length=2000)
+    image_url: str = Field(default="", max_length=2000)
+    image_urls: list[str] = Field(default_factory=list, max_length=8)
+    price: float = Field(gt=0)
+    currency: Literal["USD", "DOP"] = "USD"
+    listing_type: Literal["sale", "rent"] = "sale"
+    amenities: list[Amenity] = Field(default_factory=list, max_length=8)
+    location: str = Field(min_length=2, max_length=255)
+    country_code: Literal["DO"] = "DO"
+    province: str = Field(default="", max_length=100)
+    municipality: str = Field(default="", max_length=100)
+    sector: str = Field(default="", max_length=100)
+    property_type: Literal["House", "Villa", "Apartment", "Condo"]
+    bedrooms: int = Field(ge=0, le=100)
+    bathrooms: int = Field(default=1, ge=0, le=100)
+    square_feet: int = Field(default=0, ge=0, le=10000000)
+    status: Literal["available", "unavailable"] = "available"
+
+    @field_validator("title", "location", "description")
+    @classmethod
+    def strip_text(cls, value: str, info) -> str:
+        if info.field_name == "description":
+            return value.strip()
+
+        minimum_length = 3 if info.field_name == "title" else 2
+        return normalize_property_text(
+            value,
+            info.field_name.replace("_", " ").title(),
+            minimum_length,
+        )
+
+    @field_validator("image_url")
+    @classmethod
+    def validate_image_url(cls, value: str) -> str:
+        return normalize_image_url(value)
+
+    @field_validator("image_urls")
+    @classmethod
+    def validate_image_urls(cls, values: list[str]) -> list[str]:
+        return list(dict.fromkeys(normalize_image_url(value) for value in values if value))
+
+    @field_validator("province")
+    @classmethod
+    def validate_province(cls, value: str) -> str:
+        return normalize_dominican_province(value)
+
+    @field_validator("municipality", "sector")
+    @classmethod
+    def normalize_location_parts(cls, value: str) -> str:
+        return normalize_location_part(value)
+
+    @model_validator(mode="after")
+    def synchronize_images(self):
+        images = self.image_urls or ([self.image_url] if self.image_url else [])
+        if not images:
+            raise ValueError("At least one property picture is required")
+        self.image_urls = images
+        self.image_url = images[0] if images else ""
+        return self
+
+
+class PropertyUpdate(BaseModel):
+    title: str = Field(min_length=3, max_length=255)
+    description: str = Field(default="", max_length=2000)
+    image_url: str = Field(default="", max_length=2000)
+    image_urls: list[str] = Field(default_factory=list, max_length=8)
+    price: float = Field(gt=0)
+    currency: Literal["USD", "DOP"]
+    listing_type: Literal["sale", "rent"] = "sale"
+    amenities: list[Amenity] = Field(default_factory=list, max_length=8)
+    location: str = Field(min_length=2, max_length=255)
+    country_code: Literal["DO"] = "DO"
+    province: str = Field(default="", max_length=100)
+    municipality: str = Field(default="", max_length=100)
+    sector: str = Field(default="", max_length=100)
+    property_type: Literal["House", "Villa", "Apartment", "Condo"]
+    bedrooms: int = Field(ge=0, le=100)
+    bathrooms: int = Field(default=1, ge=0, le=100)
+    square_feet: int = Field(default=0, ge=0, le=10000000)
+    status: Literal["available", "unavailable"]
+
+    @field_validator("title", "location", "description")
+    @classmethod
+    def strip_text(cls, value: str, info) -> str:
+        if info.field_name == "description":
+            return value.strip()
+
+        minimum_length = 3 if info.field_name == "title" else 2
+        return normalize_property_text(
+            value,
+            info.field_name.replace("_", " ").title(),
+            minimum_length,
+        )
+
+    @field_validator("image_url")
+    @classmethod
+    def validate_image_url(cls, value: str) -> str:
+        return normalize_image_url(value)
+
+    @field_validator("image_urls")
+    @classmethod
+    def validate_image_urls(cls, values: list[str]) -> list[str]:
+        return list(dict.fromkeys(normalize_image_url(value) for value in values if value))
+
+    @field_validator("province")
+    @classmethod
+    def validate_province(cls, value: str) -> str:
+        return normalize_dominican_province(value)
+
+    @field_validator("municipality", "sector")
+    @classmethod
+    def normalize_location_parts(cls, value: str) -> str:
+        return normalize_location_part(value)
+
+    @model_validator(mode="after")
+    def synchronize_images(self):
+        images = self.image_urls or ([self.image_url] if self.image_url else [])
+        if not images:
+            raise ValueError("At least one property picture is required")
+        self.image_urls = images
+        self.image_url = images[0] if images else ""
+        return self
+
+
+class User(BaseModel):
+    id: int
+    name: str
+    email: str
     password: str
-):
-    user = user_repository.get_user_by_email(
-        db,
-        email.strip().lower()
+    role: str = "buyer"
+
+
+class UserCreate(BaseModel):
+    name: str | None = Field(default=None, min_length=2, max_length=300)
+    first_name: str | None = Field(default=None, max_length=100)
+    middle_name: str = Field(default="", max_length=100)
+    last_name: str | None = Field(default=None, max_length=100)
+    date_of_birth: date | None = None
+    bio: str = Field(default="", max_length=1000)
+    email: str = Field(min_length=3, max_length=255)
+    password: str = Field(min_length=8, max_length=128)
+    account_type: AccountType = "buyer"
+    seller_category: SellerCategory | None = None
+    seller_phone: str = Field(default="", max_length=25)
+    business_name: str = Field(default="", max_length=150)
+    phone_verification_token: str | None = Field(
+        default=None,
+        min_length=32,
+        max_length=256,
     )
 
-    if user is None:
-        verify_password(
-            password,
-            DUMMY_PASSWORD_HASH
-        )
+    @field_validator("name")
+    @classmethod
+    def strip_name(cls, value: str | None) -> str | None:
+        return normalize_name(value) if value is not None else None
 
-        raise HTTPException(
-            status_code=401,
-            detail="Invalid email or password"
-        )
+    @field_validator("first_name", "last_name")
+    @classmethod
+    def strip_required_name_part(cls, value: str | None, info) -> str | None:
+        if value is None:
+            return None
+        return normalize_name_part(value, info.field_name.replace("_", " ").title())
 
-    password_correct = verify_password(
-        password,
-        user.password
-    )
+    @field_validator("middle_name")
+    @classmethod
+    def strip_middle_name(cls, value: str) -> str:
+        return normalize_name_part(value, "Middle name", required=False)
 
-    if not password_correct:
-        raise HTTPException(
-            status_code=401,
-            detail="Invalid email or password"
-        )
+    @field_validator("date_of_birth")
+    @classmethod
+    def validate_date_of_birth(cls, value: date | None) -> date | None:
+        return validate_birth_date(value) if value else None
 
-    access_token = create_access_token({
-        "sub": str(user.id),
-        "gen": user.token_generation,
-    })
+    @field_validator("bio")
+    @classmethod
+    def strip_bio(cls, value: str) -> str:
+        return value.strip()
 
-    return {
-        "access_token": access_token,
-        "token_type": "bearer"
+    @model_validator(mode="after")
+    def build_display_name(self):
+        uses_structured_name = self.first_name is not None or self.last_name is not None
+        if uses_structured_name:
+            if not self.first_name or not self.last_name:
+                raise ValueError("First name and last name are required")
+            if self.date_of_birth is None:
+                raise ValueError("Date of birth is required")
+            self.name = " ".join(part for part in (self.first_name, self.middle_name, self.last_name) if part)
+        elif not self.name:
+            raise ValueError("First name and last name are required")
+        return self
+
+    @field_validator("email")
+    @classmethod
+    def validate_email(cls, value: str) -> str:
+        return normalize_email(value)
+
+    @field_validator("password")
+    @classmethod
+    def validate_password(cls, value: str) -> str:
+        return validate_new_password(value)
+
+    @field_validator("seller_phone")
+    @classmethod
+    def validate_seller_phone(cls, value: str) -> str:
+        return normalize_seller_phone(value) if value else ""
+
+    @field_validator("business_name")
+    @classmethod
+    def strip_business_name(cls, value: str) -> str:
+        return normalize_business_name(value)
+
+    @model_validator(mode="after")
+    def validate_seller_details(self):
+        if self.account_type == "buyer":
+            self.seller_category = None
+            self.seller_phone = ""
+            self.business_name = ""
+            self.phone_verification_token = None
+            return self
+
+        if not self.seller_category or not self.seller_phone:
+            raise ValueError(
+                "Select a seller type and include a contact phone number"
+            )
+        if not self.phone_verification_token:
+            raise ValueError("Verify the seller phone number before registering")
+        return self
+
+
+class UserLogin(BaseModel):
+    email: str = Field(min_length=3, max_length=255)
+    password: str = Field(min_length=1, max_length=128)
+
+    @field_validator("email")
+    @classmethod
+    def validate_email(cls, value: str) -> str:
+        return normalize_email(value)
+
+
+class PasswordResetRequest(BaseModel):
+    email: str = Field(min_length=3, max_length=255)
+
+    @field_validator("email")
+    @classmethod
+    def validate_email(cls, value: str) -> str:
+        return normalize_email(value)
+
+
+class PasswordResetConfirmation(BaseModel):
+    token: str = Field(min_length=32, max_length=256)
+    new_password: str = Field(min_length=8, max_length=128)
+
+    @field_validator("new_password")
+    @classmethod
+    def validate_password(cls, value: str) -> str:
+        return validate_new_password(value)
+
+
+class EmailVerificationConfirmation(BaseModel):
+    token: str = Field(min_length=32, max_length=256)
+
+
+class UserResponse(BaseModel):
+    id: int
+    name: str
+    email: str
+    first_name: str = ""
+    middle_name: str = ""
+    last_name: str = ""
+    date_of_birth: date | None = None
+    bio: str = ""
+    public_profile_enabled: bool = False
+    public_name_mode: Literal["first_name", "full_name"] = "first_name"
+    public_bio_visible: bool = False
+    has_password: bool = True
+    email_verified: bool = False
+    account_type: AccountType = "buyer"
+    seller_category: SellerCategory | Literal[""] = ""
+    seller_phone: str = ""
+    business_name: str = ""
+
+    model_config = {
+        "from_attributes": True
     }
 
 
-def create_user(
-    db,
-    user_data: UserCreate
-):
-    email = user_data.email.strip().lower()
-
-    email_exists = (
-        user_repository.get_user_by_email(
-            db,
-            email
-        )
-    )
-
-    if email_exists:
-        raise HTTPException(
-            status_code=400,
-            detail="Email already registered"
-        )
-
-    new_user = UserDB(
-        name=user_data.name.strip(),
-        first_name=(
-            user_data.first_name
-            or ""
-        ),
-        middle_name=user_data.middle_name,
-        last_name=(
-            user_data.last_name
-            or ""
-        ),
-        date_of_birth=user_data.date_of_birth,
-        bio=user_data.bio,
-        email=email,
-        password=hash_password(
-            user_data.password
-        ),
-
-        # NEW:
-        # The selected account type is now
-        # stored in the database.
-        role=user_data.role,
-    )
-
-    try:
-        created_user = (
-            user_repository.create_user(
-                db,
-                new_user
-            )
-        )
-
-        issue_email_verification(
-            db,
-            created_user
-        )
-
-        return created_user
-
-    except IntegrityError:
-        raise HTTPException(
-            status_code=400,
-            detail="Email already registered"
-        )
+class UserUpdateResponse(UserResponse):
+    access_token: str | None = None
+    token_type: str | None = None
 
 
-def update_current_user(
-    db,
-    user_id: int,
-    name: str | None,
-    email: str,
-    first_name: str | None = None,
-    middle_name: str = "",
-    last_name: str | None = None,
-    date_of_birth=None,
-    bio: str = "",
-    public_profile_enabled: bool = False,
-    public_name_mode: str = "first_name",
-    public_bio_visible: bool = False,
-    current_password: str | None = None,
-):
-    user = user_repository.get_user_by_id(
-        db,
-        user_id
-    )
+class UserUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=2, max_length=300)
+    first_name: str | None = Field(default=None, max_length=100)
+    middle_name: str = Field(default="", max_length=100)
+    last_name: str | None = Field(default=None, max_length=100)
+    date_of_birth: date | None = None
+    bio: str = Field(default="", max_length=1000)
+    public_profile_enabled: bool = False
+    public_name_mode: Literal["first_name", "full_name"] = "first_name"
+    public_bio_visible: bool = False
+    email: str = Field(min_length=3, max_length=255)
+    current_password: str | None = Field(default=None, min_length=1, max_length=128)
+    seller_category: SellerCategory | None = None
+    seller_phone: str | None = Field(default=None, max_length=25)
+    business_name: str | None = Field(default=None, max_length=150)
 
-    if user is None:
-        raise HTTPException(
-            status_code=404,
-            detail="User not found"
-        )
+    @field_validator("name")
+    @classmethod
+    def strip_name(cls, value: str | None) -> str | None:
+        return normalize_name(value) if value is not None else None
 
-    email = email.strip().lower()
-    name = (
-        name.strip()
-        if name
-        else ""
-    )
+    @field_validator("first_name", "last_name")
+    @classmethod
+    def strip_required_name_part(cls, value: str | None, info) -> str | None:
+        if value is None:
+            return None
+        return normalize_name_part(value, info.field_name.replace("_", " ").title())
 
-    if not name:
-        raise HTTPException(
-            status_code=400,
-            detail="Name cannot be empty"
-        )
+    @field_validator("middle_name")
+    @classmethod
+    def strip_middle_name(cls, value: str) -> str:
+        return normalize_name_part(value, "Middle name", required=False)
 
-    if not email:
-        raise HTTPException(
-            status_code=400,
-            detail="Email cannot be empty"
-        )
+    @field_validator("date_of_birth")
+    @classmethod
+    def validate_date_of_birth(cls, value: date | None) -> date | None:
+        return validate_birth_date(value) if value else None
 
-    email_changed = (
-        email != user.email
-    )
+    @field_validator("bio")
+    @classmethod
+    def strip_bio(cls, value: str) -> str:
+        return value.strip()
 
-    if email_changed:
-        if not current_password:
-            raise HTTPException(
-                status_code=400,
-                detail=(
-                    "Current password is required "
-                    "to change your email"
-                ),
-            )
+    @model_validator(mode="after")
+    def build_display_name(self):
+        uses_structured_name = self.first_name is not None or self.last_name is not None
+        if uses_structured_name:
+            if not self.first_name or not self.last_name:
+                raise ValueError("First name and last name are required")
+            if self.date_of_birth is None:
+                raise ValueError("Date of birth is required")
+            self.name = " ".join(part for part in (self.first_name, self.middle_name, self.last_name) if part)
+        elif not self.name:
+            raise ValueError("First name and last name are required")
+        return self
 
-        if not verify_password(
-            current_password,
-            user.password
-        ):
-            raise HTTPException(
-                status_code=400,
-                detail=(
-                    "Current password "
-                    "is incorrect"
-                ),
-            )
+    @field_validator("email")
+    @classmethod
+    def validate_email(cls, value: str) -> str:
+        return normalize_email(value)
 
-    existing_user = (
-        user_repository.get_user_by_email(
-            db,
-            email
-        )
-    )
+    @field_validator("seller_phone")
+    @classmethod
+    def validate_seller_phone(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        return normalize_seller_phone(value)
 
-    if (
-        existing_user
-        and existing_user.id != user_id
-    ):
-        raise HTTPException(
-            status_code=400,
-            detail="Email already registered"
-        )
-
-    user.name = name
-
-    if (
-        first_name is not None
-        or last_name is not None
-    ):
-        user.first_name = (
-            first_name
-            or ""
-        )
-
-        user.middle_name = middle_name
-
-        user.last_name = (
-            last_name
-            or ""
-        )
-
-        user.date_of_birth = date_of_birth
-        user.bio = bio
-
-        user.public_profile_enabled = (
-            public_profile_enabled
-        )
-
-        user.public_name_mode = (
-            public_name_mode
-        )
-
-        user.public_bio_visible = (
-            public_bio_visible
-        )
-
-    user.email = email
-
-    if email_changed:
-        user.email_verified = False
-
-        # Changing the login identifier is a
-        # sensitive account event. Revoke every
-        # previously issued session before
-        # returning a replacement token.
-        user.token_generation += 1
-
-    try:
-        updated_user = (
-            user_repository.update_user(
-                db,
-                user
-            )
-        )
-
-        return (
-            updated_user,
-            email_changed
-        )
-
-    except IntegrityError:
-        raise HTTPException(
-            status_code=400,
-            detail="Email already registered"
-        )
+    @field_validator("business_name")
+    @classmethod
+    def strip_business_name(cls, value: str | None) -> str | None:
+        return normalize_business_name(value) if value is not None else None
 
 
-def change_password(
-    db,
-    user_id: int,
-    current_password: str,
-    new_password: str
-):
-    user = user_repository.get_user_by_id(
-        db,
-        user_id
-    )
+class SellerPhoneVerificationRequest(BaseModel):
+    phone: str = Field(min_length=8, max_length=40)
 
-    if user is None:
-        raise HTTPException(
-            status_code=404,
-            detail="User not found"
-        )
+    @field_validator("phone")
+    @classmethod
+    def validate_phone(cls, value: str) -> str:
+        return normalize_seller_phone(value)
 
-    had_password = user.has_password
 
-    if had_password:
-        if (
-            not current_password
-            or not verify_password(
-                current_password,
-                user.password
-            )
-        ):
-            raise HTTPException(
-                status_code=400,
-                detail=(
-                    "Current password "
-                    "is incorrect"
-                )
-            )
+class SellerPhoneVerificationConfirmation(BaseModel):
+    challenge_token: str = Field(min_length=32, max_length=256)
+    code: str = Field(pattern=r"^[0-9]{4,10}$")
 
-    if len(new_password) < 8:
-        raise HTTPException(
-            status_code=400,
-            detail=(
-                "New password must be at "
-                "least 8 characters"
-            )
-        )
 
-    if (
-        current_password
-        and current_password == new_password
-    ):
-        raise HTTPException(
-            status_code=400,
-            detail=(
-                "New password must be different "
-                "from current password"
-            )
-        )
+class PasswordChange(BaseModel):
+    current_password: str | None = Field(default=None, min_length=1, max_length=128)
+    new_password: str = Field(min_length=8, max_length=128)
 
-    user.password = hash_password(
-        new_password
-    )
+    @field_validator("new_password")
+    @classmethod
+    def validate_password(cls, value: str) -> str:
+        return validate_new_password(value)
 
-    user.has_password = True
-    user.token_generation += 1
 
-    user_repository.update_user(
-        db,
-        user
-    )
+class PublicProfile(BaseModel):
+    id: int
+    display_name: str
+    bio: str | None = None
 
-    return {
-        "message": (
-            "Password changed successfully"
-            if had_password
-            else "Password created successfully"
-        ),
-        "access_token": create_access_token({
-            "sub": str(user.id),
-            "gen": user.token_generation,
-        }),
-        "token_type": "bearer",
+
+class AccountDeletionConfirmation(BaseModel):
+    current_password: str = Field(min_length=1, max_length=128)
+
+
+class Favorite(BaseModel):
+    id: int
+    user_id: int
+    property_id: int
+
+    model_config = {
+        "from_attributes": True
     }
 
 
-def delete_current_user(
-    db,
-    user_id: int,
-    current_password: str | None = None,
-):
-    user = user_repository.get_user_by_id(
-        db,
-        user_id
-    )
+class FavoritePropertyResponse(BaseModel):
+    id: int
+    property: Property
 
-    if user is None:
-        raise HTTPException(
-            status_code=404,
-            detail="User not found"
-        )
-
-    if not user.has_password:
-        raise HTTPException(
-            status_code=400,
-            detail=(
-                "Create an account password "
-                "before deleting your account"
-            ),
-        )
-
-    if (
-        current_password is not None
-        and not verify_password(
-            current_password,
-            user.password
-        )
-    ):
-        raise HTTPException(
-            status_code=400,
-            detail=(
-                "Current password is incorrect"
-            ),
-        )
-
-    uploaded_image_urls = [
-        image_url
-
-        for property_item in (
-            property_repository
-            .get_my_properties(
-                db,
-                user_id
-            )
-        )
-
-        for image_url
-        in property_item.image_urls
-    ]
-
-    user_repository.delete_user(
-        db,
-        user
-    )
-
-    for image_url in uploaded_image_urls:
-        if not (
-            property_repository
-            .is_image_url_in_use(
-                db,
-                image_url
-            )
-        ):
-            delete_uploaded_property_image(
-                image_url
-            )
-
-    return {
-        "message": (
-            "Account deleted successfully"
-        )
+    model_config = {
+        "from_attributes": True
     }
+
+
+class FavoriteStatus(BaseModel):
+    is_favorite: bool
+
+
+class ListingReport(BaseModel):
+    id: int
+    listing_id: int
+    listing_title: str
+    reason: str
+    details: str
+    status: str
+    created_at: datetime
+
+    model_config = {
+        "from_attributes": True
+    }
+
+
+class MyListingReport(ListingReport):
+    property_id: int | None
+    updated_at: datetime
+
+
+class MyListingReportPage(BaseModel):
+    items: list[MyListingReport]
+    total: int
+    page: int
+    page_size: int
+    total_pages: int
+
+
+class AdminListingReport(ListingReport):
+    property_id: int | None
+    listing_owner_id: int
+    listing_owner_name: str
+    reporter_id: int
+    reporter_name: str
+    moderator_note: str
+    reviewed_at: datetime | None
+    reviewer_name: str | None
+    updated_at: datetime
+    version: int
+    listing_on_safety_hold: bool | None
+    listing_safety_version: int | None
+
+
+class ListingReportStatusCounts(BaseModel):
+    all: int
+    submitted: int
+    reviewing: int
+    resolved: int
+    dismissed: int
+
+
+class ListingReportPage(BaseModel):
+    items: list[AdminListingReport]
+    total: int
+    page: int
+    page_size: int
+    total_pages: int
+    counts: ListingReportStatusCounts
+
+
+class AdminAccess(BaseModel):
+    is_admin: bool
+
+
+class ListingSafetyHold(BaseModel):
+    listing_id: int
+    safety_hold: bool
+    safety_version: int
+    safety_updated_at: datetime | None
+
+
+class InquiryMessage(BaseModel):
+    id: int | None = None
+    sender_id: int
+    sender_role: str
+    sender_name: str
+    body: str
+    created_at: datetime
+
+
+class Inquiry(BaseModel):
+    id: int
+    property_id: int
+    buyer_id: int
+    seller_id: int
+    message: str
+    reply: str | None = None
+    status: str = "pending"
+    created_at: datetime
+    updated_at: datetime
+    property_title: str
+    buyer_name: str
+    seller_name: str
+    conversation_messages: list[InquiryMessage] = Field(default_factory=list)
+    unread_count: int = 0
+    read_through_at: datetime
+
+    model_config = {
+        "from_attributes": True
+    }
+
+
+class InquiryStatusCounts(BaseModel):
+    all: int
+    pending: int
+    accepted: int
+    rejected: int
+    cancelled: int
+
+
+class InquiryPage(BaseModel):
+    items: list[Inquiry]
+    total: int
+    page: int
+    page_size: int
+    total_pages: int
+    counts: InquiryStatusCounts
+
+
+class InquiryUnreadCount(BaseModel):
+    unread_count: int
