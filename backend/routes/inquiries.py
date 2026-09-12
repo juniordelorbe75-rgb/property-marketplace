@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from typing import Literal
 from uuid import UUID
 
-from backend.auth.dependencies import get_current_user_id
+from backend.auth.dependencies import get_current_user_id, get_current_verified_user_id
 from backend.db import get_db
 from backend.models import Inquiry, InquiryPage, InquiryUnreadCount
 from backend.services.inquiry_service import (
@@ -89,7 +89,7 @@ def send_inquiry(
     property_id: int,
     inquiry_data: InquiryCreate,
     idempotency_key: UUID | None = Header(default=None, alias="Idempotency-Key"),
-    current_user_id: int = Depends(get_current_user_id),
+    current_user_id: int = Depends(get_current_verified_user_id),
     session: Session = Depends(get_db)
 ):
     return create_inquiry(
@@ -153,7 +153,7 @@ def update_status(
 def reply(
     inquiry_id: int,
     reply_data: InquiryReply,
-    current_user_id: int = Depends(get_current_user_id),
+    current_user_id: int = Depends(get_current_verified_user_id),
     session: Session = Depends(get_db)
 ):
     return reply_to_inquiry(
@@ -169,7 +169,7 @@ def send_message(
     inquiry_id: int,
     message_data: InquiryMessageCreate,
     idempotency_key: UUID | None = Header(default=None, alias="Idempotency-Key"),
-    current_user_id: int = Depends(get_current_user_id),
+    current_user_id: int = Depends(get_current_verified_user_id),
     session: Session = Depends(get_db),
 ):
     return add_inquiry_message(
