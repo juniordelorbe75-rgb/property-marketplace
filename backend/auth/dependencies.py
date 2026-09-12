@@ -9,6 +9,7 @@ from backend.db import get_db
 from backend.repositories import user_repository
 from backend.config import parse_admin_user_ids
 from backend.db_models.revoked_token import RevokedTokenDB
+from backend.db_models.user import UserDB
 
 oauth2_scheme = HTTPBearer()
 
@@ -58,6 +59,21 @@ def get_current_user_id(
     if db.get(RevokedTokenDB, payload.get("jti")) is not None:
         raise HTTPException(status_code=401, detail="This session has been closed.")
 
+    return current_user_id
+
+
+def get_current_verified_user_id(
+    current_user_id: int = Depends(get_current_user_id),
+    db: Session = Depends(get_db),
+):
+    user = db.get(UserDB, current_user_id)
+    if user is None:
+        raise HTTPException(status_code=401, detail="User account no longer exists")
+    if not user.email_verified:
+        raise HTTPException(
+            status_code=403,
+            detail="Verify your email address before using this feature.",
+        )
     return current_user_id
 
 
