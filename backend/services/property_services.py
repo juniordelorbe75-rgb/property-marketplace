@@ -3,8 +3,23 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 
 from backend.models import PropertyCreate, PropertyUpdate
-from backend.image_storage import delete_uploaded_property_image
+from backend.image_storage import (
+    delete_uploaded_property_image,
+    is_managed_property_image_url,
+    managed_property_image_owner_id,
+)
 from backend.repositories import property_repository, user_repository
+
+
+def _validate_managed_image_ownership(image_urls: list[str], user_id: int) -> None:
+    for image_url in image_urls:
+        if not is_managed_property_image_url(image_url):
+            continue
+        if managed_property_image_owner_id(image_url) != user_id:
+            raise HTTPException(
+                status_code=403,
+                detail="You can only attach property images uploaded by your account",
+            )
 
 
 def get_all_properties(
@@ -142,6 +157,9 @@ def update_property(
         )
 
     previous_image_urls = set(property.image_urls)
+    added_image_urls = set(updated_property.image_urls) - previous_image_urls
+    _validate_managed_image_ownership(list(added_image_urls), current_user_id)
+
     updated = property_repository.update_property(
         session,
         property_id,
@@ -214,6 +232,8 @@ def create_property(
             detail="User account no longer exists"
         )
 
+    _validate_managed_image_ownership(property_data.image_urls, current_user_id)
+
     if creation_key:
         existing = property_repository.get_property_by_creation_key(
             session, current_user_id, creation_key
@@ -237,6 +257,7 @@ def create_property(
         if existing is None:
             raise
         return existing
+
 
 def get_my_properties(
     session: Session,
