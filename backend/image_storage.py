@@ -108,6 +108,22 @@ def _image_name_from_url(image_url: str, settings) -> str | None:
     return image_name
 
 
+def managed_property_image_owner_id(image_url: str, settings=None) -> int | None:
+    """Return the HabitaRD uploader ID for a managed image URL, otherwise None."""
+    settings = os.environ if settings is None else settings
+    image_name = _image_name_from_url(image_url, settings)
+    if image_name is None:
+        return None
+    owner_prefix, separator, _rest = image_name.partition("_")
+    if not separator:
+        return None
+    try:
+        owner_id = int(owner_prefix)
+    except ValueError:
+        return None
+    return owner_id if owner_id > 0 else None
+
+
 def delete_uploaded_property_image(image_url: str, *, directory: Path | None = None, settings=None, client=None) -> bool:
     settings = os.environ if settings is None else settings
     image_name = _image_name_from_url(image_url, settings)
