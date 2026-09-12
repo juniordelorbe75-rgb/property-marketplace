@@ -332,11 +332,7 @@ def _property_filter_statement(
         )
 
     if status:
-        statement = statement.where(
-            PropertyDB.status.ilike(
-                f"%{status}%"
-            )
-        )
+        statement = statement.where(PropertyDB.status == status)
 
     return statement
 
