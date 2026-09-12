@@ -2,7 +2,7 @@
 .site-navigation { display: flex; width: min(1240px, calc(100% - 48px)); min-height: 76px; align-items: center; justify-content: space-between; gap: 28px; margin: 0 auto; }
 .navigation-heading { display: flex; align-items: center; justify-content: space-between; }
 .marketplace-brand { display: inline-flex; align-items: center; gap: 10px; color: #173f30; font-size: 1.12rem; letter-spacing: -.02em; text-decoration: none; white-space: nowrap; }
-.marketplace-brand > span { display: grid; width: 38px; height: 38px; place-items: center; border-radius: 12px; background: linear-gradient(145deg, #2b795b, #194d3a); color: white; box-shadow: 0 7px 16px rgba(31, 101, 76, .22); font-size: 1.4rem; }
+.marketplace-brand img { width: 42px; height: 42px; border: 1px solid #dfd4c3; border-radius: 50%; background: #fbf7ed; object-fit: cover; box-shadow: 0 7px 16px rgba(91, 54, 29, .16); }
 .navigation-links { display: flex; align-items: center; justify-content: flex-end; gap: 5px; }
 .nav-link, .logout-button, .register-link { min-height: 42px; padding: 10px 13px; border-radius: 10px; color: #53645c; font-size: .9rem; font-weight: 680; text-decoration: none; white-space: nowrap; }
 .nav-link { display: inline-flex; align-items: center; gap: 6px; }
@@ -27,4 +27,4 @@
   .register-link { justify-content: center; margin-top: 4px; }
   .logout-button { text-align: left; }
 }
-@media (max-width: 520px) { .site-navigation { width: min(100% - 24px, 1220px); } .marketplace-brand strong { font-size: 0.95rem; } }
+@media (max-width: 520px) { .site-navigation { width: min(100% - 24px, 1220px); } .marketplace-brand img { width: 38px; height: 38px; } .marketplace-brand strong { font-size: 0.95rem; } }

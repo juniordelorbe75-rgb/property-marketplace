@@ -14,6 +14,7 @@
 
 .home-hero {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 24px;
   align-items: center;
   margin-bottom: 30px;
@@ -25,6 +26,8 @@
   background: linear-gradient(122deg, #e7f3ed 0%, #fdfefd 62%, #edf3f0 100%);
   box-shadow: 0 24px 60px rgba(15, 61, 45, .105);
 }
+
+.home-hero-copy { min-width: 0; }
 
 .home-hero-eyebrow {
   margin: 0 0 10px;
@@ -53,6 +56,7 @@
 }
 
 .province-browser {
+  width: 100%;
   max-width: 820px;
   margin-top: 30px;
   padding: 20px;
@@ -69,8 +73,8 @@
   font-weight: 750;
 }
 
-.province-browser > div { display: flex; gap: 10px; }
-.province-browser select { flex: 1; min-width: 0; min-height: 48px; padding: 12px 14px; border: 1px solid #94a3b8; border-radius: 9px; background: #fff; color: #0f172a; font: inherit; }
+.province-browser > div { display: flex; min-width: 0; gap: 10px; }
+.province-browser select { width: 100%; flex: 1; min-width: 0; min-height: 48px; padding: 12px 14px; border: 1px solid #94a3b8; border-radius: 9px; background: #fff; color: #0f172a; font: inherit; }
 .province-browser button { min-height: 48px; padding: 12px 20px; border: 0; border-radius: 9px; background: #166534; color: #fff; cursor: pointer; font: inherit; font-weight: 750; white-space: nowrap; }
 .province-browser button:hover:not(:disabled) { background: #14532d; }
 .province-browser button:disabled { cursor: not-allowed; opacity: .5; }

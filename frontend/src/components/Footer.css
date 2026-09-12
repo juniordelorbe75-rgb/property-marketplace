@@ -17,6 +17,8 @@
 
 .site-footer-identity,
 .site-footer-contact { display: grid; gap: 7px; }
+.site-footer-brand { display: flex; align-items: center; gap: 12px; }
+.site-footer-brand img { width: 48px; height: 48px; border: 1px solid rgba(255, 255, 255, .2); border-radius: 50%; background: #fbf7ed; object-fit: cover; }
 .site-footer-identity strong { color: white; font-size: 1.15rem; letter-spacing: -.02em; }
 .site-footer-identity span,
 .site-footer-contact span { line-height: 1.5; }

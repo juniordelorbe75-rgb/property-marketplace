@@ -6,7 +6,10 @@ function Footer() {
     <footer className="site-footer">
       <div className="site-footer-inner">
         <div className="site-footer-identity">
-          <strong>HabitaRD</strong>
+          <div className="site-footer-brand">
+            <img src="/habitard-logo.jpeg" alt="" width="48" height="48" />
+            <strong>HabitaRD</strong>
+          </div>
           <span>Descubra propiedades en toda la República Dominicana.</span>
         </div>
         <nav aria-label="Información del mercado inmobiliario">

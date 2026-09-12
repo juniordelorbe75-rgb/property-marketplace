@@ -105,7 +105,10 @@ function Navbar() {
     <header className="site-header">
       <nav className="site-navigation" aria-label="Navegación principal">
         <div className="navigation-heading">
-          <Link className="marketplace-brand" to="/" onClick={closeMenu} aria-label="Inicio de HabitaRD"><span aria-hidden="true">⌂</span><strong>HabitaRD</strong></Link>
+          <Link className="marketplace-brand" to="/" onClick={closeMenu} aria-label="Inicio de HabitaRD">
+            <img src="/habitard-logo.jpeg" alt="" width="42" height="42" />
+            <strong>HabitaRD</strong>
+          </Link>
           <button
             className="menu-button"
             type="button"
