@@ -40,7 +40,7 @@ Detailed architecture and reliability notes are in [PROJECT_GUIDE.md](PROJECT_GU
 
 - Backend: FastAPI, SQLAlchemy, PostgreSQL, Pydantic, and JWT authentication
 - Frontend: React, React Router, and Vite
-- Tests: Python `unittest` with isolated SQLite databases and Node's test runner
+- Tests: Python `unittest` with isolated SQLite databases, a PostgreSQL compatibility smoke check, and Node's test runner
 
 ## Local setup
 
@@ -80,6 +80,11 @@ same verified email address; otherwise a new marketplace account is created.
 For production, set `TRUSTED_HOSTS` to the API hostnames that may reach the
 application (without schemes or paths) and set `FORCE_HTTPS=true`. HTTPS
 redirection and a one-year HSTS policy remain disabled for local HTTP development.
+Set `REQUIRE_EMAIL_VERIFICATION=true` in production. Production startup rejects a
+configuration that disables verification. When enabled, unverified accounts may
+still sign in and manage their account, but cannot publish listings, upload listing
+images, start or continue marketplace messages, reply to inquiries, or file listing
+reports until their email address is verified.
 
 Password reset links expire after 30 minutes and can be used only once. Configure
 the `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_FROM`, and
@@ -138,9 +143,11 @@ npm run lint
 npm run build
 ```
 
-Current baseline: 91 backend tests and 73 frontend tests.
-
-GitHub Actions runs the same backend suite plus frontend tests, lint, and production build for every pull request and every push to `main`. Runs use read-only repository permissions, locked npm dependencies, bounded execution times, and cancellation of superseded work.
+GitHub Actions runs the backend suite plus frontend tests, lint, and the production
+frontend build for every pull request and every push to `main`. A separate job
+starts PostgreSQL 16 and verifies the real PostgreSQL schema/update path and a core
+user/listing round-trip. Runs use read-only repository permissions, locked npm
+dependencies, bounded execution times, and cancellation of superseded work.
 
 ## Health and maintenance
 
