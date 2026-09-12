@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from typing import Literal
 from uuid import UUID
 
-from backend.auth.dependencies import get_current_user_id
+from backend.auth.dependencies import get_current_user_id, get_current_verified_user_id
 from backend.db import get_db
 from backend.repositories import property_repository
 from backend.services.property_services import (
@@ -162,7 +162,7 @@ def delete_property_route(
 def create_new_property(
     property_data: PropertyCreate,
     idempotency_key: UUID | None = Header(default=None, alias="Idempotency-Key"),
-    current_user_id: int = Depends(get_current_user_id),
+    current_user_id: int = Depends(get_current_verified_user_id),
     session: Session = Depends(get_db)
 ):
     return create_property(
