@@ -1,7 +1,4 @@
-"""
-Property management flow tests covering creation, updates, deletion, and search.
-Tests verify ownership enforcement, version control, and cascade cleanup.
-"""
+"""Property management flow tests covering creation, updates, deletion, and search."""
 
 import os
 import unittest
@@ -15,25 +12,23 @@ from sqlalchemy import create_engine, event
 from sqlalchemy.orm import Session
 
 from backend.db_models.base import Base
-from backend.db_models.property import PropertyDB
 from backend.db_models.favorite import FavoriteDB
 from backend.db_models.inquiry import InquiryDB
-from backend.db_models.user import UserDB
 from backend.models import PropertyCreate, PropertyUpdate, UserCreate
-from backend.services.user_service import create_user
+from backend.repositories import property_repository
+from backend.services.favorite_service import create_favorite
+from backend.services.inquiry_service import create_inquiry
 from backend.services.property_services import (
     create_property,
-    update_property,
     delete_property,
     get_property_by_id,
+    update_property,
 )
+from backend.services.user_service import create_user
 
 
-class PropertyCreationTests(unittest.TestCase):
-    """Test property creation with validation and ownership."""
-
+class PropertyTestCase(unittest.TestCase):
     def setUp(self):
-        """Create isolated in-memory SQLite database."""
         self.engine = create_engine("sqlite+pysqlite:///:memory:")
 
         @event.listens_for(self.engine, "connect")
@@ -44,359 +39,235 @@ class PropertyCreationTests(unittest.TestCase):
 
         Base.metadata.create_all(self.engine)
         self.session = Session(self.engine)
-        
-        # Create a test user (seller)
-        self.seller = create_user(
-            self.session,
-            UserCreate(
-                name="Test Seller",
-                email="seller@example.com",
-                password="password-123",
-            ),
-        )
+        self.email_patcher = patch("backend.services.email_verification_service._send")
+        self.email_patcher.start()
+        self.seller = self.make_user("Seller", "seller@example.com")
+        self.buyer = self.make_user("Buyer", "buyer@example.com")
 
     def tearDown(self):
-        """Clean up session and database."""
+        self.email_patcher.stop()
         self.session.close()
         self.engine.dispose()
 
-    # ============================================================================
-    # Property Creation Tests
-    # ============================================================================
-
-    def test_property_creation_sets_owner(self):
-        """Property creation should set the current user as owner."""
-        prop = create_property(
+    def make_user(self, name, email):
+        return create_user(
             self.session,
-            PropertyCreate(
-                title="Test House",
-                image_url="https://example.com/house.jpg",
-                price=250000,
-                location="Miami, Florida",
-                property_type="House",
-                bedrooms=3,
-            ),
-            self.seller.id,
+            UserCreate(name=name, email=email, password="password-123"),
         )
 
+    def make_property(
+        self,
+        *,
+        owner_id=None,
+        title="Test House",
+        status="available",
+        location="Santo Domingo",
+        price=250000,
+    ):
+        return create_property(
+            self.session,
+            PropertyCreate(
+                title=title,
+                image_url="https://example.com/house.jpg",
+                price=price,
+                currency="USD",
+                location=location,
+                property_type="House",
+                bedrooms=3,
+                bathrooms=2,
+                status=status,
+            ),
+            owner_id or self.seller.id,
+        )
+
+    def update_payload(self, property_item, **overrides):
+        values = {
+            "title": property_item.title,
+            "description": property_item.description,
+            "image_url": property_item.image_url,
+            "image_urls": property_item.image_urls,
+            "price": property_item.price,
+            "currency": property_item.currency,
+            "listing_type": property_item.listing_type,
+            "amenities": property_item.amenities,
+            "location": property_item.location,
+            "country_code": property_item.country_code,
+            "province": property_item.province,
+            "municipality": property_item.municipality,
+            "sector": property_item.sector,
+            "property_type": property_item.property_type,
+            "bedrooms": property_item.bedrooms,
+            "bathrooms": property_item.bathrooms,
+            "square_feet": property_item.square_feet,
+            "status": property_item.status,
+        }
+        values.update(overrides)
+        return PropertyUpdate(**values)
+
+
+class PropertyCreationTests(PropertyTestCase):
+    def test_property_creation_sets_owner_and_version(self):
+        prop = self.make_property()
         self.assertEqual(prop.owner_id, self.seller.id)
         self.assertEqual(prop.title, "Test House")
         self.assertEqual(prop.status, "available")
+        self.assertEqual(prop.version, 1)
 
     def test_property_creation_rejects_invalid_price(self):
-        """Property creation should reject zero or negative prices."""
-        invalid_prices = [0, -100, -1]
+        for invalid_price in (0, -100, -1):
+            with self.subTest(price=invalid_price), self.assertRaises(ValueError):
+                PropertyCreate(
+                    title="Invalid Price Home",
+                    image_url="https://example.com/home.jpg",
+                    price=invalid_price,
+                    location="Santiago",
+                    property_type="House",
+                    bedrooms=2,
+                )
 
-        for invalid_price in invalid_prices:
-            with self.subTest(price=invalid_price):
-                with self.assertRaises(ValueError):
-                    PropertyCreate(
-                        title="Invalid Price Home",
-                        image_url="https://example.com/home.jpg",
-                        price=invalid_price,
-                        location="Miami, Florida",
-                        property_type="House",
-                        bedrooms=2,
-                    )
-
-    def test_property_creation_rejects_empty_title(self):
-        """Property creation should reject empty or whitespace-only titles."""
+    def test_property_creation_rejects_blank_title_and_location(self):
         with self.assertRaises(ValueError):
             PropertyCreate(
-                title="   ",  # Whitespace only
+                title="   ",
                 image_url="https://example.com/home.jpg",
                 price=100000,
-                location="Miami, Florida",
+                location="Santiago",
                 property_type="House",
                 bedrooms=2,
             )
-
-    def test_property_creation_rejects_empty_location(self):
-        """Property creation should reject empty or whitespace-only locations."""
         with self.assertRaises(ValueError):
             PropertyCreate(
                 title="Valid Title",
                 image_url="https://example.com/home.jpg",
                 price=100000,
-                location="   ",  # Whitespace only
+                location="   ",
                 property_type="House",
                 bedrooms=2,
             )
 
-    def test_property_creation_normalizes_location(self):
-        """Property creation should normalize location text (trim, case)."""
-        prop = create_property(
-            self.session,
-            PropertyCreate(
-                title="Location Test",
-                image_url="https://example.com/home.jpg",
-                price=100000,
-                location="  miami, florida  ",  # Extra spaces
-                property_type="House",
-                bedrooms=2,
-            ),
-            self.seller.id,
-        )
+    def test_property_creation_trims_location_without_forcing_case(self):
+        prop = self.make_property(location="  santo domingo  ")
+        self.assertEqual(prop.location, "santo domingo")
 
-        self.assertEqual(prop.location, "Miami, Florida")
-
-    def test_property_creation_rejects_invalid_property_type(self):
-        """Property creation should reject invalid property types."""
+    def test_property_creation_rejects_invalid_property_type_and_bedrooms(self):
         with self.assertRaises(ValueError):
             PropertyCreate(
                 title="Invalid Type Home",
                 image_url="https://example.com/home.jpg",
                 price=100000,
-                location="Miami, Florida",
-                property_type="Castle",  # Not a valid type
+                location="Santiago",
+                property_type="Castle",
                 bedrooms=2,
             )
-
-    def test_property_creation_rejects_negative_bedrooms(self):
-        """Property creation should reject negative bedroom counts."""
         with self.assertRaises(ValueError):
             PropertyCreate(
                 title="Negative Beds Home",
                 image_url="https://example.com/home.jpg",
                 price=100000,
-                location="Miami, Florida",
+                location="Santiago",
                 property_type="House",
                 bedrooms=-1,
             )
 
     def test_property_creation_supports_optional_fields(self):
-        """Property creation should accept optional fields like description, bathrooms."""
         prop = create_property(
             self.session,
             PropertyCreate(
                 title="Full Details Home",
                 image_url="https://example.com/home.jpg",
                 price=350000,
-                location="Miami, Florida",
+                location="Santiago",
                 property_type="House",
                 bedrooms=4,
                 bathrooms=2,
                 square_feet=2500,
                 description="A beautiful home with a pool",
-                amenities=["Pool", "Garage", "Garden"],
+                amenities=["Pool", "Garage", "Yard"],
             ),
             self.seller.id,
         )
-
         self.assertEqual(prop.bathrooms, 2)
         self.assertEqual(prop.square_feet, 2500)
         self.assertEqual(prop.description, "A beautiful home with a pool")
-        self.assertIn("Pool", prop.amenities)
-
-    def test_property_creation_assigns_version_one(self):
-        """Property creation should assign version 1."""
-        prop = create_property(
-            self.session,
-            PropertyCreate(
-                title="Versioned Home",
-                image_url="https://example.com/home.jpg",
-                price=200000,
-                location="Miami, Florida",
-                property_type="House",
-                bedrooms=3,
-            ),
-            self.seller.id,
-        )
-
-        self.assertEqual(prop.version, 1)
+        self.assertEqual(prop.amenities, ["Pool", "Garage", "Yard"])
 
 
-class PropertyUpdateTests(unittest.TestCase):
-    """Test property updates with version control and ownership enforcement."""
-
+class PropertyUpdateTests(PropertyTestCase):
     def setUp(self):
-        """Create isolated database with test seller and property."""
-        self.engine = create_engine("sqlite+pysqlite:///:memory:")
-
-        @event.listens_for(self.engine, "connect")
-        def enable_foreign_keys(dbapi_connection, _connection_record):
-            cursor = dbapi_connection.cursor()
-            cursor.execute("PRAGMA foreign_keys=ON")
-            cursor.close()
-
-        Base.metadata.create_all(self.engine)
-        self.session = Session(self.engine)
-        
-        # Create test seller and buyer
-        self.seller = create_user(
-            self.session,
-            UserCreate(
-                name="Test Seller",
-                email="seller@example.com",
-                password="password-123",
-            ),
-        )
-        self.buyer = create_user(
-            self.session,
-            UserCreate(
-                name="Test Buyer",
-                email="buyer@example.com",
-                password="password-123",
-            ),
-        )
-        
-        # Create a test property
-        self.property = create_property(
-            self.session,
-            PropertyCreate(
-                title="Original Home",
-                image_url="https://example.com/home.jpg",
-                price=200000,
-                location="Miami, Florida",
-                property_type="House",
-                bedrooms=3,
-            ),
-            self.seller.id,
-        )
-
-    def tearDown(self):
-        """Clean up session and database."""
-        self.session.close()
-        self.engine.dispose()
+        super().setUp()
+        self.property = self.make_property(title="Original Home")
 
     def test_property_update_requires_ownership(self):
-        """Only the owner can update a property."""
-        update = PropertyUpdate(
-            title="Unauthorized Update",
-            image_url="https://example.com/home.jpg",
-            price=250000,
-            location="Miami, Florida",
-            property_type="House",
-            bedrooms=3,
-            status="available",
-            currency="USD",
-        )
-
         with self.assertRaises(HTTPException) as raised:
             update_property(
                 self.session,
                 self.property.id,
-                update,
-                self.buyer.id,  # Different user
+                self.update_payload(self.property, title="Unauthorized Update"),
+                self.buyer.id,
             )
-
         self.assertEqual(raised.exception.status_code, 403)
 
     def test_property_update_increments_version(self):
-        """Property update should increment version number."""
         original_version = self.property.version
-        
-        update = PropertyUpdate(
-            title="Updated Home",
-            image_url="https://example.com/updated.jpg",
-            price=275000,
-            location="Miami, Florida",
-            property_type="House",
-            bedrooms=3,
-            status="available",
-            currency="USD",
-        )
-
         updated = update_property(
             self.session,
             self.property.id,
-            update,
+            self.update_payload(
+                self.property,
+                title="Updated Home",
+                image_url="https://example.com/updated.jpg",
+                image_urls=["https://example.com/updated.jpg"],
+                price=275000,
+            ),
             self.seller.id,
         )
-
         self.assertEqual(updated.version, original_version + 1)
 
     def test_property_update_validates_new_values(self):
-        """Property update should validate all new values."""
         with self.assertRaises(ValueError):
-            PropertyUpdate(
-                title="Valid Title",
-                image_url="https://example.com/home.jpg",
-                price=0,  # Invalid: zero price
-                location="Miami, Florida",
-                property_type="House",
-                bedrooms=3,
-                status="available",
-                currency="USD",
-            )
+            self.update_payload(self.property, price=0)
 
     def test_property_update_changes_status(self):
-        """Property status can be updated between available/unavailable."""
-        update = PropertyUpdate(
-            title="Original Home",
-            image_url="https://example.com/home.jpg",
-            price=200000,
-            location="Miami, Florida",
-            property_type="House",
-            bedrooms=3,
-            status="unavailable",  # Changed status
-            currency="USD",
-        )
-
         updated = update_property(
             self.session,
             self.property.id,
-            update,
+            self.update_payload(self.property, status="unavailable"),
             self.seller.id,
         )
-
         self.assertEqual(updated.status, "unavailable")
 
 
-class PropertyDeletionTests(unittest.TestCase):
-    """Test property deletion with cascade cleanup of favorites and inquiries."""
+class PropertySearchTests(PropertyTestCase):
+    def test_available_filter_does_not_match_unavailable(self):
+        available = self.make_property(title="Available Home", status="available")
+        unavailable = self.make_property(title="Unavailable Home", status="unavailable")
 
+        results = property_repository.search_properties(
+            self.session,
+            status="available",
+        )
+        ids = {item.id for item in results}
+        self.assertIn(available.id, ids)
+        self.assertNotIn(unavailable.id, ids)
+
+        results = property_repository.search_properties(
+            self.session,
+            status="unavailable",
+        )
+        ids = {item.id for item in results}
+        self.assertIn(unavailable.id, ids)
+        self.assertNotIn(available.id, ids)
+
+
+class PropertyDeletionTests(PropertyTestCase):
     def setUp(self):
-        """Create database with seller, buyer, property, favorite, and inquiry."""
-        self.engine = create_engine("sqlite+pysqlite:///:memory:")
-
-        @event.listens_for(self.engine, "connect")
-        def enable_foreign_keys(dbapi_connection, _connection_record):
-            cursor = dbapi_connection.cursor()
-            cursor.execute("PRAGMA foreign_keys=ON")
-            cursor.close()
-
-        Base.metadata.create_all(self.engine)
-        self.session = Session(self.engine)
-        
-        # Create users
-        self.seller = create_user(
+        super().setUp()
+        self.property = self.make_property(title="Property to Delete")
+        self.favorite = create_favorite(
             self.session,
-            UserCreate(
-                name="Test Seller",
-                email="seller@example.com",
-                password="password-123",
-            ),
+            self.property.id,
+            self.buyer.id,
         )
-        self.buyer = create_user(
-            self.session,
-            UserCreate(
-                name="Test Buyer",
-                email="buyer@example.com",
-                password="password-123",
-            ),
-        )
-        
-        # Create property
-        self.property = create_property(
-            self.session,
-            PropertyCreate(
-                title="Property to Delete",
-                image_url="https://example.com/home.jpg",
-                price=200000,
-                location="Miami, Florida",
-                property_type="House",
-                bedrooms=3,
-            ),
-            self.seller.id,
-        )
-        
-        # Create favorite (buyer favorites the property)
-        from backend.services.favorite_service import create_favorite
-        self.favorite = create_favorite(self.session, self.property.id, self.buyer.id)
-        
-        # Create inquiry (buyer inquires about property)
-        from backend.services.inquiry_service import create_inquiry
         self.inquiry = create_inquiry(
             self.session,
             self.property.id,
@@ -404,47 +275,20 @@ class PropertyDeletionTests(unittest.TestCase):
             "Is this property still available?",
         )
 
-    def tearDown(self):
-        """Clean up session and database."""
-        self.session.close()
-        self.engine.dispose()
-
     def test_property_deletion_requires_ownership(self):
-        """Only owner can delete a property."""
         with self.assertRaises(HTTPException) as raised:
             delete_property(self.session, self.property.id, self.buyer.id)
-
         self.assertEqual(raised.exception.status_code, 403)
 
-    def test_property_deletion_removes_favorites(self):
-        """Deleting property should cascade-delete associated favorites."""
-        # Verify favorite exists
-        self.assertIsNotNone(self.session.get(FavoriteDB, self.favorite.id))
-
-        # Delete property
+    def test_property_deletion_cascades_favorites_and_inquiries(self):
         delete_property(self.session, self.property.id, self.seller.id)
-
-        # Favorite should be gone
         self.assertIsNone(self.session.get(FavoriteDB, self.favorite.id))
-
-    def test_property_deletion_removes_inquiries(self):
-        """Deleting property should cascade-delete associated inquiries."""
-        # Verify inquiry exists
-        self.assertIsNotNone(self.session.get(InquiryDB, self.inquiry.id))
-
-        # Delete property
-        delete_property(self.session, self.property.id, self.seller.id)
-
-        # Inquiry should be gone
         self.assertIsNone(self.session.get(InquiryDB, self.inquiry.id))
 
-    def test_property_deletion_is_permanent(self):
-        """Deleted property cannot be accessed."""
+    def test_deleted_property_cannot_be_accessed(self):
         delete_property(self.session, self.property.id, self.seller.id)
-
         with self.assertRaises(HTTPException) as raised:
             get_property_by_id(self.session, self.property.id)
-
         self.assertEqual(raised.exception.status_code, 404)
 
 
