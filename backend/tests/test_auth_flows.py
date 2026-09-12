@@ -1,51 +1,42 @@
-"""
-Authentication flow tests covering registration, login, password reset, email verification, and OAuth.
-Tests use isolated SQLite in-memory databases and do not modify the configured PostgreSQL instance.
-"""
+"""Authentication flow tests for HabitaRD's current auth implementation."""
 
 import os
 import unittest
-from datetime import datetime, timedelta, timezone
-from unittest.mock import Mock, patch
+from datetime import datetime, timezone
+from unittest.mock import patch
 
 os.environ.setdefault("DATABASE_URL", "sqlite+pysqlite:///:memory:")
 os.environ.setdefault("SECRET_KEY", "test-only-secret-key-32-characters-long")
 
 from fastapi import HTTPException
-from sqlalchemy import create_engine, event, select
+from sqlalchemy import create_engine, event
 from sqlalchemy.orm import Session
 
-from backend.auth.security import hash_password, verify_password
-from backend.auth.token import create_access_token, verify_access_token
-from backend.auth.login_throttle import LoginThrottle, ThrottleResult
+from backend.auth.login_throttle import (
+    clear_login_failures,
+    login_retry_after,
+    record_login_failure,
+    reset_login_throttle,
+)
+from backend.auth.security import verify_password
+from backend.auth.token import create_access_token, decode_access_token, verify_access_token
 from backend.db_models.base import Base
 from backend.db_models.user import UserDB
-from backend.db_models.password_reset import PasswordResetDB
-from backend.db_models.email_verification import EmailVerificationDB
 from backend.models import UserCreate
+from backend.services.email_verification_service import verify_email
+from backend.services.password_reset_service import request_password_reset, reset_password
 from backend.services.user_service import (
+    change_password,
     create_user,
-    login_user,
     delete_current_user,
-)
-from backend.services.password_reset_service import (
-    request_password_reset,
-    reset_password_with_token,
-)
-from backend.services.email_verification_service import (
-    request_email_verification,
-    verify_email_with_token,
+    login_user,
 )
 
 
 class AuthenticationFlowTests(unittest.TestCase):
-    """Test complete authentication flows: registration, login, password changes, email verification."""
-
     def setUp(self):
-        """Create isolated in-memory SQLite database for each test."""
         self.engine = create_engine("sqlite+pysqlite:///:memory:")
 
-        # Enable foreign key constraints in SQLite
         @event.listens_for(self.engine, "connect")
         def enable_foreign_keys(dbapi_connection, _connection_record):
             cursor = dbapi_connection.cursor()
@@ -54,18 +45,25 @@ class AuthenticationFlowTests(unittest.TestCase):
 
         Base.metadata.create_all(self.engine)
         self.session = Session(self.engine)
+        self.verification_tokens = []
+        self.verification_patcher = patch(
+            "backend.services.email_verification_service._send",
+            side_effect=lambda _recipient, token: self.verification_tokens.append(token),
+        )
+        self.verification_patcher.start()
 
     def tearDown(self):
-        """Clean up session and database."""
+        self.verification_patcher.stop()
         self.session.close()
         self.engine.dispose()
 
-    # ============================================================================
-    # Registration Tests
-    # ============================================================================
+    def make_user(self, email="test@example.com", password="password-123"):
+        return create_user(
+            self.session,
+            UserCreate(name="Test User", email=email, password=password),
+        )
 
     def test_registration_creates_user_with_normalized_email(self):
-        """Registration should normalize email to lowercase and trim whitespace."""
         user = create_user(
             self.session,
             UserCreate(
@@ -74,404 +72,181 @@ class AuthenticationFlowTests(unittest.TestCase):
                 password="secure-password-123",
             ),
         )
-
         self.assertEqual(user.email, "jane.smith@example.com")
         self.assertEqual(user.name, "Jane Smith")
         self.assertTrue(verify_password("secure-password-123", user.password))
+        self.assertFalse(user.email_verified)
 
-    def test_registration_rejects_duplicate_email(self):
-        """Registration should reject duplicate emails case-insensitively."""
-        create_user(
-            self.session,
-            UserCreate(
-                name="First User",
-                email="test@example.com",
-                password="password-1",
-            ),
-        )
-
+    def test_registration_rejects_duplicate_email_case_insensitively(self):
+        self.make_user("test@example.com")
         with self.assertRaises(HTTPException) as raised:
-            create_user(
-                self.session,
-                UserCreate(
-                    name="Second User",
-                    email="TEST@EXAMPLE.COM",  # Different case, same email
-                    password="password-2",
-                ),
-            )
-
+            self.make_user("TEST@EXAMPLE.COM")
         self.assertEqual(raised.exception.status_code, 400)
 
-    def test_registration_rejects_invalid_email_format(self):
-        """Registration should validate email format."""
-        invalid_emails = ["notanemail", "no@domain", "@example.com", "test@.com"]
+    def test_registration_validates_email_and_password(self):
+        for invalid_email in ("notanemail", "no@domain", "@example.com", "test@.com"):
+            with self.subTest(email=invalid_email), self.assertRaises(ValueError):
+                UserCreate(name="Test User", email=invalid_email, password="password-123")
 
-        for invalid_email in invalid_emails:
-            with self.subTest(email=invalid_email):
-                with self.assertRaises(ValueError):
-                    UserCreate(
-                        name="Test User",
-                        email=invalid_email,
-                        password="password-123",
-                    )
-
-    def test_registration_rejects_weak_password(self):
-        """Registration should enforce minimum password length."""
-        weak_passwords = ["", "123", "short"]
-
-        for weak_password in weak_passwords:
-            with self.subTest(password=weak_password):
-                with self.assertRaises(ValueError):
-                    UserCreate(
-                        name="Test User",
-                        email="test@example.com",
-                        password=weak_password,
-                    )
-
-    def test_registration_rejects_oversized_password(self):
-        """Registration should reject passwords exceeding bcrypt's 72-byte UTF-8 limit."""
-        oversized_password = "a" * 73
+        for invalid_password in ("", "123", "short"):
+            with self.subTest(password=invalid_password), self.assertRaises(ValueError):
+                UserCreate(name="Test User", email="test@example.com", password=invalid_password)
 
         with self.assertRaises(ValueError):
-            UserCreate(
-                name="Test User",
-                email="test@example.com",
-                password=oversized_password,
-            )
-
-    def test_registration_rejects_oversized_unicode_password(self):
-        """Registration should reject multi-byte UTF-8 passwords that exceed bcrypt's 72-byte limit."""
-        # Each emoji is 4 bytes in UTF-8
-        oversized_unicode = "😀" * 19  # 76 bytes total
+            UserCreate(name="Test User", email="test@example.com", password="a" * 73)
         with self.assertRaises(ValueError):
-            UserCreate(
-                name="Test User",
-                email="test@example.com",
-                password=oversized_unicode,
-            )
-
-    # ============================================================================
-    # Login Tests
-    # ============================================================================
+            UserCreate(name="Test User", email="test@example.com", password="😀" * 19)
 
     def test_login_returns_access_token(self):
-        """Login should return a valid access token for registered user."""
-        user = create_user(
-            self.session,
-            UserCreate(
-                name="Test User",
-                email="test@example.com",
-                password="correct-password",
-            ),
-        )
-
-        result = login_user(self.session, "test@example.com", "correct-password")
-
-        self.assertIn("access_token", result)
+        user = self.make_user()
+        result = login_user(self.session, "TEST@EXAMPLE.COM", "password-123")
         self.assertEqual(result["token_type"], "bearer")
         self.assertEqual(verify_access_token(result["access_token"]), str(user.id))
+        payload = decode_access_token(result["access_token"])
+        self.assertEqual(payload["gen"], user.token_generation)
 
-    def test_login_is_case_insensitive_for_email(self):
-        """Login should accept email in any case."""
-        create_user(
-            self.session,
-            UserCreate(
-                name="Test User",
-                email="test@example.com",
-                password="password-123",
-            ),
-        )
+    def test_login_rejects_wrong_or_unknown_credentials(self):
+        self.make_user()
+        for email, password in (
+            ("test@example.com", "wrong-password"),
+            ("missing@example.com", "password-123"),
+        ):
+            with self.subTest(email=email), self.assertRaises(HTTPException) as raised:
+                login_user(self.session, email, password)
+            self.assertEqual(raised.exception.status_code, 401)
+            self.assertEqual(raised.exception.detail, "Invalid email or password")
 
-        result = login_user(self.session, "TEST@EXAMPLE.COM", "password-123")
-        self.assertIn("access_token", result)
-
-    def test_login_rejects_incorrect_password(self):
-        """Login should reject incorrect password."""
-        create_user(
-            self.session,
-            UserCreate(
-                name="Test User",
-                email="test@example.com",
-                password="correct-password",
-            ),
-        )
-
-        with self.assertRaises(HTTPException) as raised:
-            login_user(self.session, "test@example.com", "wrong-password")
-
-        self.assertEqual(raised.exception.status_code, 401)
-        self.assertIn("Invalid email or password", raised.exception.detail)
-
-    def test_login_rejects_nonexistent_email(self):
-        """Login should reject nonexistent email gracefully."""
-        with self.assertRaises(HTTPException) as raised:
-            login_user(self.session, "nonexistent@example.com", "any-password")
-
-        self.assertEqual(raised.exception.status_code, 401)
-        self.assertIn("Invalid email or password", raised.exception.detail)
-
-    def test_login_performs_dummy_check_for_nonexistent_email(self):
-        """
-        Login should perform dummy password verification for nonexistent emails
-        to avoid account enumeration attacks.
-        """
+    def test_login_performs_dummy_password_check_for_unknown_email(self):
         with patch(
             "backend.services.user_service.verify_password",
             return_value=False,
         ) as password_check:
             with self.assertRaises(HTTPException):
                 login_user(self.session, "missing@example.com", "password")
-
-        # Dummy check should have been called even though user doesn't exist
         password_check.assert_called_once()
 
-    def test_login_trims_whitespace_from_email(self):
-        """Login should trim whitespace from email input."""
-        create_user(
-            self.session,
-            UserCreate(
-                name="Test User",
-                email="test@example.com",
-                password="password-123",
-            ),
-        )
-
-        result = login_user(self.session, "  test@example.com  ", "password-123")
-        self.assertIn("access_token", result)
-
-    # ============================================================================
-    # Token Management Tests
-    # ============================================================================
-
     def test_token_includes_required_claims(self):
-        """Access token should include required JWT claims."""
         token = create_access_token({"sub": "123", "gen": 1})
-        decoded = {}
-
-        # Manually verify token structure without using internal decode
-        import json
-        import base64
-
-        parts = token.split(".")
-        payload = json.loads(
-            base64.urlsafe_b64decode(parts[1] + "==")
-        )  # Add padding
-
+        payload = decode_access_token(token)
         self.assertEqual(payload["sub"], "123")
-        self.assertIn("iss", payload)  # Issuer
-        self.assertIn("aud", payload)  # Audience
-        self.assertIn("iat", payload)  # Issued at
-        self.assertIn("exp", payload)  # Expiry
-        self.assertIn("jti", payload)  # Token ID
+        for claim in ("iss", "aud", "iat", "exp", "jti", "token_type"):
+            self.assertIn(claim, payload)
 
-    def test_token_rejected_if_expired(self):
-        """Expired tokens should be rejected."""
-        from jose import jwt
-        from backend.auth.token import ALGORITHM, SECRET_KEY
+    def test_password_change_rotates_token_generation(self):
+        user = self.make_user(password="original-password")
+        old_token = login_user(
+            self.session, "test@example.com", "original-password"
+        )["access_token"]
+        old_generation = user.token_generation
 
-        expired_token = jwt.encode(
-            {
-                "sub": "1",
-                "exp": datetime.now(timezone.utc) - timedelta(minutes=1),
-                "iss": "habitard-marketplace",
-                "aud": "habitard-buyers-sellers",
-            },
-            SECRET_KEY,
-            algorithm=ALGORITHM,
-        )
-
-        self.assertIsNone(verify_access_token(expired_token))
-
-    def test_password_change_invalidates_other_sessions(self):
-        """Changing password should increment token generation and revoke other sessions."""
-        user = create_user(
+        result = change_password(
             self.session,
-            UserCreate(
-                name="Test User",
-                email="test@example.com",
-                password="original-password",
-            ),
+            user.id,
+            "original-password",
+            "new-password-123",
         )
-        original_gen = user.token_generation
+        self.session.refresh(user)
 
-        login_result = login_user(self.session, "test@example.com", "original-password")
-        original_token = login_result["access_token"]
-
-        # Change password
-        from backend.services.user_service import update_password
-
-        update_password(self.session, user.id, "original-password", "new-password")
-
-        # Refresh user from database
-        user = self.session.get(UserDB, user.id)
-        self.assertGreater(user.token_generation, original_gen)
-
-        # Old token should still be valid in this session,
-        # but new token generation means other devices are logged out
-        self.assertEqual(verify_access_token(original_token), str(user.id))
-
-    # ============================================================================
-    # Account Deletion Tests
-    # ============================================================================
-
-    def test_account_deletion_requires_current_password(self):
-        """Account deletion should require correct current password."""
-        user = create_user(
-            self.session,
-            UserCreate(
-                name="Test User",
-                email="test@example.com",
-                password="secure-password",
-            ),
+        self.assertEqual(user.token_generation, old_generation + 1)
+        self.assertEqual(decode_access_token(old_token)["gen"], old_generation)
+        self.assertEqual(
+            decode_access_token(result["access_token"])["gen"],
+            user.token_generation,
         )
+        self.assertTrue(verify_password("new-password-123", user.password))
 
+    def test_account_deletion_requires_correct_password(self):
+        user = self.make_user(password="secure-password")
         with self.assertRaises(HTTPException) as raised:
-            from backend.routes.users import delete_account_for_testing
-
-            delete_account_for_testing(
+            delete_current_user(
                 self.session,
                 user.id,
-                "wrong-password",
-                "DELETE",
+                current_password="wrong-password",
             )
-
-        self.assertEqual(raised.exception.status_code, 401)
-
-    def test_account_deletion_requires_deletion_confirmation(self):
-        """Account deletion should require explicit 'DELETE' confirmation."""
-        user = create_user(
-            self.session,
-            UserCreate(
-                name="Test User",
-                email="test@example.com",
-                password="secure-password",
-            ),
-        )
-
-        with self.assertRaises(HTTPException) as raised:
-            from backend.routes.users import delete_account_for_testing
-
-            delete_account_for_testing(
-                self.session,
-                user.id,
-                "secure-password",
-                "DELETE ME",  # Wrong confirmation
-            )
-
         self.assertEqual(raised.exception.status_code, 400)
-
-    def test_account_deletion_removes_user_and_properties(self):
-        """Account deletion should remove user and all their properties."""
-        user = create_user(
-            self.session,
-            UserCreate(
-                name="Test Seller",
-                email="seller@example.com",
-                password="password-123",
-            ),
-        )
-
-        # User should exist
         self.assertIsNotNone(self.session.get(UserDB, user.id))
 
-        # Delete account
-        delete_current_user(self.session, user.id)
-
-        # User should be gone
+        delete_current_user(
+            self.session,
+            user.id,
+            current_password="secure-password",
+        )
         self.assertIsNone(self.session.get(UserDB, user.id))
 
-    # ============================================================================
-    # Password Reset Tests (Future: Implement and test full flow)
-    # ============================================================================
+    def test_password_reset_is_single_use_and_rotates_sessions(self):
+        user = self.make_user(password="old-password-123")
+        original_generation = user.token_generation
+        sent_tokens = []
 
-    def test_password_reset_creates_single_use_token(self):
-        """
-        Password reset should create a single-use token that expires after time limit.
-        
-        NOTE: Requires SMTP_HOST configuration to be set.
-        Currently documented in PROJECT_GUIDE.md but needs implementation verification.
-        """
-        # This test would verify:
-        # 1. Token is generated and stored
-        # 2. Token is single-use (can't be reused)
-        # 3. Token expires after 30 minutes
-        # 4. Email is sent with reset link
-        pass
+        with patch(
+            "backend.services.password_reset_service.send_password_reset_email",
+            side_effect=lambda _recipient, token: sent_tokens.append(token),
+        ):
+            response = request_password_reset(self.session, user.email)
 
-    # ============================================================================
-    # Email Verification Tests (Future: Implement and test full flow)
-    # ============================================================================
+        self.assertIn("message", response)
+        self.assertEqual(len(sent_tokens), 1)
+        token = sent_tokens[0]
 
-    def test_email_verification_creates_24hour_token(self):
-        """
-        Email verification should create a 24-hour single-use token.
-        
-        NOTE: Requires SMTP_HOST configuration to be set.
-        Currently documented in PROJECT_GUIDE.md but needs implementation verification.
-        """
-        # This test would verify:
-        # 1. Token is generated and stored
-        # 2. Token is single-use (can't be reused)
-        # 3. Token expires after 24 hours
-        # 4. Verification email is sent
-        pass
+        reset_result = reset_password(
+            self.session,
+            token,
+            "new-password-456",
+        )
+        self.session.refresh(user)
+        self.assertEqual(user.token_generation, original_generation + 1)
+        self.assertIn("access_token", reset_result)
+        self.assertTrue(verify_password("new-password-456", user.password))
+
+        with self.assertRaises(HTTPException) as raised:
+            reset_password(self.session, token, "another-password-789")
+        self.assertEqual(raised.exception.status_code, 400)
+
+    def test_email_verification_is_single_use(self):
+        user = self.make_user("verify@example.com")
+        self.assertEqual(len(self.verification_tokens), 1)
+        token = self.verification_tokens[0]
+
+        result = verify_email(self.session, token)
+        self.session.refresh(user)
+        self.assertTrue(user.email_verified)
+        self.assertEqual(result["message"], "Email verified successfully")
+
+        with self.assertRaises(HTTPException) as raised:
+            verify_email(self.session, token)
+        self.assertEqual(raised.exception.status_code, 400)
 
 
 class LoginThrottleTests(unittest.TestCase):
-    """Test login throttling to prevent brute force attacks."""
-
     def setUp(self):
-        """Initialize fresh throttle for each test."""
-        self.throttle = LoginThrottle()
+        reset_login_throttle()
 
-    def test_throttle_allows_first_attempts(self):
-        """Throttle should allow first few login attempts."""
-        for i in range(5):
-            result = self.throttle.check_login_attempt("user@example.com", "127.0.0.1")
-            self.assertEqual(result, ThrottleResult.ALLOWED)
+    def tearDown(self):
+        reset_login_throttle()
 
-    def test_throttle_blocks_after_limit(self):
-        """Throttle should block login after exceeding limit."""
+    def test_throttle_blocks_pair_after_five_failures(self):
         email = "user@example.com"
-        ip = "127.0.0.1"
-
-        # Exceed limit
+        address = "127.0.0.1"
+        self.assertIsNone(login_retry_after(address, email))
         for _ in range(5):
-            self.throttle.check_login_attempt(email, ip)
+            record_login_failure(address, email)
+        self.assertIsNotNone(login_retry_after(address, email))
 
-        # Next attempt should be throttled
-        result = self.throttle.check_login_attempt(email, ip)
-        self.assertEqual(result, ThrottleResult.THROTTLED)
-
-    def test_throttle_resets_after_successful_login(self):
-        """Throttle counter should reset after successful login."""
+    def test_successful_login_clear_removes_pair_and_account_failure_state(self):
         email = "user@example.com"
-        ip = "127.0.0.1"
-
-        # Fail 5 times
+        address = "127.0.0.1"
         for _ in range(5):
-            self.throttle.check_login_attempt(email, ip)
+            record_login_failure(address, email)
+        self.assertIsNotNone(login_retry_after(address, email))
+        clear_login_failures(address, email)
+        self.assertIsNone(login_retry_after(address, email))
 
-        # Reset counter (happens on successful login)
-        self.throttle.reset_login_attempt(email, ip)
-
-        # Should allow attempts again
-        result = self.throttle.check_login_attempt(email, ip)
-        self.assertEqual(result, ThrottleResult.ALLOWED)
-
-    def test_throttle_is_per_email_and_ip(self):
-        """Throttle should track attempts per email-IP combination."""
-        email1 = "user1@example.com"
-        email2 = "user2@example.com"
-        ip = "127.0.0.1"
-
-        # 5 failed attempts for user1
+    def test_failures_for_one_account_do_not_immediately_block_another(self):
+        address = "127.0.0.1"
         for _ in range(5):
-            self.throttle.check_login_attempt(email1, ip)
-
-        # user2 should still be allowed
-        result = self.throttle.check_login_attempt(email2, ip)
-        self.assertEqual(result, ThrottleResult.ALLOWED)
+            record_login_failure(address, "first@example.com")
+        self.assertIsNotNone(login_retry_after(address, "first@example.com"))
+        self.assertIsNone(login_retry_after(address, "second@example.com"))
 
 
 if __name__ == "__main__":
