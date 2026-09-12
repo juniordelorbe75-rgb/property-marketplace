@@ -8,7 +8,7 @@ from uuid import uuid4
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from PIL import Image, UnidentifiedImageError
 
-from backend.auth.dependencies import get_current_user_id
+from backend.auth.dependencies import get_current_user_id, get_current_verified_user_id
 from backend.auth.request_throttle import consume_rate_limit, retry_after_detail
 from backend.db import get_db
 from backend.image_storage import (
@@ -40,7 +40,7 @@ Image.MAX_IMAGE_PIXELS = MAX_IMAGE_PIXELS
 def upload_property_image(
     upload: PropertyImageUpload,
     request: Request,
-    current_user_id: int = Depends(get_current_user_id),
+    current_user_id: int = Depends(get_current_verified_user_id),
 ):
     request_address = client_address(request, TRUSTED_PROXY_NETWORKS)
     retry_after = consume_rate_limit(

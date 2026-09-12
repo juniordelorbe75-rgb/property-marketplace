@@ -93,6 +93,16 @@ def store_property_image(image_name: str, image_data: bytes, content_type: str, 
     return property_image_url(image_name, settings)
 
 
+def is_managed_property_image_url(image_url: str, settings=None) -> bool:
+    settings = os.environ if settings is None else settings
+    if image_url.startswith(UPLOAD_URL_PREFIX):
+        return True
+    if image_storage_mode(settings) != "s3":
+        return False
+    base_url = settings.get("OBJECT_STORAGE_PUBLIC_BASE_URL", "").strip().rstrip("/")
+    return bool(base_url) and image_url.startswith(f"{base_url}/{OBJECT_KEY_PREFIX}")
+
+
 def _image_name_from_url(image_url: str, settings) -> str | None:
     if image_url.startswith(UPLOAD_URL_PREFIX):
         image_name = image_url.removeprefix(UPLOAD_URL_PREFIX)
@@ -106,6 +116,22 @@ def _image_name_from_url(image_url: str, settings) -> str | None:
     if not image_name or Path(image_name).name != image_name:
         return None
     return image_name
+
+
+def managed_property_image_owner_id(image_url: str, settings=None) -> int | None:
+    """Return the HabitaRD uploader ID for a managed image URL, otherwise None."""
+    settings = os.environ if settings is None else settings
+    image_name = _image_name_from_url(image_url, settings)
+    if image_name is None:
+        return None
+    owner_prefix, separator, _rest = image_name.partition("_")
+    if not separator:
+        return None
+    try:
+        owner_id = int(owner_prefix)
+    except ValueError:
+        return None
+    return owner_id if owner_id > 0 else None
 
 
 def delete_uploaded_property_image(image_url: str, *, directory: Path | None = None, settings=None, client=None) -> bool:

@@ -5,7 +5,11 @@ from fastapi import APIRouter, Depends, Header, Query
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.orm import Session
 
-from backend.auth.dependencies import get_current_admin_user_id, get_current_user_id
+from backend.auth.dependencies import (
+    get_current_admin_user_id,
+    get_current_user_id,
+    get_current_verified_user_id,
+)
 from backend.db import get_db
 from backend.models import (
     AdminAccess,
@@ -131,7 +135,7 @@ def report_property(
     property_id: int,
     report_data: ListingReportCreate,
     idempotency_key: UUID = Header(alias="Idempotency-Key"),
-    current_user_id: int = Depends(get_current_user_id),
+    current_user_id: int = Depends(get_current_verified_user_id),
     session: Session = Depends(get_db),
 ):
     return create_listing_report(

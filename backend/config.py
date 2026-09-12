@@ -32,6 +32,7 @@ def api_documentation_paths(environment: str) -> dict[str, str | None]:
         "openapi_url": "/openapi.json",
     }
 
+
 def validate_secret_key(secret_key: str | None) -> str:
     if not secret_key:
         raise RuntimeError("SECRET_KEY environment variable is not set")
@@ -90,6 +91,16 @@ def parse_boolean_setting(name: str, value: str | None, default: bool = False) -
     if normalized in {"0", "false", "no", "off"}:
         return False
     raise RuntimeError(f"{name} must be true or false")
+
+
+def email_verification_required(settings=None) -> bool:
+    settings = os.environ if settings is None else settings
+    environment = parse_app_environment(settings.get("APP_ENV"))
+    return parse_boolean_setting(
+        "REQUIRE_EMAIL_VERIFICATION",
+        settings.get("REQUIRE_EMAIL_VERIFICATION"),
+        default=environment == "production",
+    )
 
 
 def parse_bounded_integer_setting(
@@ -181,6 +192,8 @@ def validate_production_environment(settings=None) -> None:
         raise RuntimeError("FORCE_HTTPS must be true in production")
     if not parse_boolean_setting("SMTP_USE_TLS", settings.get("SMTP_USE_TLS")):
         raise RuntimeError("SMTP_USE_TLS must be true in production")
+    if not email_verification_required(settings):
+        raise RuntimeError("REQUIRE_EMAIL_VERIFICATION cannot be false in production")
     if image_storage_mode(settings) != "s3":
         raise RuntimeError("PROPERTY_IMAGE_STORAGE must be s3 in production")
     validate_object_storage_settings(settings)
