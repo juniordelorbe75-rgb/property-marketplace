@@ -27,9 +27,9 @@ services:
       - key: ADMIN_USER_IDS
         value: "1"
       - key: CORS_ORIGINS
-        sync: false
+        value: https://habitard-marketplace.netlify.app
       - key: FRONTEND_URL
-        sync: false
+        value: https://habitard-marketplace.netlify.app
       - key: SMTP_HOST
         sync: false
       - key: SMTP_PORT
