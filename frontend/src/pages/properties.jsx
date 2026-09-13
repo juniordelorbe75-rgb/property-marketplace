@@ -310,6 +310,15 @@ function Properties({ searchMode = false }) {
     <div className="properties-page">
 
       {!searchMode && <section className="home-hero" aria-labelledby="home-hero-title">
+        <figure className="home-hero-media">
+          <img
+            src="/habitard-hero.jpg"
+            alt="Sala contemporánea iluminada por el sol, con plantas y vista a las montañas"
+            width="1280"
+            height="720"
+            fetchPriority="high"
+          />
+        </figure>
         <div className="home-hero-copy">
           <p className="home-hero-eyebrow">Propiedades en venta y alquiler</p>
           <h1 id="home-hero-title">Encuentre su lugar en la República Dominicana.</h1>
