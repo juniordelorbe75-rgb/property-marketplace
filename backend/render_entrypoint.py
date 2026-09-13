@@ -24,6 +24,10 @@ def configure_environment() -> None:
         public_origin = f"https://{hostname}"
         os.environ.setdefault("TRUSTED_HOSTS", hostname)
         os.environ.setdefault("OAUTH_REDIRECT_BASE_URL", public_origin)
+        # Render terminates TLS before forwarding the request to this container.
+        # Trust the platform proxy so Uvicorn restores the original HTTPS scheme
+        # and HTTPSRedirectMiddleware does not redirect an already-secure request.
+        os.environ.setdefault("FORWARDED_ALLOW_IPS", "*")
 
 
 def main() -> None:
@@ -40,7 +44,7 @@ def main() -> None:
         host="0.0.0.0",
         port=int(os.getenv("PORT", "10000")),
         proxy_headers=True,
-        forwarded_allow_ips=os.getenv("TRUSTED_PROXY_IPS", "127.0.0.1"),
+        forwarded_allow_ips=os.getenv("FORWARDED_ALLOW_IPS", "127.0.0.1"),
     )
 
 
