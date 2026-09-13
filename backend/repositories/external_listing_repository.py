@@ -186,7 +186,7 @@ def withdraw_stale_listings(session: Session, now: datetime | None = None) -> in
 def _public_catalog_statement(
     session: Session, *, now: datetime | None = None, source_id: int | None = None,
     location=None, min_price=None, max_price=None, currency=None,
-    property_type=None, listing_type=None, bedrooms=None, bathrooms=None,
+    property_type=None, listing_type=None, amenity=None, bedrooms=None, bathrooms=None,
     min_area_sqm=None,
 ):
     now = _as_utc(now or datetime.now(timezone.utc))
@@ -231,6 +231,8 @@ def _public_catalog_statement(
         statement = statement.where(ExternalListingDB.property_type.ilike(f"%{property_type}%"))
     if listing_type:
         statement = statement.where(ExternalListingDB.listing_type == listing_type)
+    if amenity:
+        statement = statement.where(ExternalListingDB.amenities_json.contains(f'"{amenity}"'))
     if bedrooms is not None:
         statement = statement.where(ExternalListingDB.bedrooms >= bedrooms)
     if bathrooms is not None:
@@ -240,15 +242,29 @@ def _public_catalog_statement(
     return statement
 
 
-def get_public_external_listings(session: Session, limit: int = 20, offset: int = 0, **filters):
-    statement = (
-        _public_catalog_statement(session, **filters)
-        .options(selectinload(ExternalListingDB.source))
-        .order_by(ExternalListingDB.source_updated_at.desc(), ExternalListingDB.id.desc())
-        .offset(offset)
-        .limit(limit)
+def _sort_public_catalog_statement(statement, sort_by: str):
+    if sort_by == "price_low":
+        return statement.order_by(ExternalListingDB.price.asc(), ExternalListingDB.id.desc())
+    if sort_by == "price_high":
+        return statement.order_by(ExternalListingDB.price.desc(), ExternalListingDB.id.desc())
+    return statement.order_by(
+        ExternalListingDB.source_updated_at.desc(),
+        ExternalListingDB.id.desc(),
     )
-    return session.scalars(statement).all()
+
+
+def get_public_external_listings(
+    session: Session,
+    limit: int = 20,
+    offset: int = 0,
+    sort_by: str = "newest",
+    **filters,
+):
+    statement = _public_catalog_statement(session, **filters).options(
+        selectinload(ExternalListingDB.source)
+    )
+    statement = _sort_public_catalog_statement(statement, sort_by)
+    return session.scalars(statement.offset(offset).limit(limit)).all()
 
 
 def count_public_external_listings(session: Session, **filters) -> int:

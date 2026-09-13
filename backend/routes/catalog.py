@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from backend.auth.dependencies import get_current_admin_user_id
 from backend.db import get_db
 from backend.db_models.external_listing import ExternalListingDB, ListingFeedAuditDB, ListingSourceDB
-from backend.models import ExternalProperty
+from backend.models import Amenity, ExternalProperty
 from backend.integrations.reppingdr_sync import sync_reppingdr
 from backend.repositories.external_listing_repository import (
     count_public_external_listings,
@@ -116,21 +116,38 @@ def public_external_catalog(
     currency: str | None = Query(default=None, pattern=r"^[A-Z]{3}$"),
     property_type: str | None = Query(default=None, max_length=100),
     listing_type: str | None = Query(default=None, pattern=r"^(sale|rent)$"),
+    amenity: Amenity | None = None,
     bedrooms: int | None = Query(default=None, ge=0, le=100),
     bathrooms: float | None = Query(default=None, ge=0, le=100),
     min_area_sqm: float | None = Query(default=None, ge=0),
+    sort_by: Literal["newest", "price_low", "price_high"] = "newest",
     limit: int = Query(default=20, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
     session: Session = Depends(get_db),
 ):
+    if sort_by.startswith("price_") and currency is None:
+        raise HTTPException(
+            status_code=400,
+            detail="Choose a currency before sorting partner inventory by price",
+        )
+
     filters = dict(
         now=datetime.now(timezone.utc),
         location=location, min_price=min_price, max_price=max_price, currency=currency,
-        property_type=property_type, listing_type=listing_type, bedrooms=bedrooms,
-        bathrooms=bathrooms, min_area_sqm=min_area_sqm,
+        property_type=property_type, listing_type=listing_type, amenity=amenity,
+        bedrooms=bedrooms, bathrooms=bathrooms, min_area_sqm=min_area_sqm,
     )
     response.headers["X-Total-Count"] = str(count_public_external_listings(session, **filters))
-    return [ExternalProperty.from_db(item) for item in get_public_external_listings(session, limit, offset, **filters)]
+    return [
+        ExternalProperty.from_db(item)
+        for item in get_public_external_listings(
+            session,
+            limit,
+            offset,
+            sort_by=sort_by,
+            **filters,
+        )
+    ]
 
 
 @router.get("/admin/sources", response_model=list[SourceOversightResponse])

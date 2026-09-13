@@ -11,6 +11,10 @@ import {
   getPropertyApiSearchParams,
   readPropertySearchParams,
 } from "../utils/propertySearchParams"
+import {
+  getCombinedResultPageCount,
+  getExternalCatalogApiSearchParams,
+} from "../utils/externalCatalogSearch"
 import { clearRecentlyViewed, readRecentlyViewed } from "../utils/recentlyViewed"
 import { useAuth } from "../context/AuthContext"
 import { updateFavoriteIds } from "../utils/favoriteIds"
@@ -105,41 +109,56 @@ function Properties({ searchMode = false }) {
           )
         }
 
+        const totalCount = Number(response.headers.get("x-total-count"))
+        const safeTotal = Number.isSafeInteger(totalCount) && totalCount >= 0
+          ? totalCount
+          : data.length
+        let nextExternalProperties = []
+        let nextExternalTotal = 0
+
+        const externalParams = getExternalCatalogApiSearchParams(
+          parsed,
+          parsed.page,
+          PROPERTIES_PER_PAGE,
+        )
+
+        if (externalParams) {
+          try {
+            const externalResponse = await apiFetch(
+              `/catalog/external?${externalParams.toString()}`,
+              { signal: controller.signal },
+            )
+            if (!externalResponse.ok) {
+              throw new Error("El inventario de aliados no está disponible temporalmente")
+            }
+            nextExternalProperties = await readApiResponse(externalResponse)
+            const count = Number(externalResponse.headers.get("x-total-count"))
+            nextExternalTotal = Number.isSafeInteger(count) && count >= 0
+              ? count
+              : nextExternalProperties.length
+          } catch (externalError) {
+            if (externalError.name !== "AbortError") {
+              console.warn("El inventario de aliados no está disponible temporalmente")
+            }
+          }
+        }
+
         if (!cancelled) {
           setProperties(data)
-          const totalCount = Number(response.headers.get("x-total-count"))
-          const safeTotal = Number.isSafeInteger(totalCount) && totalCount >= 0
-            ? totalCount
-            : data.length
           setTotalResults(safeTotal)
-          const lastPage = Math.max(1, Math.ceil(safeTotal / PROPERTIES_PER_PAGE))
+          setExternalProperties(nextExternalProperties)
+          setExternalTotal(nextExternalTotal)
+
+          const lastPage = getCombinedResultPageCount(
+            safeTotal,
+            nextExternalTotal,
+            PROPERTIES_PER_PAGE,
+          )
           const safePage = Math.min(parsed.page, lastPage)
           setCurrentPage(safePage)
 
           if (safePage !== parsed.page) {
             setSearchParams(buildPropertySearchParams(parsed, safePage), { replace: true })
-          }
-        }
-
-        try {
-          const externalParams = new URLSearchParams(apiParams)
-          externalParams.delete("reference")
-          externalParams.delete("amenity")
-          externalParams.delete("status")
-          externalParams.delete("min_square_feet")
-          const externalResponse = await apiFetch(`/catalog/external?${externalParams.toString()}`, { signal: controller.signal })
-          if (!externalResponse.ok) throw new Error("El inventario de aliados no está disponible temporalmente")
-          const externalData = await readApiResponse(externalResponse)
-          if (!cancelled) {
-            setExternalProperties(externalData)
-            const count = Number(externalResponse.headers.get("x-total-count"))
-            setExternalTotal(Number.isSafeInteger(count) && count >= 0 ? count : externalData.length)
-          }
-        } catch (externalError) {
-          if (externalError.name !== "AbortError") console.warn("El inventario de aliados no está disponible temporalmente")
-          if (!cancelled) {
-            setExternalProperties([])
-            setExternalTotal(0)
           }
         }
       } catch (error) {
@@ -291,9 +310,10 @@ function Properties({ searchMode = false }) {
     }
   }
 
-  const totalPages = Math.max(
-    1,
-    Math.ceil(totalResults / PROPERTIES_PER_PAGE)
+  const totalPages = getCombinedResultPageCount(
+    totalResults,
+    externalTotal,
+    PROPERTIES_PER_PAGE,
   )
   const firstPropertyIndex =
     (currentPage - 1) * PROPERTIES_PER_PAGE
