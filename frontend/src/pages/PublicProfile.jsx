@@ -38,14 +38,28 @@ function PublicProfile() {
 
   return (
     <main className="public-profile-page">
-      {loading && <p>Cargando perfil…</p>}
-      {!loading && error && <section className="public-profile-card" role="alert"><h1>Perfil no disponible</h1><p>{error}</p><button type="button" onClick={() => setAttempt((value) => value + 1)}>Intentar de nuevo</button><Link to="/">Volver al inicio</Link></section>}
+      {loading && <div className="public-profile-loading" role="status"><span aria-hidden="true">H</span><p>Preparando el perfil…</p></div>}
+      {!loading && error && <section className="public-profile-card public-profile-error" role="alert"><span className="public-profile-symbol" aria-hidden="true">⌂</span><h1>Perfil no disponible</h1><p>{error}</p><div className="public-profile-actions"><button type="button" onClick={() => setAttempt((value) => value + 1)}>Intentar de nuevo</button><Link to="/search">Buscar propiedades</Link></div></section>}
       {!loading && profile && <section className="public-profile-card">
-        <p className="public-profile-label">Perfil de HabitaRD</p>
-        <h1>{profile.display_name}</h1>
-        {profile.bio ? <p className="public-profile-bio">{profile.bio}</p> : <p className="public-profile-empty">Este miembro decidió no compartir una biografía.</p>}
-        <div className="public-profile-privacy">El correo electrónico y la fecha de nacimiento son privados y nunca aparecen en perfiles públicos.</div>
-        <Link to="/search">Buscar propiedades</Link>
+        <div className="public-profile-heading">
+          <span className="public-profile-avatar" aria-hidden="true">{profile.display_name?.trim()?.charAt(0)?.toUpperCase() || "H"}</span>
+          <div>
+            <p className="public-profile-label">Perfil público de HabitaRD</p>
+            <h1>{profile.display_name}</h1>
+            <span className="public-profile-member">Miembro de la comunidad</span>
+          </div>
+        </div>
+
+        <div className="public-profile-about">
+          <h2>Acerca de este miembro</h2>
+          {profile.bio ? <p className="public-profile-bio">{profile.bio}</p> : <p className="public-profile-empty">Este miembro ha preferido mantener su presentación en privado.</p>}
+        </div>
+
+        <div className="public-profile-privacy"><span aria-hidden="true">✓</span><p><strong>Privacidad protegida</strong> El correo electrónico, teléfono y la información personal no aparecen en este perfil.</p></div>
+        <div className="public-profile-actions">
+          <Link className="public-profile-primary" to="/search">Explorar propiedades</Link>
+          <Link className="public-profile-secondary" to="/">Volver al inicio</Link>
+        </div>
       </section>}
     </main>
   )

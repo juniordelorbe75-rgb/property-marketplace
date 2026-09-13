@@ -13,6 +13,7 @@ import {
   REPORT_REASON_LABELS,
   REPORT_STATUSES,
 } from "../utils/moderation"
+import useAppDialog from "../components/useAppDialog"
 import "./SafetyReports.css"
 
 const STATUS_LABELS = {
@@ -37,6 +38,7 @@ function formatReportDate(value) {
 }
 
 function SafetyReports() {
+  const { confirmDialog, dialogElement } = useAppDialog()
   const { token } = useAuth()
   const [reportPage, setReportPage] = useState(EMPTY_PAGE)
   const [statusFilter, setStatusFilter] = useState("submitted")
@@ -148,9 +150,15 @@ function SafetyReports() {
     const action = getSafetyHoldAction(report)
     if (!action || updatingId !== null || holdingId !== null) return
 
-    const confirmed = window.confirm(action.held
-      ? "¿Ocultar temporalmente este anuncio de las búsquedas y bloquear consultas nuevas?"
-      : "¿Liberar este anuncio de la retención de seguridad?")
+    const confirmed = await confirmDialog({
+      title: action.held ? "¿Aplicar retención de seguridad?" : "¿Liberar este anuncio?",
+      message: action.held
+        ? "El anuncio se ocultará temporalmente de las búsquedas y dejará de aceptar consultas nuevas."
+        : "El anuncio volverá a estar disponible según el estado elegido por su propietario.",
+      confirmLabel: action.held ? "Aplicar retención" : "Liberar anuncio",
+      cancelLabel: "Volver",
+      tone: action.held ? "danger" : "default",
+    })
     if (!confirmed) return
 
     setHoldingId(report.id)
@@ -299,6 +307,7 @@ function SafetyReports() {
           <button type="button" disabled={page >= reportPage.totalPages || loading} onClick={() => setPage((current) => current + 1)}>Siguiente</button>
         </nav>
       )}
+      {dialogElement}
     </main>
   )
 }

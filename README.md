@@ -175,4 +175,8 @@ GitHub Actions runs the same backend suite plus frontend tests, lint, and produc
 
 Never commit `.env`, database dumps, uploaded images, private keys, or access tokens. The repository ignores these local files. Use `.env.example` only as a template, and rotate `SECRET_KEY` between environments.
 
+Official social profiles shown on the contact page are configured when building the
+frontend. Copy `frontend/.env.example` to `frontend/.env.local` and add only the
+public profile links that are ready to publish. Empty entries remain hidden.
+
 Passwords are hashed directly with bcrypt. New passwords are limited to 72 UTF-8 bytes so bcrypt never silently treats two different long passwords as equivalent.

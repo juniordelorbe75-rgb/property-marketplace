@@ -1,50 +1,112 @@
 .create-property-page {
-  max-width: 780px;
+  max-width: 980px;
   margin: 0 auto;
-  padding: 40px 20px;
+  padding: 34px 20px 42px;
 }
 
 .create-property-container {
-  background: white;
-  padding: clamp(24px, 5vw, 42px);
-  border-radius: 20px;
-  border: 1px solid #dce6e1;
-  box-shadow: 0 16px 45px rgba(18, 45, 34, .08);
+  position: relative;
+  overflow: hidden;
+  padding: clamp(24px, 4vw, 40px);
+  border: 1px solid #d8e3dc;
+  border-radius: 24px;
+  background:
+    radial-gradient(circle at 100% 0, rgba(240, 196, 84, .14), transparent 19rem),
+    linear-gradient(145deg, #fffefa, #fbfdfb);
+  box-shadow: 0 20px 54px rgba(31, 77, 59, .1);
+}
+
+.create-property-container::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 5px;
+  background: linear-gradient(#3f8067, #efc454);
+}
+
+.create-property-intro {
+  margin-bottom: 28px;
+  padding-bottom: 22px;
+  border-bottom: 1px solid #e2e8e3;
+}
+
+.create-property-intro > span {
+  display: inline-block;
+  margin-bottom: 7px;
+  color: #a96827;
+  font-size: .74rem;
+  font-weight: 800;
+  letter-spacing: .12em;
+  text-transform: uppercase;
 }
 
 .create-property-container h1 {
-  margin-top: 0;
-  color: #122d23;
+  margin: 0;
+  color: #245b49;
+  font-size: clamp(2rem, 4vw, 2.75rem);
   letter-spacing: -.035em;
+  line-height: 1.08;
+}
+
+.create-property-intro p { max-width: 590px; margin: 10px 0 0; color: #66736d; font-size: 1.02rem; }
+
+.create-property-container form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px 16px;
 }
 
 .form-group {
   display: flex;
   flex-direction: column;
-  margin-bottom: 18px;
+  min-width: 0;
+  margin: 0;
 }
 
+.form-group-wide,
+.amenities-fieldset,
+.form-error,
+.create-property-container form > button[type="submit"] { grid-column: 1 / -1; }
+
 .form-group label {
-  margin-bottom: 6px;
-  font-weight: 600;
+  margin-bottom: 7px;
+  color: #304b40;
+  font-size: .9rem;
+  font-weight: 700;
 }
 
 .form-group input,
-.form-group select {
-  padding: 10px;
-  border: 1px solid #c7d4ce;
+.form-group select,
+.form-group textarea {
+  width: 100%;
+  min-height: 44px;
+  padding: 11px 13px;
+  border: 1px solid #ccd9d2;
   border-radius: 10px;
-  font-size: 16px;
+  background: rgba(255, 255, 255, .9);
+  color: #24362f;
+  font-size: 15px;
+}
+
+.form-group textarea { min-height: 116px; resize: vertical; line-height: 1.5; }
+.form-group input:hover, .form-group select:hover, .form-group textarea:hover { border-color: #9fc3b2; }
+.form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+  border-color: #3f8067;
+  box-shadow: 0 0 0 3px rgba(63, 128, 103, .12);
+  outline: none;
 }
 
 .create-property-container button {
-  padding: 12px 20px;
+  min-height: 44px;
+  padding: 11px 20px;
   border: none;
   border-radius: 10px;
-  background: #1f654c;
+  background: #3f8067;
   color: white;
   cursor: pointer;
-  font-size: 16px;
+  font-size: 15px;
+  font-weight: 750;
+  box-shadow: 0 8px 18px rgba(36, 91, 73, .17);
 }
 
 .create-property-container button:disabled {
@@ -56,7 +118,7 @@
   color: #dc2626;
   margin-bottom: 15px;
 }
-.create-property-container button:hover:not(:disabled) { background: #154936; transform: translateY(-1px); }
+.create-property-container button:hover:not(:disabled) { background: #2d6551; transform: translateY(-1px); }
 
 .draft-restored {
   display: flex;
@@ -84,16 +146,17 @@
   align-self: flex-start;
   margin: 0;
   padding: 10px 16px;
-  border: 1px solid #2563eb;
-  border-radius: 6px;
-  color: #2563eb;
+  border: 1px solid #ddb24b;
+  border-radius: 9px;
+  background: #fff5dc;
+  color: #81551f;
   cursor: pointer;
 }
 
-.image-upload-button:hover { background: #eff6ff; }
+.image-upload-button:hover { background: #ffedbd; }
 .image-upload-button input { display: none; }
-.image-upload-help, .image-or { margin-top: 7px; color: #64748b; font-size: 14px; }
-.location-help { margin: 7px 0 0; color: #64748b; font-size: 14px; line-height: 1.4; }
+.image-upload-help, .image-or { margin-top: 7px; color: #687970; font-size: 13px; }
+.location-help { margin: 7px 0 0; color: #687970; font-size: 13px; line-height: 1.4; }
 .location-map-preview {
   display: flex;
   align-items: flex-start;
@@ -103,7 +166,7 @@
   font-size: 13px;
 }
 .location-map-preview span { color: #b45309; }
-.location-map-preview a { color: #1d4ed8; font-weight: 700; white-space: nowrap; }
+.location-map-preview a { color: #2d745b; font-weight: 700; white-space: nowrap; }
 .image-or { margin-bottom: 7px; }
 .image-preview-list { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 12px; }
 .image-preview-list img { width: 140px; height: 96px; border-radius: 8px; object-fit: cover; }
@@ -112,13 +175,20 @@
 .image-preview-item button { padding: 7px 9px; }
 .create-property-container .remove-image-button { padding: 8px 12px; background: white; border: 1px solid #dc2626; color: #dc2626; }
 
-.amenities-fieldset { margin: 0 0 18px; border: 1px solid #cbd5e1; border-radius: 8px; }
-.amenities-fieldset legend { padding: 0 6px; font-weight: 600; }
-.amenities-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-.amenities-options label { display: flex; align-items: center; gap: 8px; font-weight: 400; }
+.amenities-fieldset { margin: 0; padding: 16px; border: 1px solid #d5dfd9; border-radius: 12px; background: rgba(238, 247, 241, .56); }
+.amenities-fieldset legend { padding: 0 7px; color: #304b40; font-size: .9rem; font-weight: 750; }
+.amenities-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 9px; }
+.amenities-options label { display: flex; align-items: center; gap: 8px; color: #53685e; font-size: .88rem; font-weight: 500; }
 .amenities-options input { width: auto; }
 
 @media (max-width: 600px) {
+  .create-property-page { padding: 24px 14px 32px; }
+  .create-property-container form { grid-template-columns: 1fr; }
+  .form-group-wide,
+  .amenities-fieldset,
+  .form-error,
+  .create-property-container form > button[type="submit"] { grid-column: auto; }
+  .amenities-options { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .draft-restored { align-items: stretch; flex-direction: column; }
   .location-map-preview { flex-direction: column; }
 }

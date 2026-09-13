@@ -5,6 +5,13 @@ import { formatPropertyPrice } from "../utils/propertyPrice"
 import { formatPropertyReference } from "../utils/propertyReference"
 import "./PropertyCard.css"
 
+const PROPERTY_TYPE_LABELS = {
+  House: "Casa",
+  Villa: "Villa",
+  Apartment: "Apartamento",
+  Condo: "Condominio",
+}
+
 function PropertyCard({
   id,
   title,
@@ -32,6 +39,22 @@ function PropertyCard({
 
   return (
     <div className="property-card">
+
+      {externalUrl ? (
+        <a
+          className="property-card-hit-area"
+          href={externalUrl}
+          target="_blank"
+          rel="noreferrer"
+          aria-label={`Ver ${title} en la fuente`}
+        />
+      ) : (
+        <Link
+          className="property-card-hit-area"
+          to={`/properties/${id}`}
+          aria-label={`Ver detalles de ${title}`}
+        />
+      )}
 
       <div className="property-image">
         <PropertyImage imageUrl={imageUrl} title={title} />
@@ -86,13 +109,13 @@ function PropertyCard({
         {freshness && <p className="property-freshness">{freshness}</p>}
 
         <div className="property-card-info">
-          <span>🛏 {bedrooms} Bedrooms</span>
-          <span>🛁 {bathrooms} Bathrooms</span>
+          <span>🛏 {bedrooms} habitaciones</span>
+          <span>🛁 {bathrooms} baños</span>
           {squareFeet > 0 && (
-            <span>📐 {Number(squareFeet).toLocaleString()} sq ft</span>
+            <span>📐 {Number(squareFeet).toLocaleString()} pies²</span>
           )}
           {areaSqm > 0 && <span>📐 {Number(areaSqm).toLocaleString()} m²</span>}
-          <span>🏠 {propertyType}</span>
+          <span>⌂ {PROPERTY_TYPE_LABELS[propertyType] || propertyType}</span>
         </div>
 
         <div className="property-card-bottom">

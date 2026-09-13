@@ -6,19 +6,29 @@
 
 .my-properties-header {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: space-between;
   gap: 32px;
-  margin-bottom: 36px;
+  margin-bottom: 24px;
+  padding: 24px 26px;
+  border: 1px solid #dce6e0;
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 92% 10%, rgba(221, 178, 71, .16), transparent 27%),
+    linear-gradient(135deg, #f5faf7, #fffaf0);
+  box-shadow: 0 12px 32px rgba(35, 78, 60, .07);
 }
 
 .my-properties-header h1 {
   margin: 4px 0 8px;
-  font-size: clamp(2rem, 5vw, 3.25rem);
+  color: #214f3f;
+  font-size: clamp(1.9rem, 4vw, 2.65rem);
+  letter-spacing: -.035em;
 }
 
 .my-properties-header p {
   margin: 0;
+  color: #67786f;
 }
 
 .my-properties-eyebrow {
@@ -47,6 +57,32 @@
   background: #245744;
 }
 
+.my-properties-actions {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.inquiries-shortcut {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  padding: 0 17px;
+  border: 1px solid #91ad9f;
+  border-radius: 10px;
+  background: rgba(255,255,255,.78);
+  color: #2f6f57;
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.inquiries-shortcut:hover {
+  border-color: #3f8067;
+  background: #edf6f1;
+}
+
 .listing-count {
   margin: 0 0 18px;
   color: #5d665f;
@@ -72,19 +108,37 @@
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 12px;
-  margin-bottom: 30px;
+  margin-bottom: 22px;
 }
 
 .seller-stats div {
-  padding: 18px 12px;
+  position: relative;
+  overflow: hidden;
+  padding: 16px 10px;
   border: 1px solid #dce5df;
   border-radius: 12px;
-  background: white;
+  background: linear-gradient(155deg, #fff, #f8fbf9);
   text-align: center;
+  box-shadow: 0 5px 18px rgba(35, 78, 60, .045);
 }
 
-.seller-stats strong { display: block; color: #234f3e; font-size: 1.7rem; }
+.seller-stats strong { display: block; color: #234f3e; font-size: 1.55rem; line-height: 1.15; }
 .seller-stats span { color: #647067; font-size: 0.82rem; }
+
+.seller-stats .seller-stat-primary {
+  border-color: #3f8067;
+  background: linear-gradient(145deg, #3f8067, #326b55);
+}
+
+.seller-stats .seller-stat-primary strong,
+.seller-stats .seller-stat-primary span { color: #fff; }
+
+.seller-stats .seller-stat-attention {
+  border-color: #e6c573;
+  background: linear-gradient(145deg, #fff9e9, #fffdf7);
+}
+
+.seller-stats .seller-stat-attention strong { color: #9b6a17; }
 
 .my-properties-grid {
   display: grid;
@@ -92,12 +146,22 @@
   gap: 24px;
 }
 
-.my-listing-item { display: flex; min-width: 0; flex-direction: column; gap: 10px; }
+.my-listing-item {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 9px;
+  padding: 8px;
+  border: 1px solid #e2e9e5;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 8px 24px rgba(35, 78, 60, .055);
+}
 .listing-status-toggle {
   padding: 10px 14px;
   border: 1px solid #2f6f57;
-  border-radius: 8px;
-  background: white;
+  border-radius: 10px;
+  background: #f8fbf9;
   color: #245744;
   cursor: pointer;
   font-weight: 700;
@@ -112,8 +176,8 @@
   gap: 8px 12px;
   padding: 10px 12px;
   border: 1px solid #dce5df;
-  border-radius: 8px;
-  background: #f8faf9;
+  border-radius: 10px;
+  background: #f5f9f6;
   color: #526159;
   font-size: 0.84rem;
 }
@@ -167,8 +231,11 @@
   .my-properties-header {
     align-items: stretch;
     flex-direction: column;
-    gap: 20px;
+    gap: 18px;
+    padding: 20px;
   }
 
+  .my-properties-actions { align-items: stretch; flex-direction: column-reverse; }
+  .my-properties-actions a { width: 100%; }
   .seller-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }

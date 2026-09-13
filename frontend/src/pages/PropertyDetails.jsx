@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom"
 import PropertyImage from "../components/PropertyImage"
+import PropertyCard from "../components/propertyCard"
+import useAppDialog from "../components/useAppDialog"
 import { getApiError } from "../utils/apiError"
 import { readApiResponse } from "../utils/apiResponse"
 import { PROPERTY_AMENITIES } from "../utils/propertyOptions"
@@ -27,9 +29,9 @@ import {
 } from "../utils/contactInquiryDraft"
 
 const INQUIRY_PROMPTS = [
-  "Is this property still available?",
-  "I would like to schedule a viewing.",
-  "Could you share more details about this property?",
+  "¿Esta propiedad todavía está disponible?",
+  "Me gustaría coordinar una visita.",
+  "¿Podría compartir más detalles sobre esta propiedad?",
 ]
 
 const REPORT_REASONS = [
@@ -46,9 +48,12 @@ function PropertyDetails() {
   const inquiryDraftOwnerId = getDraftOwnerId(localStorage.getItem("access_token"))
   const navigate = useNavigate()
   const routeLocation = useLocation()
+  const { confirmDialog, noticeDialog, dialogElement } = useAppDialog()
 
   const [property, setProperty] = useState(null)
   const [activeImageUrl, setActiveImageUrl] = useState("")
+  const [galleryOpen, setGalleryOpen] = useState(false)
+  const [similarProperties, setSimilarProperties] = useState([])
   const [loading, setLoading] = useState(true)
   const [propertyLoadAttempt, setPropertyLoadAttempt] = useState(0)
 
@@ -357,14 +362,13 @@ function PropertyDetails() {
   }
 
   function toggleInquiryForm() {
+    const destination = `/inquiries?property=${formatPropertyReference(property.id)}&compose=1`
     if (!localStorage.getItem("access_token")) {
-      navigate("/login", { state: { returnTo: getReturnPath(routeLocation) } })
+      navigate("/login", { state: { returnTo: destination } })
       return
     }
 
-    setInquirySuccess(null)
-    setShowReport(false)
-    setShowInquiry((current) => !current)
+    navigate(destination)
   }
 
   function toggleReportForm() {
@@ -481,13 +485,58 @@ function PropertyDetails() {
     }
   }
 
-  function showAdjacentImage(direction) {
+  const showAdjacentImage = useCallback((direction) => {
     setActiveImageUrl((current) => getAdjacentImage(
-      property.image_urls,
+      property.image_urls?.length ? property.image_urls : (property.image_url ? [property.image_url] : []),
       current || property.image_url,
       direction,
     ))
-  }
+  }, [property])
+
+  useEffect(() => {
+    if (!galleryOpen) return undefined
+
+    const previousOverflow = document.body.style.overflow
+    const handleGalleryKey = (event) => {
+      if (event.key === "Escape") setGalleryOpen(false)
+      if (event.key === "ArrowLeft") showAdjacentImage(-1)
+      if (event.key === "ArrowRight") showAdjacentImage(1)
+    }
+
+    document.body.style.overflow = "hidden"
+    window.addEventListener("keydown", handleGalleryKey)
+
+    return () => {
+      document.body.style.overflow = previousOverflow
+      window.removeEventListener("keydown", handleGalleryKey)
+    }
+  }, [galleryOpen, showAdjacentImage])
+
+  useEffect(() => {
+    if (!property?.id || !property?.property_type) {
+      return undefined
+    }
+
+    const controller = new AbortController()
+    const params = new URLSearchParams({
+      property_type: property.property_type,
+      status: "available",
+      limit: "4",
+      sort_by: "newest",
+    })
+
+    apiFetch(`/properties/search?${params.toString()}`, { signal: controller.signal })
+      .then(async (response) => {
+        const data = await readApiResponse(response)
+        if (!response.ok || !Array.isArray(data)) return
+        setSimilarProperties(data.filter((item) => item.id !== property.id).slice(0, 3))
+      })
+      .catch((requestError) => {
+        if (requestError.name !== "AbortError") setSimilarProperties([])
+      })
+
+    return () => controller.abort()
+  }, [property?.id, property?.property_type])
 
   function clearSelectedImages() {
     imagePreviews.forEach((preview) => URL.revokeObjectURL(preview))
@@ -502,17 +551,17 @@ function PropertyDetails() {
     if (!files.length) return
 
     if (imageUrls.length + files.length + (imageUrl ? 1 : 0) > 8) {
-      setError("A property can have no more than 8 pictures.")
+      setError("Cada propiedad puede tener un máximo de 8 fotos.")
       event.target.value = ""
       return
     }
     if (files.some((file) => !["image/jpeg", "image/png", "image/webp"].includes(file.type))) {
-      setError("Every picture must be a JPG, PNG, or WebP image.")
+      setError("Todas las fotos deben estar en formato JPG, PNG o WebP.")
       event.target.value = ""
       return
     }
     if (files.some((file) => file.size > 5 * 1024 * 1024)) {
-      setError("Each picture must be no larger than 5 MB.")
+      setError("Cada foto debe pesar como máximo 5 MB.")
       event.target.value = ""
       return
     }
@@ -609,7 +658,7 @@ function PropertyDetails() {
     }
 
     if (!imageUrls.length && !imageUrl.trim() && !imageFiles.length) {
-      setError("Keep or add at least one property picture before saving.")
+      setError("Conserve o agregue al menos una foto antes de guardar.")
       return
     }
 
@@ -625,10 +674,10 @@ function PropertyDetails() {
       const updatedImageUrls = Array.from(new Set(orderedImageUrls))
       if (updatedImageUrls.length > 8) {
         await Promise.all(uploadedImageUrls.map((url) => deleteUnusedUpload(token, url)))
-        throw new Error("A property can have no more than 8 pictures.")
+        throw new Error("Cada propiedad puede tener un máximo de 8 fotos.")
       }
       if (!updatedImageUrls.length) {
-        throw new Error("Keep or add at least one property picture before saving.")
+        throw new Error("Conserve o agregue al menos una foto antes de guardar.")
       }
       const response = await apiFetch(`/properties/${id}`, {
         method: "PUT",
@@ -672,7 +721,11 @@ function PropertyDetails() {
       setImageUrls(data.image_urls || (data.image_url ? [data.image_url] : []))
       clearSelectedImages()
       setEditing(false)
-      alert("¡Propiedad actualizada correctamente!")
+      await noticeDialog({
+        title: "Cambios guardados",
+        message: "La información de la propiedad se actualizó correctamente.",
+        confirmLabel: "Continuar",
+      })
     } catch (updateError) {
       console.error("Update error:", updateError)
       setError(updateError.message)
@@ -689,9 +742,13 @@ function PropertyDetails() {
       return
     }
 
-    const confirmed = window.confirm(
-      "Are you sure you want to delete this property?"
-    )
+    const confirmed = await confirmDialog({
+      title: "¿Eliminar esta propiedad?",
+      message: "El anuncio, sus fotos y la actividad relacionada se eliminarán permanentemente.",
+      confirmLabel: "Eliminar propiedad",
+      cancelLabel: "Conservar anuncio",
+      tone: "danger",
+    })
 
     if (!confirmed) {
       return
@@ -733,7 +790,7 @@ function PropertyDetails() {
         <h1>No pudimos cargar la propiedad</h1>
         <p>{error}</p>
         <button type="button" onClick={() => setPropertyLoadAttempt((current) => current + 1)}>
-          Try again
+          Intentar de nuevo
         </button>
         <Link to="/">Volver a las propiedades</Link>
       </div>
@@ -753,12 +810,16 @@ function PropertyDetails() {
     || (identityStatus === "ready" && !isOwner)
   const isAvailable =
     property.status?.toLowerCase() === "available" && !property.safety_hold
+  const propertyImages = property.image_urls?.length
+    ? property.image_urls
+    : (property.image_url ? [property.image_url] : [])
+  const activeImagePosition = Math.max(0, propertyImages.indexOf(activeImageUrl)) + 1
 
   return (
     <div className="property-details-page">
 
       <Link to="/" className="back-link">
-        ← Back to properties
+        ← Volver a las propiedades
       </Link>
 
       {error && (
@@ -775,8 +836,8 @@ function PropertyDetails() {
 
           <form onSubmit={handleUpdate}>
 
-            <label>
-              Title
+            <label className="property-edit-wide">
+              Título
               <input
                 type="text"
                 value={title}
@@ -787,8 +848,8 @@ function PropertyDetails() {
               />
             </label>
 
-            <label>
-              Description (optional)
+            <label className="property-edit-wide">
+              Descripción (opcional)
               <textarea
                 value={description}
                 onChange={(event) =>
@@ -799,13 +860,13 @@ function PropertyDetails() {
               />
             </label>
 
-            <label className="property-edit-image-field">
-              Property pictures
+            <label className="property-edit-image-field property-edit-wide">
+              Fotos de la propiedad
               {imageUrls.length > 0 && (
                 <span className="property-edit-gallery">
                   {imageUrls.map((url, index) => (
                     <span className="property-edit-gallery-item" key={url}>
-                      <img src={url} alt={`Property ${index + 1}`} />
+                      <img src={url} alt={`Foto ${index + 1} de la propiedad`} />
                       <span>{index === 0 ? "Portada" : `Imagen ${index + 1}`}</span>
                       {index > 0 && (
                         <button type="button" onClick={() => makeCoverImage(index)}>Usar como portada</button>
@@ -816,7 +877,7 @@ function PropertyDetails() {
                 </span>
               )}
               <span className="property-edit-upload-button">
-                Add pictures
+                Agregar fotos
                 <input type="file" multiple accept="image/jpeg,image/png,image/webp" onChange={handleImageFiles} />
               </span>
               <small>Obligatorio · conserve o agregue al menos una imagen · máximo 8 · JPG, PNG o WebP · 5 MB cada una</small>
@@ -824,17 +885,17 @@ function PropertyDetails() {
                 <span className="property-edit-new-images">
                   {imagePreviews.map((preview, index) => (
                     <span className="property-edit-gallery-item" key={preview}>
-                      <img src={preview} alt={`New property preview ${index + 1}`} />
+                      <img src={preview} alt={`Vista previa de la foto nueva ${index + 1}`} />
                       <span>
                         {index === 0 && newImagesAreCover ? "Nueva portada" : `Nueva imagen ${index + 1}`}
                       </span>
                       {!(index === 0 && newImagesAreCover) && (
                         <button type="button" onClick={() => makeNewImageCover(index)}>
-                          Make cover
+                          Usar como portada
                         </button>
                       )}
                       <button type="button" onClick={() => removeNewImage(index)}>
-                        Remove
+                        Eliminar
                       </button>
                     </span>
                   ))}
@@ -854,7 +915,7 @@ function PropertyDetails() {
             </label>
 
             <label>
-              Listing For
+              Modalidad
               <select value={listingType} onChange={(event) => setListingType(event.target.value)}>
                 <option value="sale">En venta</option>
                 <option value="rent">En alquiler</option>
@@ -862,7 +923,7 @@ function PropertyDetails() {
             </label>
 
             <label>
-              Currency
+              Moneda
               <select value={currency} onChange={(event) => setCurrency(event.target.value)}>
                 <option value="USD">Dólares estadounidenses (US$)</option>
                 <option value="DOP">Pesos dominicanos (RD$)</option>
@@ -882,7 +943,7 @@ function PropertyDetails() {
             </label>
 
             <label>
-              Location
+              Ubicación
               <input
                 type="text"
                 list="dominican-location-suggestions"
@@ -893,7 +954,7 @@ function PropertyDetails() {
                 required
               />
               <span className="location-edit-help">
-                Add sector, city/province, and country when possible. A private street address is not required.
+                Incluya el sector, municipio y provincia cuando sea posible. No es necesario publicar una dirección privada.
               </span>
               <DominicanLocationSuggestions />
             </label>
@@ -904,13 +965,13 @@ function PropertyDetails() {
                   <span>Agregue una ciudad, provincia o país para mejorar la búsqueda en el mapa.</span>
                 )}
                 <a href={buildPropertyMapUrl(location)} target="_blank" rel="noreferrer">
-                  Preview map search ↗
+                  Revisar ubicación en el mapa ↗
                 </a>
               </div>
             )}
 
             <label>
-              Property Type
+              Tipo de propiedad
 
               <select
                 value={propertyType}
@@ -927,7 +988,7 @@ function PropertyDetails() {
             </label>
 
             <label>
-              Bedrooms
+              Habitaciones
 
               <input
                 type="number"
@@ -940,7 +1001,7 @@ function PropertyDetails() {
             </label>
 
             <label>
-              Bathrooms
+              Baños
 
               <input
                 type="number"
@@ -955,7 +1016,7 @@ function PropertyDetails() {
             </label>
 
             <label>
-              Square Feet (optional)
+              Pies cuadrados (opcional)
 
               <input
                 type="number"
@@ -970,7 +1031,7 @@ function PropertyDetails() {
             </label>
 
             <label>
-              Status
+              Estado
 
               <select
                 value={status}
@@ -979,7 +1040,7 @@ function PropertyDetails() {
                 }
               >
                 <option value="available" disabled={property.safety_hold}>
-                  Available
+                  Disponible
                 </option>
 
                 <option value="unavailable">
@@ -1017,7 +1078,7 @@ function PropertyDetails() {
                   cancelEditing()
                 }}
               >
-                Cancel
+                Cancelar
               </button>
 
             </div>
@@ -1031,12 +1092,28 @@ function PropertyDetails() {
 
           <div className="property-gallery">
             <div className="property-details-image">
-              <PropertyImage
-                imageUrl={activeImageUrl || property.image_url}
-                title={property.title}
-                priority
-              />
-              {property.image_urls?.length > 1 && (
+              {propertyImages.length > 0 ? (
+                <button
+                  type="button"
+                  className="property-gallery-open"
+                  onClick={() => setGalleryOpen(true)}
+                  aria-label="Ampliar imagen de la propiedad"
+                >
+                  <PropertyImage
+                    imageUrl={activeImageUrl || property.image_url}
+                    title={property.title}
+                    priority
+                  />
+                  <span className="property-gallery-open-label" aria-hidden="true">Ampliar</span>
+                </button>
+              ) : (
+                <PropertyImage
+                  imageUrl={activeImageUrl || property.image_url}
+                  title={property.title}
+                  priority
+                />
+              )}
+              {propertyImages.length > 1 && (
                 <>
                   <button
                     type="button"
@@ -1056,16 +1133,21 @@ function PropertyDetails() {
                   </button>
                 </>
               )}
+              {propertyImages.length > 1 && (
+                <span className="property-gallery-count" aria-live="polite">
+                  {activeImagePosition} / {propertyImages.length}
+                </span>
+              )}
             </div>
-            {property.image_urls?.length > 1 && (
+            {propertyImages.length > 1 && (
               <div className="property-gallery-thumbnails" aria-label="Imágenes de la propiedad">
-                {property.image_urls.map((url, index) => (
+                {propertyImages.map((url, index) => (
                   <button
                     type="button"
                     key={url}
                     className={url === activeImageUrl ? "active" : ""}
                     onClick={() => setActiveImageUrl(url)}
-                    aria-label={`View property picture ${index + 1}`}
+                    aria-label={`Ver foto ${index + 1} de la propiedad`}
                   >
                     <PropertyImage imageUrl={url} title={property.title} position={index + 1} />
                   </button>
@@ -1085,7 +1167,7 @@ function PropertyDetails() {
 
             <h1>{property.title}</h1>
 
-            <p className="property-reference">Listing {formatPropertyReference(property.id)}</p>
+            <p className="property-reference">Anuncio {formatPropertyReference(property.id)}</p>
 
             <p className="property-location">
               📍 {property.location}
@@ -1097,19 +1179,21 @@ function PropertyDetails() {
               target="_blank"
               rel="noreferrer"
             >
-              Open location in maps ↗
+              Ver ubicación aproximada en el mapa ↗
             </a>
 
             <p className="property-map-note">
-              Approximate area based on the seller's description. Confirm the exact location with the seller.
+              Área aproximada según la descripción del anunciante. Confirme la ubicación exacta directamente con el propietario.
             </p>
 
-            <p className="property-owner">
-              Listed by {property.owner_name}
-              {property.owner_profile_public && (
-                <> · <Link to={`/profiles/${property.owner_id}`}>Ver perfil</Link></>
-              )}
-            </p>
+            <div className="property-owner">
+              <span className="property-owner-avatar" aria-hidden="true">{property.owner_name?.trim()?.charAt(0)?.toUpperCase() || "H"}</span>
+              <div>
+                <small>Publicado por</small>
+                <strong>{property.owner_name || "Miembro de HabitaRD"}</strong>
+                {property.owner_profile_public && <Link to={`/profiles/${property.owner_id}`}>Ver perfil público</Link>}
+              </div>
+            </div>
 
             {getListingFreshness(property.created_at, property.updated_at) && (
               <p className="property-listed-date">
@@ -1188,7 +1272,7 @@ function PropertyDetails() {
                 className="share-button"
                 onClick={handleShare}
               >
-                Share
+                Compartir
               </button>
 
               {canUseBuyerActions && (
@@ -1205,6 +1289,7 @@ function PropertyDetails() {
               {canUseBuyerActions && isAvailable && (
                 <>
                   <button
+                    className="contact-owner-button"
                     onClick={toggleInquiryForm}
                   >
                     {showInquiry
@@ -1221,8 +1306,8 @@ function PropertyDetails() {
                       {favoriteLoading
                         ? "Guardando..."
                         : isFavorite
-                          ? "❤️ Favorited"
-                          : "♡ Favorite"}
+                          ? "♥ Guardada"
+                          : "♡ Guardar"}
                     </button>
                   )}
                   {favoriteStatus === "loading" && (
@@ -1232,7 +1317,7 @@ function PropertyDetails() {
                     <span className="favorite-state favorite-state-error" role="alert">
                       El estado del favorito no está disponible.
                       <button type="button" onClick={() => setFavoriteAttempt((current) => current + 1)}>
-                        Retry
+                        Reintentar
                       </button>
                     </span>
                   )}
@@ -1241,7 +1326,7 @@ function PropertyDetails() {
 
               {!isOwner && !isAvailable && (
                 <p className="property-unavailable-message">
-                  This property is not accepting new inquiries.
+                  Esta propiedad no está aceptando consultas nuevas.
                 </p>
               )}
 
@@ -1269,7 +1354,7 @@ function PropertyDetails() {
                 <span className="identity-status identity-error" role="alert">
                   No pudimos verificar el acceso a la cuenta.
                   <button type="button" onClick={() => setIdentityAttempt((current) => current + 1)}>
-                    Try again
+                    Reintentar
                   </button>
                 </span>
               )}
@@ -1282,7 +1367,7 @@ function PropertyDetails() {
               <div className="report-success" role="status">
                 <div>
                   <strong>Reporte registrado.</strong>
-                  <span>Safety report #{reportSuccess} was saved. You do not need to submit it again.</span>
+                  <span>El reporte de seguridad #{reportSuccess} fue guardado. No necesita enviarlo nuevamente.</span>
                 </div>
                 <Link to="/my-reports">Ver mis reportes</Link>
               </div>
@@ -1295,7 +1380,7 @@ function PropertyDetails() {
                     <h2>Reportar este anuncio</h2>
                     <p>Utilice esta opción para informar problemas de seguridad, exactitud, duplicidad o disponibilidad.</p>
                   </div>
-                  <span>Reference {formatPropertyReference(property.id)}</span>
+                  <span>Anuncio {formatPropertyReference(property.id)}</span>
                 </div>
 
                 <form onSubmit={handleReport}>
@@ -1335,7 +1420,7 @@ function PropertyDetails() {
                         disabled={reportLoading}
                         onClick={() => setShowReport(false)}
                       >
-                        Cancel
+                        Cancelar
                       </button>
                     </div>
                   </div>
@@ -1350,7 +1435,7 @@ function PropertyDetails() {
                   <span>Puede continuar la conversación con el propietario desde sus consultas.</span>
                 </div>
                 <Link to={`/inquiries?property=${formatPropertyReference(inquirySuccess.propertyId)}`}>
-                  Open conversation
+                  Abrir conversación
                 </Link>
               </div>
             )}
@@ -1363,7 +1448,7 @@ function PropertyDetails() {
                     <h2>Contactar al propietario</h2>
                     <p>Pregunte sobre disponibilidad, visitas o cualquier detalle de la propiedad.</p>
                   </div>
-                  <span>Reference {formatPropertyReference(property.id)}</span>
+                  <span>Anuncio {formatPropertyReference(property.id)}</span>
                 </div>
 
                 <form onSubmit={handleInquiry}>
@@ -1393,7 +1478,7 @@ function PropertyDetails() {
                         event.target.value
                       )
                     }
-                    placeholder="Write a message to the owner..."
+                    placeholder="Escriba un mensaje al propietario…"
                     rows="5"
                     maxLength="1000"
                     disabled={inquiryLoading}
@@ -1407,7 +1492,7 @@ function PropertyDetails() {
 
                   <div className="inquiry-form-footer">
 
-                    <span>Session draft saved · {inquiryMessage.length}/1000 · Ctrl/⌘ + Enter to send</span>
+                    <span>Borrador guardado · {inquiryMessage.length}/1000 · Ctrl/⌘ + Enter para enviar</span>
 
                     <div className="inquiry-form-actions">
 
@@ -1429,7 +1514,7 @@ function PropertyDetails() {
                         setInquiryKey(crypto.randomUUID())
                       }}
                     >
-                      Clear
+                      Limpiar
                     </button>
 
                     <button
@@ -1438,7 +1523,7 @@ function PropertyDetails() {
                         setShowInquiry(false)
                       }
                     >
-                      Cancel
+                      Cancelar
                     </button>
 
                     </div>
@@ -1453,6 +1538,97 @@ function PropertyDetails() {
           </div>
         </div>
       )}
+
+      {similarProperties.length > 0 && (
+        <section className="related-properties" aria-labelledby="related-properties-title">
+          <div className="related-properties-heading">
+            <div>
+              <p>Continúe explorando</p>
+              <h2 id="related-properties-title">Propiedades que también podrían interesarle</h2>
+            </div>
+            <Link to={`/search?${new URLSearchParams({ propertyType: property.property_type }).toString()}`}>
+              Ver más propiedades
+            </Link>
+          </div>
+          <div className="related-properties-grid">
+            {similarProperties.map((item) => (
+              <PropertyCard
+                key={item.id}
+                id={item.id}
+                title={item.title}
+                location={item.location}
+                bedrooms={item.bedrooms}
+                bathrooms={item.bathrooms}
+                squareFeet={item.square_feet}
+                price={item.price}
+                currency={item.currency}
+                listingType={item.listing_type}
+                propertyType={item.property_type}
+                status={item.status}
+                safetyHold={item.safety_hold}
+                imageUrl={item.image_url}
+                createdAt={item.created_at}
+                updatedAt={item.updated_at}
+              />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {galleryOpen && propertyImages.length > 0 && (
+        <div
+          className="property-lightbox"
+          role="dialog"
+          aria-modal="true"
+          aria-label={`Galería ampliada de ${property.title}`}
+          onClick={() => setGalleryOpen(false)}
+        >
+          <div className="property-lightbox-content" onClick={(event) => event.stopPropagation()}>
+            <button
+              type="button"
+              className="property-lightbox-close"
+              onClick={() => setGalleryOpen(false)}
+              aria-label="Cerrar galería"
+              autoFocus
+            >
+              ×
+            </button>
+
+            <PropertyImage
+              imageUrl={activeImageUrl || property.image_url}
+              title={property.title}
+              position={activeImagePosition}
+              priority
+            />
+
+            {propertyImages.length > 1 && (
+              <>
+                <button
+                  type="button"
+                  className="property-lightbox-arrow previous"
+                  onClick={() => showAdjacentImage(-1)}
+                  aria-label="Ver imagen anterior"
+                >
+                  ‹
+                </button>
+                <button
+                  type="button"
+                  className="property-lightbox-arrow next"
+                  onClick={() => showAdjacentImage(1)}
+                  aria-label="Ver imagen siguiente"
+                >
+                  ›
+                </button>
+              </>
+            )}
+
+            <span className="property-lightbox-count">
+              {activeImagePosition} de {propertyImages.length}
+            </span>
+          </div>
+        </div>
+      )}
+      {dialogElement}
     </div>
   )
 }

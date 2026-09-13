@@ -4,16 +4,18 @@
 
 :root {
   color-scheme: light;
-  --ink: #12221c;
-  --muted: #607068;
-  --brand: #1f654c;
-  --brand-dark: #154936;
-  --brand-soft: #eaf4ef;
-  --line: #dce6e1;
-  --surface: #ffffff;
-  --canvas: #f5f8f6;
-  --shadow-sm: 0 2px 10px rgba(18, 45, 34, .06);
-  --shadow-md: 0 18px 45px rgba(18, 45, 34, .1);
+  --ink: #24362f;
+  --muted: #66736d;
+  --brand: #3f8067;
+  --brand-dark: #2d6551;
+  --brand-soft: #e8f3ed;
+  --accent: #a96827;
+  --accent-soft: #fbefdc;
+  --line: #dcded6;
+  --surface: #fffefa;
+  --canvas: #f7f8f3;
+  --shadow-sm: 0 4px 16px rgba(38, 72, 58, .07);
+  --shadow-md: 0 22px 55px rgba(38, 72, 58, .13);
   --radius-sm: 10px;
   --radius-md: 16px;
   --radius-lg: 24px;
@@ -25,7 +27,10 @@ body {
   margin: 0;
   min-width: 320px;
   font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  background: var(--canvas);
+  background:
+    radial-gradient(circle at 8% 0, #eef7f1 0, transparent 30rem),
+    radial-gradient(circle at 92% 4%, #fff5e2 0, transparent 27rem),
+    var(--canvas);
   color: var(--ink);
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
@@ -33,8 +38,8 @@ body {
 
 a, button, input, select, textarea { transition: border-color .16s ease, background-color .16s ease, color .16s ease, box-shadow .16s ease, transform .16s ease; }
 button, input, select, textarea { font: inherit; }
-button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 3px solid rgba(31, 101, 76, .2); outline-offset: 2px; }
-::selection { background: #c7e8da; color: #0f3528; }
+button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 3px solid rgba(63, 128, 103, .3); outline-offset: 2px; }
+::selection { background: #f3ddb1; color: #3d3528; }
 
 .skip-link {
   position: fixed;
@@ -43,7 +48,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   left: 12px;
   padding: 12px 16px;
   border-radius: 8px;
-  background: #173e30;
+  background: var(--brand-dark);
   color: #fff;
   font-weight: 700;
   text-decoration: none;

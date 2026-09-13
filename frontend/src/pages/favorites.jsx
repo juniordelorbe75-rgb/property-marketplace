@@ -121,7 +121,14 @@ function Favorites() {
   }
 
   if (loading) {
-    return <p>Cargando favoritos...</p>
+    return (
+      <main className="favorites-page">
+        <div className="favorites-loading" role="status">
+          <span aria-hidden="true">♡</span>
+          <p>Preparando sus propiedades guardadas...</p>
+        </div>
+      </main>
+    )
   }
 
   if (loadError) {
@@ -137,19 +144,28 @@ function Favorites() {
   }
 
   return (
-    <div className="properties-page">
-      <div className="properties-header">
-        <h1>Mis favoritos</h1>
-        <p>Propiedades que ha guardado.</p>
-      </div>
+    <main className="properties-page favorites-page">
+      <header className="properties-header favorites-header">
+        <div>
+          <p className="favorites-eyebrow">Su colección personal</p>
+          <h1>Propiedades guardadas</h1>
+          <p>Compare con calma los lugares que más le interesan.</p>
+        </div>
+        <div className="favorites-header-actions">
+          <span>{favorites.length} {favorites.length === 1 ? "propiedad" : "propiedades"}</span>
+          <Link to="/search">Explorar más</Link>
+        </div>
+      </header>
 
       {actionError && <p className="favorites-action-error" role="alert">{actionError}</p>}
 
       {favorites.length === 0 ? (
-        <div>
-          <p>Todavía no ha guardado ninguna propiedad.</p>
-          <Link to="/">Explorar propiedades</Link>
-        </div>
+        <section className="favorites-empty">
+          <span aria-hidden="true">♡</span>
+          <h2>Su colección está lista para comenzar</h2>
+          <p>Guarde las propiedades que le gusten para compararlas y encontrarlas fácilmente más adelante.</p>
+          <Link to="/search">Descubrir propiedades</Link>
+        </section>
       ) : (
         <div className="properties-grid">
           {favorites.map((favorite) => {
@@ -175,18 +191,20 @@ function Favorites() {
                   updatedAt={property.updated_at}
                 />
                 <button
+                  type="button"
                   className="remove-favorite-button"
                   onClick={() => removeFavorite(property.id)}
                   disabled={removingIds.has(property.id)}
+                  aria-label={`Eliminar ${property.title} de favoritos`}
                 >
-                  {removingIds.has(property.id) ? "Eliminando..." : "Eliminar de favoritos"}
+                  {removingIds.has(property.id) ? "Eliminando..." : "Quitar de guardados"}
                 </button>
               </div>
             )
           })}
         </div>
       )}
-    </div>
+    </main>
   )
 }
 

@@ -5,6 +5,7 @@ import { getApiError } from "../utils/apiError"
 import { readApiResponse } from "../utils/apiResponse"
 import { apiFetch } from "../utils/apiFetch"
 import { getSafeReturnPath } from "../utils/authRedirect"
+import { resolveApiUrl } from "../utils/apiUrl"
 import { queueLoginWelcome } from "../utils/loginWelcomeSession"
 import PasswordInput from "../components/PasswordInput"
 import AuthLayout from "../components/AuthLayout"
@@ -35,7 +36,7 @@ function Login() {
 
   function socialLogin(provider) {
     const query = new URLSearchParams({ return_to: returnTo })
-    window.location.assign(`/auth/${provider}/start?${query}`)
+    window.location.assign(resolveApiUrl(`/auth/${provider}/start?${query}`))
   }
 
   async function handleLogin(event) {

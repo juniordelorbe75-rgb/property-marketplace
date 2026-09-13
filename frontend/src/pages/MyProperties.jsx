@@ -175,9 +175,14 @@ function MyProperties() {
           <p>Administre las propiedades que ha publicado en HabitaRD.</p>
         </div>
 
-        <Link className="add-property-link" to="/create-property">
-          + Agregar propiedad
-        </Link>
+        <div className="my-properties-actions">
+          <Link className="inquiries-shortcut" to="/inquiries">
+            Ver mensajes
+          </Link>
+          <Link className="add-property-link" to="/create-property">
+            + Agregar propiedad
+          </Link>
+        </div>
       </header>
 
       {loading && (
@@ -198,12 +203,12 @@ function MyProperties() {
 
       {!loading && !error && stats && (
         <section className="seller-stats" aria-label="Estadísticas del anunciante">
-          <div><strong>{stats.total_listings}</strong><span>Total de anuncios</span></div>
+          <div className="seller-stat-primary"><strong>{stats.total_listings}</strong><span>Total de anuncios</span></div>
           <div><strong>{stats.available_listings}</strong><span>Disponibles</span></div>
           <div><strong>{stats.unavailable_listings}</strong><span>No disponibles</span></div>
           <div><strong>{stats.favorites_received}</strong><span>Favoritos</span></div>
           <div><strong>{stats.inquiries_received}</strong><span>Consultas</span></div>
-          <div><strong>{stats.pending_inquiries}</strong><span>Pendientes</span></div>
+          <div className={stats.pending_inquiries > 0 ? "seller-stat-attention" : ""}><strong>{stats.pending_inquiries}</strong><span>Pendientes</span></div>
         </section>
       )}
 

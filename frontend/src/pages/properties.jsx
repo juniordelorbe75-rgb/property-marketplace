@@ -307,12 +307,12 @@ function Properties({ searchMode = false }) {
   )
 
   return (
-    <div className="properties-page">
+    <div className={`properties-page${searchMode ? " search-mode" : ""}`}>
 
       {!searchMode && <section className="home-hero" aria-labelledby="home-hero-title">
         <figure className="home-hero-media">
           <img
-            src="/habitard-hero.jpg"
+            src="/habitard-hero-es-v2.jpg"
             alt="Sala contemporánea iluminada por el sol, con plantas y vista a las montañas"
             width="1280"
             height="720"
@@ -344,6 +344,11 @@ function Properties({ searchMode = false }) {
         </div>
       </section>}
 
+      {!searchMode && <section className="home-benefits" aria-labelledby="home-benefits-title">
+        <p className="home-section-eyebrow">Confianza desde el primer paso</p>
+        <h2 id="home-benefits-title">Busque con claridad. Decida con confianza.</h2>
+      </section>}
+
 
       {searchMode && <div className="properties-header">
         <div>
@@ -355,8 +360,9 @@ function Properties({ searchMode = false }) {
       {searchMode && pageShareMessage && <p className="page-share-message" aria-live="polite">{pageShareMessage}</p>}
 
       {searchMode && <div className="property-search" id="property-search">
-
-        <h2>Buscar propiedades</h2>
+        <div className="property-search-heading">
+          <p>Explore el mercado inmobiliario con confianza.</p>
+        </div>
 
         <form onSubmit={handleSearch}>
 
@@ -778,15 +784,6 @@ function Properties({ searchMode = false }) {
           </div>
         </section>
       )}
-
-      {!searchMode && <section className="home-benefits" aria-labelledby="home-benefits-title">
-        <h2 id="home-benefits-title">Una manera más sencilla de avanzar</h2>
-        <ul className="home-confidence-list" aria-label="Beneficios del mercado">
-          <li><strong>Explore antes de registrarse</strong><span>Vea anuncios y provincias sin crear una cuenta.</span></li>
-          <li><strong>Conozca la fuente</strong><span>El inventario importado conserva su proveedor, fecha de actualización y atribución.</span></li>
-          <li><strong>Regístrese cuando lo necesite</strong><span>Cree una cuenta solo cuando quiera guardar, consultar o publicar.</span></li>
-        </ul>
-      </section>}
 
       {!searchMode && <section className="home-share" aria-labelledby="home-share-title">
         <div>

@@ -1,0 +1,67 @@
+.app-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(18, 43, 33, .68);
+  backdrop-filter: blur(8px);
+}
+
+.app-dialog {
+  position: relative;
+  overflow: hidden;
+  width: min(100%, 440px);
+  padding: 28px;
+  border: 1px solid rgba(255,255,255,.68);
+  border-radius: 20px;
+  background: #fffef9;
+  box-shadow: 0 26px 70px rgba(11, 30, 23, .28);
+  color: #53645b;
+  text-align: center;
+}
+
+.app-dialog::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 5px;
+  background: linear-gradient(90deg, #3f8067, #efc454);
+}
+
+.app-dialog-danger::before { background: linear-gradient(90deg, #a64b4b, #dfaa52); }
+
+.app-dialog-mark {
+  display: grid;
+  width: 52px;
+  height: 52px;
+  margin: 0 auto 13px;
+  place-items: center;
+  border-radius: 50%;
+  background: #e7f2ec;
+  color: #347158;
+  font-size: 1.25rem;
+  font-weight: 900;
+}
+
+.app-dialog-danger .app-dialog-mark { background: #fff0ed; color: #a64646; }
+.app-dialog-eyebrow { margin: 0 0 5px; color: #a66a2d; font-size: .68rem; font-weight: 850; letter-spacing: .13em; text-transform: uppercase; }
+.app-dialog h2 { margin: 0 0 9px; color: #245440; font-size: 1.45rem; letter-spacing: -.025em; }
+.app-dialog > p:last-of-type { margin: 0; line-height: 1.6; }
+.app-dialog-actions { display: flex; justify-content: center; gap: 9px; margin-top: 22px; }
+.app-dialog-actions button { min-width: 118px; min-height: 42px; padding: 0 17px; border-radius: 10px; font: inherit; font-weight: 750; cursor: pointer; }
+.app-dialog-cancel { border: 1px solid #cad8d1; background: #fff; color: #53675d; }
+.app-dialog-confirm { border: 1px solid #3f8067; background: #3f8067; color: #fff; }
+.app-dialog-danger .app-dialog-confirm { border-color: #a64b4b; background: #a64b4b; }
+.app-dialog-actions button:hover { transform: translateY(-1px); }
+
+@media (max-width: 480px) {
+  .app-dialog { padding: 25px 19px 20px; }
+  .app-dialog-actions { align-items: stretch; flex-direction: column-reverse; }
+  .app-dialog-actions button { width: 100%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-dialog-actions button:hover { transform: none; }
+}

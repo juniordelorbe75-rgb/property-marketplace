@@ -478,6 +478,8 @@ function Account() {
 
         <div className="account-header">
 
+          <span className="account-eyebrow">Su espacio en HabitaRD</span>
+
           <h1>Mi cuenta</h1>
 
           <p>

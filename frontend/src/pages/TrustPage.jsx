@@ -1,15 +1,32 @@
 import { Link, useLocation } from "react-router-dom"
 import "./TrustPage.css"
 
+const socialProfiles = [
+  ["Instagram", import.meta.env.VITE_INSTAGRAM_URL],
+  ["Facebook", import.meta.env.VITE_FACEBOOK_URL],
+  ["TikTok", import.meta.env.VITE_TIKTOK_URL],
+].filter(([, url]) => url)
+
 const pages = {
   "/about": {
     eyebrow: "Sobre el mercado",
     title: "Una forma más clara de descubrir propiedades dominicanas",
     intro: "HabitaRD es un mercado inmobiliario en desarrollo operado por Damaso Del Orbe. Nuestro propósito es permitir que cualquier persona explore viviendas y proyectos disponibles en toda la República Dominicana antes de crear una cuenta.",
+    quote: "Creemos que encontrar un hogar debe sentirse como una oportunidad, no como una barrera. HabitaRD nace para acercar el mercado inmobiliario dominicano a todas las personas, con información clara, respeto y el deseo sincero de ayudar a cada familia a encontrar un lugar donde construir su futuro.",
     sections: [
       ["Lo que estamos construyendo", "Una experiencia profesional de búsqueda que pueda combinar anuncios administrados por propietarios con inventario suministrado por corredores, desarrolladores, asociaciones y aliados tecnológicos autorizados."],
       ["Nuestra responsabilidad", "Mostramos claramente la fuente del inventario de aliados, lo mantenemos separado de los anuncios administrados por propietarios y retiramos los registros cuando termina la autorización o ya no podemos confirmar su disponibilidad."],
       ["Contacto", "Puede enviar sus preguntas comerciales o sobre el mercado a juniordelorbe75@gmail.com, o comunicarse por teléfono al +1 849-504-7853."],
+    ],
+  },
+  "/contact": {
+    eyebrow: "Estamos para escucharle",
+    title: "Hable con HabitaRD",
+    intro: "Ya sea que esté buscando una propiedad, publicando un anuncio o explorando una colaboración, queremos que comunicarse con nosotros sea sencillo y cercano.",
+    contact: true,
+    sections: [
+      ["Atención", "Puede escribirnos para realizar preguntas, solicitar correcciones, reportar un anuncio o conocer más sobre HabitaRD."],
+      ["Horario de respuesta", "Responderemos cada mensaje tan pronto como sea posible. Las consultas recibidas fuera del horario habitual serán atendidas el siguiente día laborable."],
     ],
   },
   "/data-partners": {
@@ -58,6 +75,40 @@ function TrustPage() {
         <h1>{page.title}</h1>
         <p>{page.intro}</p>
       </div>
+      {page.quote && <blockquote className="trust-page-quote">“{page.quote}”</blockquote>}
+      {page.contact && (
+        <section className="contact-options" aria-label="Opciones de contacto">
+          <a href="tel:+18495047853">
+            <small>Teléfono</small>
+            <strong>+1 849-504-7853</strong>
+          </a>
+          <a href="mailto:juniordelorbe75@gmail.com">
+            <small>Correo electrónico</small>
+            <strong>juniordelorbe75@gmail.com</strong>
+          </a>
+          <a href="https://wa.me/18495047853" target="_blank" rel="noreferrer">
+            <small>WhatsApp</small>
+            <strong>Iniciar conversación</strong>
+          </a>
+          <div className="contact-social-profiles">
+            <small>Redes sociales</small>
+            {socialProfiles.length > 0 ? (
+              <div className="contact-social-links">
+                {socialProfiles.map(([name, url]) => (
+                  <a key={name} href={url} target="_blank" rel="noreferrer">
+                    {name}
+                  </a>
+                ))}
+              </div>
+            ) : (
+              <>
+                <strong>Próximamente</strong>
+                <span>Los perfiles oficiales aparecerán aquí cuando estén disponibles.</span>
+              </>
+            )}
+          </div>
+        </section>
+      )}
       <div className="trust-page-sections">
         {page.sections.map(([heading, body]) => (
           <section key={heading}>

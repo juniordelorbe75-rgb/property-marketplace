@@ -16,9 +16,11 @@ import {
 import { moveImageToCover, removeImageAt } from "../utils/imageOrder"
 import { buildPropertyMapUrl, isMapLocationDetailed } from "../utils/propertyMap"
 import { buildDominicanLocation, DOMINICAN_PROVINCES } from "../utils/dominicanLocations"
+import useAppDialog from "../components/useAppDialog"
 
 function CreateProperty() {
   const navigate = useNavigate()
+  const { confirmDialog, noticeDialog, dialogElement } = useAppDialog()
   const draftOwnerId = getDraftOwnerId(localStorage.getItem("access_token"))
   const initialDraft = readListingDraft(draftOwnerId)
   const [idempotencyKey, setIdempotencyKey] = useState(
@@ -73,8 +75,15 @@ function CreateProperty() {
     sector, squareFeet, status, title,
   ])
 
-  function discardDraft() {
-    if (!window.confirm("¿Descartar este anuncio de propiedad sin terminar?")) return
+  async function discardDraft() {
+    const confirmed = await confirmDialog({
+      title: "¿Descartar este borrador?",
+      message: "Se eliminará la información y las fotos seleccionadas para este anuncio sin terminar.",
+      confirmLabel: "Descartar borrador",
+      cancelLabel: "Continuar editando",
+      tone: "danger",
+    })
+    if (!confirmed) return
     clearListingDraft(draftOwnerId)
     setTitle("")
     setDescription("")
@@ -255,7 +264,11 @@ function CreateProperty() {
         )
       }
       clearListingDraft(draftOwnerId)
-      alert("¡Propiedad publicada correctamente!")
+      await noticeDialog({
+        title: "Propiedad publicada",
+        message: "Su anuncio ya está listo y puede comenzar a recibir visitas y consultas.",
+        confirmLabel: "Ver propiedad",
+      })
       navigate(`/properties/${data.id}`)
     } catch (submitError) {
       console.error("Error creating property:", submitError)
@@ -268,8 +281,11 @@ function CreateProperty() {
   return (
     <div className="create-property-page">
       <div className="create-property-container">
-        <h1>Publicar una propiedad</h1>
-        <p>Presente su propiedad de forma clara y profesional en HabitaRD.</p>
+        <header className="create-property-intro">
+          <span>Publique con confianza</span>
+          <h1>Publicar una propiedad</h1>
+          <p>Presente su propiedad de forma clara y profesional en HabitaRD.</p>
+        </header>
         {draftRestored && (
           <div className="draft-restored" role="status">
             <div>
@@ -280,15 +296,15 @@ function CreateProperty() {
           </div>
         )}
         <form onSubmit={handleSubmit}>
-          <div className="form-group">
+          <div className="form-group form-group-wide">
             <label>Título</label>
             <input type="text" value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Hermosa vivienda familiar" required />
           </div>
-          <div className="form-group">
+          <div className="form-group form-group-wide">
             <label>Descripción (opcional)</label>
             <textarea value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Describa la propiedad, el sector y sus características principales" rows="5" maxLength="2000" />
           </div>
-          <div className="form-group">
+          <div className="form-group form-group-wide property-photos-field">
             <label>Fotos de la propiedad</label>
             <label className="image-upload-button">
               Seleccionar fotos
@@ -351,7 +367,7 @@ function CreateProperty() {
             <label>Municipio o ciudad</label>
             <input type="text" value={municipality} onChange={(event) => setMunicipality(event.target.value)} placeholder="Santo Domingo" maxLength="100" required />
           </div>
-          <div className="form-group">
+          <div className="form-group form-group-wide">
             <label>Sector o vecindario (opcional)</label>
             <input type="text" value={sector} onChange={(event) => setSector(event.target.value)} placeholder="Piantini" maxLength="100" />
             <p className="location-help">Indique solamente el área pública. No publique una dirección residencial privada.</p>
@@ -398,6 +414,7 @@ function CreateProperty() {
           <button type="submit" disabled={loading}>{loading ? "Publicando..." : "Publicar propiedad"}</button>
         </form>
       </div>
+      {dialogElement}
     </div>
   )
 }

@@ -12,15 +12,18 @@ function Footer() {
           </div>
           <span>Descubra propiedades en toda la República Dominicana.</span>
         </div>
-        <nav aria-label="Información del mercado inmobiliario">
-          <Link to="/about">Nosotros</Link>
-          <Link to="/data-partners">Datos y aliados</Link>
-          <Link to="/privacy">Privacidad</Link>
-          <Link to="/terms">Términos</Link>
-        </nav>
-        <div className="site-footer-contact">
-          <span>Preguntas, correcciones o solicitudes de retiro</span>
-          <a href="mailto:juniordelorbe75@gmail.com">juniordelorbe75@gmail.com</a>
+        <div className="site-footer-links">
+          <nav aria-label="Información sobre HabitaRD">
+            <strong>Información</strong>
+            <Link to="/about">Nosotros</Link>
+            <Link to="/terms">Términos</Link>
+            <Link to="/privacy">Privacidad</Link>
+          </nav>
+          <nav aria-label="Datos y contacto">
+            <strong>Conexión</strong>
+            <Link to="/data-partners">Datos y aliados</Link>
+            <Link to="/contact">Contacto</Link>
+          </nav>
         </div>
       </div>
     </footer>

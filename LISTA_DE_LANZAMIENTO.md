@@ -63,3 +63,17 @@ No se debe cambiar `APP_ENV` a `production` hasta completar todos los requisitos
   `OBJECT_STORAGE_ENDPOINT_URL` y `OBJECT_STORAGE_REGION`
 
 El servidor se negará a iniciar en producción si falta una de estas protecciones.
+
+## Integraciones opcionales preparadas
+
+- El acceso con Google, Facebook y Yahoo se activa al registrar las aplicaciones
+  oficiales y completar sus identificadores, secretos y la dirección pública de retorno.
+- La verificación por SMS se activa con un servicio de Twilio Verify y conserva los
+  prefijos dominicanos permitidos por defecto.
+- Instagram, Facebook y TikTok aparecen en la página de contacto solamente cuando
+  sus enlaces oficiales se agregan a la configuración del sitio web. Los espacios
+  vacíos permanecen ocultos para no publicar perfiles incompletos o no verificados.
+
+Estas integraciones no son necesarias para abrir el mercado. Deben activarse solo
+después de crear las cuentas comerciales, verificar sus dominios y guardar las claves
+en el servicio de secretos del proveedor de alojamiento.

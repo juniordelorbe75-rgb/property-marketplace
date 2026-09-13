@@ -5,7 +5,7 @@ import { getApiError } from "../utils/apiError"
 import { readApiResponse } from "../utils/apiResponse"
 import "./inquiry.css"
 import { apiFetch } from "../utils/apiFetch"
-import { formatPropertyReference, normalizePropertyReference } from "../utils/propertyReference"
+import { formatPropertyReference, normalizePropertyReference, propertyIdFromReference } from "../utils/propertyReference"
 import { notifyInquiriesChanged } from "../utils/inquiryEvents"
 import {
   buildInquiryPageUrl,
@@ -15,9 +15,20 @@ import {
 } from "../utils/inquiryPage"
 import { getDraftOwnerId } from "../utils/listingDraft"
 import { readInquiryDrafts, saveInquiryDrafts } from "../utils/inquiryDrafts"
+import {
+  clearContactInquiryDraft,
+  readContactInquiryDraft,
+  saveContactInquiryDraft,
+} from "../utils/contactInquiryDraft"
+import useAppDialog from "../components/useAppDialog"
 
 const INQUIRY_STATUSES = ["pending", "accepted", "rejected", "cancelled"]
 const INQUIRIES_PER_PAGE = 6
+const NEW_INQUIRY_PROMPTS = [
+  "¿Esta propiedad todavía está disponible?",
+  "Me gustaría coordinar una visita.",
+  "¿Podría compartir más detalles sobre esta propiedad?",
+]
 
 function inquiryStatusLabel(value, plural = true) {
   const labels = plural
@@ -236,6 +247,7 @@ function InquiryReplyComposer({ inquiry, value, sending, notice, onChange, onSen
 
 function Inquiries() {
   const { token, logout } = useAuth()
+  const { confirmDialog, dialogElement } = useAppDialog()
   const accountId = getDraftOwnerId(token)
   const [searchParams, setSearchParams] = useSearchParams()
   const [sentInquiries, setSentInquiries] = useState([])
@@ -268,13 +280,105 @@ function Inquiries() {
   const autoRefreshPausedRef = useRef(false)
 
   const propertyReference = normalizePropertyReference(searchParams.get("property"))
+  const composeRequested = searchParams.get("compose") === "1"
+  const composePropertyId = propertyIdFromReference(propertyReference)
+  const [composeProperty, setComposeProperty] = useState(null)
+  const [composeLoading, setComposeLoading] = useState(false)
+  const [composeError, setComposeError] = useState("")
+  const [composeMessage, setComposeMessage] = useState("")
+  const [composeKey, setComposeKey] = useState(() => crypto.randomUUID())
+  const [composeSending, setComposeSending] = useState(false)
+
+  useEffect(() => {
+    if (!composeRequested || !composePropertyId) {
+      return undefined
+    }
+
+    const controller = new AbortController()
+    const loadTimer = window.setTimeout(() => {
+      const draft = readContactInquiryDraft(accountId, composePropertyId)
+      setComposeMessage(draft?.message || "")
+      setComposeKey(draft?.idempotencyKey || crypto.randomUUID())
+      setComposeLoading(true)
+      setComposeError("")
+
+      apiFetch(`/properties/${composePropertyId}`, { signal: controller.signal })
+        .then(async (response) => {
+          const data = await readApiResponse(response)
+          if (!response.ok) throw new Error(getApiError(data, "No pudimos cargar esta propiedad"))
+          setComposeProperty(data)
+        })
+        .catch((requestError) => {
+          if (requestError.name !== "AbortError") setComposeError(requestError.message)
+        })
+        .finally(() => {
+          if (!controller.signal.aborted) setComposeLoading(false)
+        })
+    }, 0)
+
+    return () => {
+      window.clearTimeout(loadTimer)
+      controller.abort()
+    }
+  }, [accountId, composePropertyId, composeRequested])
+
+  useEffect(() => {
+    if (!composeRequested || !composePropertyId) return
+    saveContactInquiryDraft(accountId, composePropertyId, {
+      message: composeMessage,
+      idempotencyKey: composeKey,
+    })
+  }, [accountId, composeKey, composeMessage, composePropertyId, composeRequested])
 
   function clearPropertyFilter() {
     const nextParams = new URLSearchParams(searchParams)
     nextParams.delete("property")
+    nextParams.delete("compose")
     setSearchParams(nextParams, { replace: true })
     setSentPage(1)
     setReceivedPage(1)
+  }
+
+  function closeComposer() {
+    const nextParams = new URLSearchParams(searchParams)
+    nextParams.delete("compose")
+    setSearchParams(nextParams, { replace: true })
+    setComposeError("")
+  }
+
+  async function sendNewInquiry(event) {
+    event.preventDefault()
+    if (!composePropertyId || !composeMessage.trim()) return
+
+    setComposeSending(true)
+    setComposeError("")
+    try {
+      const response = await apiFetch(`/inquiries/${composePropertyId}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+          "Idempotency-Key": composeKey,
+        },
+        body: JSON.stringify({ message: composeMessage }),
+      })
+      const data = await readApiResponse(response)
+      if (!response.ok) throw new Error(getApiError(data, "No pudimos enviar la consulta"))
+
+      clearContactInquiryDraft(accountId, composePropertyId)
+      setComposeMessage("")
+      setComposeKey(crypto.randomUUID())
+      setSentFilter("all")
+      setSentPage(1)
+      setExpandedInquiryId(data.id)
+      notifyInquiriesChanged()
+      closeComposer()
+      await fetchInquiries({ background: true })
+    } catch (requestError) {
+      setComposeError(requestError.message)
+    } finally {
+      setComposeSending(false)
+    }
   }
 
   const fetchInquiries = useCallback(async (options = {}) => {
@@ -470,11 +574,15 @@ function Inquiries() {
     inquiryId,
     status
   ) {
-    if (
-      status === "rejected"
-      && !window.confirm("¿Rechazar y cerrar esta consulta? La conversación no podrá volver a abrirse.")
-    ) {
-      return
+    if (status === "rejected") {
+      const confirmed = await confirmDialog({
+        title: "¿Rechazar esta consulta?",
+        message: "La conversación se cerrará y no podrá volver a abrirse.",
+        confirmLabel: "Rechazar consulta",
+        cancelLabel: "Conservar conversación",
+        tone: "danger",
+      })
+      if (!confirmed) return
     }
 
     const token =
@@ -614,9 +722,14 @@ function Inquiries() {
   }
 
   async function cancelInquiry(inquiryId) {
-    if (!window.confirm("¿Cancelar esta consulta? Esta acción no se puede deshacer.")) {
-      return
-    }
+    const confirmed = await confirmDialog({
+      title: "¿Cancelar esta consulta?",
+      message: "La conversación se cerrará y esta acción no se puede deshacer.",
+      confirmLabel: "Cancelar consulta",
+      cancelLabel: "Mantener consulta",
+      tone: "danger",
+    })
+    if (!confirmed) return
 
     const token = localStorage.getItem("access_token")
 
@@ -660,6 +773,13 @@ function Inquiries() {
     }
   }
 
+  const existingComposeInquiry = composePropertyId
+    ? sentInquiries.find((inquiry) => (
+        inquiry.property_id === composePropertyId
+        && ["pending", "accepted"].includes(inquiry.status)
+      ))
+    : null
+
   if (loading) {
     return (
       <div className="inquiries-page">
@@ -674,8 +794,9 @@ function Inquiries() {
       <div className="inquiries-header">
 
         <div>
-          <h1>Mis consultas</h1>
-          <p>Administre sus conversaciones sobre propiedades.</p>
+          <p className="inquiries-eyebrow">Centro de conversaciones</p>
+          <h1>Mensajes y consultas</h1>
+          <p>Converse con propietarios y dé seguimiento a cada propiedad desde un solo lugar.</p>
           {lastUpdatedAt && <span>Actualizado el {formatInquiryDate(lastUpdatedAt)}</span>}
           {autoRefreshPaused && <span className="inquiry-refresh-paused">La actualización automática está pausada mientras termina esta acción.</span>}
         </div>
@@ -706,6 +827,69 @@ function Inquiries() {
           <span>{syncWarning}</span>
           <button type="button" onClick={() => fetchInquiries({ background: true })}>Intentar de nuevo</button>
         </div>
+      )}
+
+      {composeRequested && composePropertyId && (
+        <section className="new-inquiry-composer" aria-labelledby="new-inquiry-title">
+          {existingComposeInquiry ? (
+            <div className="new-inquiry-existing">
+              <div>
+                <strong>Ya tiene una conversación sobre esta propiedad.</strong>
+                <span>Puede continuar escribiéndole al propietario en la conversación existente.</span>
+              </div>
+              <button type="button" onClick={() => { closeComposer(); openInquiry(existingComposeInquiry) }}>Abrir conversación</button>
+            </div>
+          ) : (
+            <>
+              <div className="new-inquiry-heading">
+                <div>
+                  <span>Nuevo mensaje</span>
+                  <h2 id="new-inquiry-title">Contactar al propietario</h2>
+                  {composeProperty && <p><strong>{composeProperty.title}</strong> · {composeProperty.owner_name || "Miembro de HabitaRD"}</p>}
+                </div>
+                {composeProperty && <Link to={`/properties/${composePropertyId}`}>Ver propiedad</Link>}
+              </div>
+
+              {composeLoading && <p className="new-inquiry-loading">Preparando la conversación…</p>}
+              {composeError && <p className="new-inquiry-error" role="alert">{composeError}</p>}
+
+              {composeProperty && (
+                <form onSubmit={sendNewInquiry}>
+                  <label htmlFor="new-inquiry-message">Su mensaje</label>
+                  <div className="new-inquiry-prompts" aria-label="Mensajes sugeridos">
+                    {NEW_INQUIRY_PROMPTS.map((prompt) => (
+                      <button
+                        type="button"
+                        key={prompt}
+                        onClick={() => setComposeMessage((current) => `${current.trim()}${current.trim() ? "\n" : ""}${prompt}`.slice(0, 1000))}
+                      >
+                        {prompt}
+                      </button>
+                    ))}
+                  </div>
+                  <textarea
+                    id="new-inquiry-message"
+                    value={composeMessage}
+                    onChange={(event) => setComposeMessage(event.target.value)}
+                    placeholder="Escriba un mensaje al propietario…"
+                    rows="4"
+                    maxLength="1000"
+                    disabled={composeSending}
+                    required
+                    autoFocus
+                  />
+                  <div className="new-inquiry-footer">
+                    <span>Borrador guardado · {composeMessage.length}/1000</span>
+                    <div>
+                      <button type="button" onClick={closeComposer} disabled={composeSending}>Cancelar</button>
+                      <button type="submit" disabled={composeSending || !composeMessage.trim()}>{composeSending ? "Enviando…" : "Enviar mensaje"}</button>
+                    </div>
+                  </div>
+                </form>
+              )}
+            </>
+          )}
+        </section>
       )}
 
       {propertyReference && (
@@ -841,6 +1025,7 @@ function Inquiries() {
 
       </section>}
 
+      {dialogElement}
     </div>
   )
 }

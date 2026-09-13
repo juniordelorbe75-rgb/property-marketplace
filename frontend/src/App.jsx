@@ -81,6 +81,7 @@ function App() {
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/verify-email" element={<VerifyEmail />} />
           <Route path="/about" element={<TrustPage />} />
+          <Route path="/contact" element={<TrustPage />} />
           <Route path="/data-partners" element={<TrustPage />} />
           <Route path="/privacy" element={<TrustPage />} />
           <Route path="/terms" element={<TrustPage />} />

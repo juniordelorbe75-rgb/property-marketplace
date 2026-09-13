@@ -3,6 +3,7 @@ const MAX_READ_RETRIES = 2
 const MAX_RETRY_DELAY_MS = 2000
 const RETRYABLE_STATUSES = new Set([408, 429, 502, 503, 504])
 import { AUTH_EXPIRED_EVENT, getExpiredSessionToken } from "./authSession.js"
+import { resolveApiUrl } from "./apiUrl.js"
 
 export function isRetryableRequest(options = {}) {
   const method = (options.method || "GET").toUpperCase()
@@ -106,7 +107,7 @@ export async function apiFetch(url, options = {}, timeoutMs = DEFAULT_TIMEOUT_MS
     }, timeoutMs)
 
     try {
-      const response = await fetch(url, { ...options, signal: controller.signal })
+      const response = await fetch(resolveApiUrl(url), { ...options, signal: controller.signal })
       const expiredToken = getExpiredSessionToken(response, options)
 
       if (expiredToken) {
