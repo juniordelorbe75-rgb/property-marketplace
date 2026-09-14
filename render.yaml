@@ -27,9 +27,9 @@ services:
       - key: ADMIN_USER_IDS
         value: "1"
       - key: CORS_ORIGINS
-        value: https://habitard-marketplace.netlify.app
+        value: https://habitard-marketplace.netlify.app,https://habitard.juniordelorbe75.workers.dev
       - key: FRONTEND_URL
-        value: https://habitard-marketplace.netlify.app
+        value: https://habitard.juniordelorbe75.workers.dev
       - key: SMTP_HOST
         sync: false
       - key: SMTP_PORT
