@@ -113,31 +113,47 @@ function CreateProperty() {
   }
 
   function handleImageFiles(event) {
-    const files = Array.from(event.target.files || [])
-    setError("")
-    if (!files.length) return
+  const newFiles = Array.from(event.target.files || [])
+  setError("")
 
-    if (files.length > 8) {
-      setError("Seleccione un máximo de 8 fotos.")
-      event.target.value = ""
-      return
-    }
-    if (files.some((file) => !["image/jpeg", "image/png", "image/webp"].includes(file.type))) {
-      setError("Todas las fotos deben estar en formato JPG, PNG o WebP.")
-      event.target.value = ""
-      return
-    }
-    if (files.some((file) => file.size > 5 * 1024 * 1024)) {
-      setError("Cada foto debe pesar como máximo 5 MB.")
-      event.target.value = ""
-      return
-    }
+  if (!newFiles.length) return
 
-    clearSelectedImages()
-    setImageFiles(files)
-    setImageUrl("")
-    setImagePreviews(files.map((file) => URL.createObjectURL(file)))
+  if (
+    newFiles.some(
+      (file) =>
+        !["image/jpeg", "image/png", "image/webp"].includes(file.type)
+    )
+  ) {
+    setError("Todas las fotos deben estar en formato JPG, PNG o WebP.")
+    event.target.value = ""
+    return
   }
+
+  if (newFiles.some((file) => file.size > 5 * 1024 * 1024)) {
+    setError("Cada foto debe pesar como máximo 5 MB.")
+    event.target.value = ""
+    return
+  }
+
+  if (imageFiles.length + newFiles.length > 8) {
+    setError("Puede agregar un máximo de 8 fotos.")
+    event.target.value = ""
+    return
+  }
+
+  setImageFiles((current) => [...current, ...newFiles])
+
+  setImagePreviews((current) => [
+    ...current,
+    ...newFiles.map((file) => URL.createObjectURL(file)),
+  ])
+
+  setImageUrl("")
+
+  // Permite seleccionar otra vez incluso la misma foto.
+  event.target.value = ""
+}
+
 
   function makeSelectedImageCover(index) {
     setImageFiles((current) => moveImageToCover(current, index))
