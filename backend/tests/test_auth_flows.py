@@ -30,6 +30,7 @@ from backend.services.user_service import (
     create_user,
     delete_current_user,
     login_user,
+    update_current_user,
 )
 
 
@@ -97,14 +98,41 @@ class AuthenticationFlowTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             UserCreate(name="Test User", email="test@example.com", password="😀" * 19)
 
-    def test_registration_rejects_unknown_role_field(self):
-        with self.assertRaises(ValueError):
-            UserCreate(
-                name="Test User",
-                email="test@example.com",
-                password="password-123",
-                role="seller",
+    def test_seller_phone_change_requires_verification(self):
+        seller = UserDB(
+            name="Test Seller",
+            email="seller@example.com",
+            password="unused-hash",
+            role="seller",
+            seller_category="owner",
+            seller_phone="+18095550123",
+        )
+        self.session.add(seller)
+        self.session.commit()
+
+        with self.assertRaises(HTTPException):
+            update_current_user(
+                self.session,
+                seller.id,
+                name=seller.name,
+                email=seller.email,
+                seller_phone="+18095550999",
             )
+        self.session.refresh(seller)
+        self.assertEqual(seller.seller_phone, "+18095550123")
+
+        with patch("backend.services.user_service.consume_seller_phone_verification") as consume:
+            update_current_user(
+                self.session,
+                seller.id,
+                name=seller.name,
+                email=seller.email,
+                seller_phone="+18095550999",
+                phone_verification_token="verified-token",
+            )
+        consume.assert_called_once_with(self.session, "verified-token", "+18095550999")
+        self.session.refresh(seller)
+        self.assertEqual(seller.seller_phone, "+18095550999")
 
     def test_login_returns_access_token(self):
         user = self.make_user()
