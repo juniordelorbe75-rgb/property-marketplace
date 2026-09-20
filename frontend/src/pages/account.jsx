@@ -6,15 +6,28 @@ import { readApiResponse } from "../utils/apiResponse"
 import "./account.css"
 import { apiFetch } from "../utils/apiFetch"
 import { getAccountTypeLabel } from "../utils/accountTypes"
-import { getSellerCategoryLabel, getSellerRegistrationFields } from "../utils/sellerDetails"
+import {
+  compactSellerPhone,
+  getSellerCategoryLabel,
+  getSellerRegistrationFields,
+} from "../utils/sellerDetails"
+
+import SellerPhoneVerificationPanel from "../components/SellerPhoneVerificationPanel"
 import SellerFields from "../components/SellerFields"
 
 function Account() {
   const navigate = useNavigate()
-  const { login, logout } = useAuth()
-
+  const {
+    token,
+    login,
+    logout,
+  } = useAuth()
   const [user, setUser] = useState(null)
   const [sellerDetails, setSellerDetails] = useState({})
+  const [
+    sellerPhoneProof,
+    setSellerPhoneProof,
+  ] = useState(null)
 
   const [firstName, setFirstName] = useState("")
   const [middleName, setMiddleName] = useState("")
@@ -70,8 +83,40 @@ function Account() {
       }).format(new Date(`${dateOfBirth}T00:00:00Z`))
     : "No proporcionada"
 
+  const sellerPhoneChanged =
+  (
+    user?.account_type
+    === "seller"
+  )
+  && (
+    compactSellerPhone(
+      sellerDetails.seller_phone
+    )
+    !==
+    compactSellerPhone(
+      user?.seller_phone
+    )
+  )
+
+
+const sellerPhoneChangeVerified =
+  (
+    !sellerPhoneChanged
+    || (
+      Boolean(
+        sellerPhoneProof?.token
+      )
+      && (
+        sellerPhoneProof.phone
+        ===
+        compactSellerPhone(
+          sellerDetails.seller_phone
+        )
+      )
+    )
+  )
+
   const fetchAccount = useCallback(async (signal) => {
-    const token = localStorage.getItem("access_token")
     let response
 
     if (!token) {
@@ -92,7 +137,6 @@ function Account() {
           signal,
         }
       )
-
       const data = await readApiResponse(response)
 
       if (!response.ok) {
@@ -103,6 +147,7 @@ function Account() {
 
       setUser(data)
       setSellerDetails({ seller_category: data.seller_category || "", seller_phone: data.seller_phone || "", business_name: data.business_name || "" })
+      setSellerPhoneProof(null)
       setFirstName(data.first_name || data.name || "")
       setMiddleName(data.middle_name || "")
       setLastName(data.last_name || "")
@@ -139,7 +184,7 @@ function Account() {
     } finally {
       if (!signal.aborted) setLoading(false)
     }
-  }, [logout, navigate])
+  }, [logout, navigate, token])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -157,7 +202,7 @@ function Account() {
     try {
       const response = await apiFetch("/users/email-verification/request", {
         method: "POST",
-        headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` },
+        headers: { Authorization: `Bearer ${token}` },
       })
       const data = await readApiResponse(response)
       if (!response.ok) throw new Error(getApiError(data, "No pudimos enviar el correo de verificación"))
@@ -172,7 +217,6 @@ function Account() {
   async function handleProfileSubmit(event) {
     event.preventDefault()
 
-    const token = localStorage.getItem("access_token")
 
     if (!token) {
       navigate("/login")
@@ -184,31 +228,106 @@ function Account() {
     setProfileError("")
 
     try {
-      const response = await apiFetch(
-        "/users/me",
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            first_name: firstName,
-            middle_name: middleName,
-            last_name: lastName,
-            date_of_birth: dateOfBirth,
-            bio,
-            ...(user?.account_type === "seller" && editingProfile ? getSellerRegistrationFields("seller", sellerDetails) : {}),
-            public_profile_enabled: publicProfileEnabled,
-            public_name_mode: publicNameMode,
-            public_bio_visible: publicBioVisible,
-            email,
-            ...(email.trim().toLowerCase() !== user?.email
-              ? { current_password: profilePassword }
-              : {}),
-          }),
+      let sellerFields = {}
+      let sellerPhoneChangedNow = false
+
+      if (
+        user?.account_type === "seller"
+        && editingProfile
+      ) {
+        sellerFields =
+          getSellerRegistrationFields(
+            "seller",
+            sellerDetails,
+          )
+
+        sellerPhoneChangedNow =
+          (
+            sellerFields.seller_phone
+            !== user.seller_phone
+          )
+
+        if (
+          sellerPhoneChangedNow
+          && (
+            !sellerPhoneProof?.token
+            || sellerPhoneProof.phone
+              !== sellerFields.seller_phone
+          )
+        ) {
+          throw new Error(
+            "Verifique el nuevo teléfono antes de guardar los cambios."
+          )
         }
-      )
+      }
+
+
+  const response = await apiFetch(
+    "/users/me",
+    {
+      method: "PUT",
+
+      headers: {
+        "Content-Type":
+          "application/json",
+
+        Authorization:
+          `Bearer ${token}`,
+      },
+
+      body: JSON.stringify({
+        first_name:
+          firstName,
+
+        middle_name:
+          middleName,
+
+        last_name:
+          lastName,
+
+        date_of_birth:
+          dateOfBirth,
+
+        bio,
+
+        ...sellerFields,
+
+        ...(
+          sellerPhoneChangedNow
+            ? {
+              phone_verification_token:
+                sellerPhoneProof.token,
+            }
+            : {}
+        ),
+
+        public_profile_enabled:
+          publicProfileEnabled,
+
+        public_name_mode:
+          publicNameMode,
+
+        public_bio_visible:
+          publicBioVisible,
+
+        email,
+
+        ...(
+          email
+            .trim()
+            .toLowerCase()
+          !== user?.email
+
+            ? {
+              current_password:
+                profilePassword,
+            }
+
+            : {}
+        ),
+      }),
+    }
+  )
 
       const data = await readApiResponse(response)
 
@@ -223,6 +342,7 @@ function Account() {
       }
       setUser(data)
       setSellerDetails({ seller_category: data.seller_category || "", seller_phone: data.seller_phone || "", business_name: data.business_name || "" })
+      setSellerPhoneProof(null)
       setFirstName(data.first_name || data.name || "")
       setMiddleName(data.middle_name || "")
       setLastName(data.last_name || "")
@@ -259,7 +379,6 @@ function Account() {
       return
     }
 
-    const token = localStorage.getItem("access_token")
 
     if (!token) {
       navigate("/login")
@@ -285,7 +404,6 @@ function Account() {
           }),
         }
       )
-
       const data = await readApiResponse(response)
 
       if (!response.ok) {
@@ -320,7 +438,6 @@ function Account() {
       return
     }
 
-    const token = localStorage.getItem("access_token")
 
     if (!token) {
       navigate("/login")
@@ -342,7 +459,6 @@ function Account() {
           body: JSON.stringify({ current_password: deletionPassword }),
         }
       )
-
       const data = await readApiResponse(response)
 
       if (!response.ok) {
@@ -366,7 +482,7 @@ function Account() {
     const response = await apiFetch(path, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+        Authorization: `Bearer ${token}`,
         ...(body ? { "Content-Type": "application/json" } : {}),
       },
       ...(body ? { body: JSON.stringify(body) } : {}),
@@ -527,7 +643,66 @@ function Account() {
 
           {editingProfile && <form id="profile-form" onSubmit={handleProfileSubmit}>
 
-            {user?.account_type === "seller" && <SellerFields idPrefix="account" details={sellerDetails} onChange={setSellerDetails} disabled={savingProfile} />}
+            {user?.account_type === "seller" && (
+            <>
+              <SellerFields
+                idPrefix="account"
+
+                details={
+                  sellerDetails
+                }
+
+                onChange={
+                  setSellerDetails
+                }
+
+                disabled={
+                  savingProfile
+                }
+
+                phoneHelp={
+                  sellerPhoneChanged
+                    ? (
+                      sellerPhoneChangeVerified
+                        ? (
+                          "Nuevo teléfono verificado. " +
+                          "Ya puede guardar los cambios."
+                        )
+                        : (
+                          "Cambió el teléfono. " +
+                          "Debe verificar el número nuevo antes de guardarlo."
+                        )
+                    )
+                    : (
+                      "Este es su teléfono de vendedor actual."
+                    )
+                }
+              />
+
+
+    <SellerPhoneVerificationPanel
+      phone={
+        sellerDetails.seller_phone
+      }
+
+      currentPhone={
+        user?.seller_phone || ""
+      }
+
+      proof={
+        sellerPhoneProof
+      }
+
+      onProofChange={
+        setSellerPhoneProof
+      }
+
+      disabled={
+        savingProfile
+      }
+    />
+  </>
+)}
 
             <div className="form-group">
               <label htmlFor="first-name">Nombre</label>
@@ -602,7 +777,34 @@ function Account() {
             )}
 
             <div className="edit-actions">
-              <button type="submit" className="primary-button" disabled={savingProfile || (email.trim().toLowerCase() !== user?.email && !profilePassword)}>{savingProfile ? "Guardando..." : "Guardar cambios"}</button>
+<button
+  type="submit"
+  className="primary-button"
+
+  disabled={
+    savingProfile
+
+    || (
+      email
+        .trim()
+        .toLowerCase()
+      !== user?.email
+
+      && !profilePassword
+    )
+
+    || (
+      sellerPhoneChanged
+      && !sellerPhoneChangeVerified
+    )
+  }
+>
+  {
+    savingProfile
+      ? "Guardando..."
+      : "Guardar cambios"
+  }
+</button>
               <button type="button" className="secondary-button" disabled={savingProfile} onClick={() => {
                 setFirstName(user?.first_name || user?.name || "")
                 setMiddleName(user?.middle_name || "")
@@ -614,6 +816,7 @@ function Account() {
                 setProfilePassword("")
                 setProfileError("")
                 setEditingProfile(false)
+                setSellerPhoneProof(null)
               }}>Cancelar</button>
             </div>
 

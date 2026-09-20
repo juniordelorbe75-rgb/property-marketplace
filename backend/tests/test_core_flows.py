@@ -303,7 +303,7 @@ class CoreFlowTests(unittest.TestCase):
             user.id,
         )
 
-        delete_current_user(self.session, user.id)
+        delete_current_user(self.session, user.id, current_password="secure-password")
 
         with self.assertRaises(HTTPException) as raised:
             get_current_user_id(credentials, self.session)
@@ -447,7 +447,7 @@ class CoreFlowTests(unittest.TestCase):
             "backend.services.user_service.delete_uploaded_property_image"
         ) as delete_image:
             with self.assertRaises(OperationalError):
-                delete_current_user(self.session, seller.id)
+                delete_current_user(self.session, seller.id, current_password="secure-password")
 
         rollback.assert_called_once()
         delete_image.assert_not_called()
@@ -647,7 +647,7 @@ class CoreFlowTests(unittest.TestCase):
         with patch(
             "backend.services.user_service.delete_uploaded_property_image"
         ) as delete_image:
-            delete_current_user(self.session, seller.id)
+            delete_current_user(self.session, seller.id, current_password="secure-password")
 
         delete_image.assert_called_once_with(
             "/uploads/property-images/account-image.png"
@@ -960,7 +960,7 @@ class CoreFlowTests(unittest.TestCase):
             "I am interested in this property.",
         )
 
-        delete_current_user(self.session, seller.id)
+        delete_current_user(self.session, seller.id, current_password="secure-password")
 
         self.assertIsNone(self.session.get(UserDB, seller.id))
         self.assertIsNotNone(self.session.get(UserDB, buyer.id))
@@ -980,7 +980,7 @@ class CoreFlowTests(unittest.TestCase):
             "I am interested in this property.",
         )
 
-        delete_current_user(self.session, buyer.id)
+        delete_current_user(self.session, buyer.id, current_password="buyer-password")
 
         self.assertIsNone(self.session.get(UserDB, buyer.id))
         self.assertIsNotNone(self.session.get(UserDB, seller.id))
