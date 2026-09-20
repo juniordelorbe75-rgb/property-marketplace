@@ -519,6 +519,7 @@ class UserUpdate(BaseModel):
     seller_category: SellerCategory | None = None
     seller_phone: str | None = Field(default=None, max_length=25)
     business_name: str | None = Field(default=None, max_length=150)
+    phone_verification_token: str | None = Field(default=None, min_length=32, max_length=256)
 
     @field_validator("name")
     @classmethod
