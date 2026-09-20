@@ -8,6 +8,7 @@ import { apiFetch } from "../utils/apiFetch"
 import { getAccountTypeLabel } from "../utils/accountTypes"
 import { getSellerCategoryLabel, getSellerRegistrationFields } from "../utils/sellerDetails"
 import SellerFields from "../components/SellerFields"
+import SellerPhoneVerification from "../components/SellerPhoneVerification"
 
 function Account() {
   const navigate = useNavigate()
@@ -15,6 +16,16 @@ function Account() {
 
   const [user, setUser] = useState(null)
   const [sellerDetails, setSellerDetails] = useState({})
+  const [verifiedPhone, setVerifiedPhone] = useState("")
+  const [phoneVerificationToken, setPhoneVerificationToken] = useState("")
+
+  function changeSellerDetails(nextDetails) {
+    if (nextDetails.seller_phone !== sellerDetails.seller_phone) {
+      setVerifiedPhone("")
+      setPhoneVerificationToken("")
+    }
+    setSellerDetails(nextDetails)
+  }
 
   const [firstName, setFirstName] = useState("")
   const [middleName, setMiddleName] = useState("")
@@ -184,6 +195,13 @@ function Account() {
     setProfileError("")
 
     try {
+      const sellerFields = user?.account_type === "seller" && editingProfile
+        ? getSellerRegistrationFields("seller", sellerDetails)
+        : {}
+      const phoneChanged = Boolean(sellerFields.seller_phone) && sellerFields.seller_phone !== user?.seller_phone
+      if (phoneChanged && (!phoneVerificationToken || verifiedPhone !== sellerFields.seller_phone)) {
+        throw new Error("Valide el nuevo teléfono del vendedor antes de guardar cambios.")
+      }
       const response = await apiFetch(
         "/users/me",
         {
@@ -198,7 +216,8 @@ function Account() {
             last_name: lastName,
             date_of_birth: dateOfBirth,
             bio,
-            ...(user?.account_type === "seller" && editingProfile ? getSellerRegistrationFields("seller", sellerDetails) : {}),
+            ...sellerFields,
+            ...(phoneChanged ? { phone_verification_token: phoneVerificationToken } : {}),
             public_profile_enabled: publicProfileEnabled,
             public_name_mode: publicNameMode,
             public_bio_visible: publicBioVisible,
@@ -223,6 +242,8 @@ function Account() {
       }
       setUser(data)
       setSellerDetails({ seller_category: data.seller_category || "", seller_phone: data.seller_phone || "", business_name: data.business_name || "" })
+      setVerifiedPhone("")
+      setPhoneVerificationToken("")
       setFirstName(data.first_name || data.name || "")
       setMiddleName(data.middle_name || "")
       setLastName(data.last_name || "")
@@ -527,7 +548,21 @@ function Account() {
 
           {editingProfile && <form id="profile-form" onSubmit={handleProfileSubmit}>
 
-            {user?.account_type === "seller" && <SellerFields idPrefix="account" details={sellerDetails} onChange={setSellerDetails} disabled={savingProfile} />}
+            {user?.account_type === "seller" && <SellerFields idPrefix="account" details={sellerDetails} onChange={changeSellerDetails} disabled={savingProfile} />}
+
+            {user?.account_type === "seller" &&
+              (sellerDetails.seller_phone || "").replace(/[\\s().-]/g, "") !== user.seller_phone && (
+                <SellerPhoneVerification
+                  idPrefix="account"
+                  purpose="guardar los cambios"
+                  details={sellerDetails}
+                  verifiedPhone={verifiedPhone}
+                  onVerified={(phone, token) => {
+                    setVerifiedPhone(phone)
+                    setPhoneVerificationToken(token)
+                  }}
+                />
+              )}
 
             <div className="form-group">
               <label htmlFor="first-name">Nombre</label>
@@ -610,6 +645,8 @@ function Account() {
                 setDateOfBirth(user?.date_of_birth || "")
                 setBio(user?.bio || "")
                 setSellerDetails({ seller_category: user?.seller_category || "", seller_phone: user?.seller_phone || "", business_name: user?.business_name || "" })
+                setVerifiedPhone("")
+                setPhoneVerificationToken("")
                 setEmail(user?.email || "")
                 setProfilePassword("")
                 setProfileError("")
