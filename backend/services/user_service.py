@@ -156,6 +156,7 @@ def update_current_user(
     seller_category: str | None = None,
     seller_phone: str | None = None,
     business_name: str | None = None,
+    phone_verification_token: str | None = None,
 ):
     user = user_repository.get_user_by_id(
         db,
@@ -218,6 +219,8 @@ def update_current_user(
             raise HTTPException(422, "Los datos de vendedor solo corresponden a cuentas de vendedor.")
         if not seller_updates.get("seller_category", user.seller_category) or not seller_updates.get("seller_phone", user.seller_phone):
             raise HTTPException(422, "Seleccione el tipo de vendedor e indique un teléfono de contacto.")
+    if seller_phone is not None and seller_phone != user.seller_phone:
+        consume_seller_phone_verification(db, phone_verification_token, seller_phone)
     for key, value in seller_updates.items():
         setattr(user, key, value)
     user.name = name
