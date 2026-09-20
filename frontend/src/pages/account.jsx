@@ -551,7 +551,7 @@ function Account() {
             {user?.account_type === "seller" && <SellerFields idPrefix="account" details={sellerDetails} onChange={changeSellerDetails} disabled={savingProfile} />}
 
             {user?.account_type === "seller" &&
-              (sellerDetails.seller_phone || "").replace(/[\\s().-]/g, "") !== user.seller_phone && (
+              (sellerDetails.seller_phone || "").replace(/[\s().-]/g, "") !== user.seller_phone && (
                 <SellerPhoneVerification
                   idPrefix="account"
                   purpose="guardar los cambios"
