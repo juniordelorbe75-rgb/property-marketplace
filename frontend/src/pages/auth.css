@@ -617,3 +617,21 @@
     transition: none;
   }
 }
+
+.auth-phone-verification {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid #b5d5cb;
+  border-radius: 12px;
+  background: #f5fbf8;
+}
+
+.auth-phone-verification > p {
+  margin: 0;
+  line-height: 1.45;
+}
+
+.auth-phone-verification .auth-success {
+  margin: 0;
+}
