@@ -4,7 +4,7 @@ import { getApiError } from "../utils/apiError"
 import { readApiResponse } from "../utils/apiResponse"
 import { getSellerRegistrationFields } from "../utils/sellerDetails"
 
-export default function SellerPhoneVerification({ details, verifiedPhone, onVerified }) {
+export default function SellerPhoneVerification({ details, verifiedPhone, onVerified, idPrefix = "register", purpose = "crear su cuenta" }) {
   const [challengeToken, setChallengeToken] = useState("")
   const [challengePhone, setChallengePhone] = useState("")
   const [code, setCode] = useState("")
@@ -67,7 +67,7 @@ export default function SellerPhoneVerification({ details, verifiedPhone, onVeri
       setChallengeToken("")
       setChallengePhone("")
       setCode("")
-      setMessage("Teléfono validado. Ya puede crear su cuenta.")
+      setMessage(`Teléfono validado. Ya puede ${purpose}.`)
     } catch (confirmError) {
       setError(confirmError.message)
     } finally {
@@ -80,15 +80,15 @@ export default function SellerPhoneVerification({ details, verifiedPhone, onVeri
 
   return (
     <div className="auth-phone-verification">
-      <p>Valide el teléfono de contacto antes de crear una cuenta de vendedor.</p>
+      <p>Valide el teléfono de contacto antes de {purpose}.</p>
       <button type="button" className="auth-link-button" onClick={requestCode} disabled={busy}>
         {isVerified ? "Enviar un código nuevo" : "Enviar código por SMS"}
       </button>
       {challengeToken && (
         <div className="auth-field">
-          <label htmlFor="register-sms-code">Código SMS</label>
+          <label htmlFor={`${idPrefix}-sms-code`}>Código SMS</label>
           <input
-            id="register-sms-code"
+            id={`${idPrefix}-sms-code`}
             type="text"
             inputMode="numeric"
             autoComplete="one-time-code"
