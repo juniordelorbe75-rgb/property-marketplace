@@ -262,6 +262,10 @@ class ApiFlowTests(unittest.TestCase):
         from backend.db_models.user import UserDB
 
         with patch.dict(os.environ, {"ADMIN_USER_IDS": ""}), patch("backend.services.email_verification_service._send"), patch("backend.services.user_service.consume_seller_phone_verification"):
+            self.assertEqual(self.call("POST", "/users/", {
+                "name": "Rejected Role", "email": "rejected-role@example.com",
+                "password": "secure-password", "role": "admin",
+            })[0], 422)
             for account_type in ("buyer", "seller"):
                 with self.subTest(account_type=account_type):
                     email = f"{account_type}-type@example.com"
@@ -269,7 +273,6 @@ class ApiFlowTests(unittest.TestCase):
                         "name": "Account Type Test", "email": email,
                         "password": "secure-password", "account_type": account_type,
                         "phone_verification_token": "v" * 32,
-                        "role": "admin",
                         **({"seller_category": "owner", "seller_phone": "+18095550123"} if account_type == "seller" else {}),
                     })
                     self.assertEqual(status, 200)
@@ -387,9 +390,16 @@ class ApiFlowTests(unittest.TestCase):
         _, login = self.call("POST", "/users/login", {"email": payload["email"], "password": payload["password"]})
         token = login["access_token"]
         update = {"first_name": "Ana", "last_name": "Perez", "date_of_birth": "1990-01-01", "email": payload["email"], "public_profile_enabled": True}
-        status, edited = self.call("PUT", "/users/me", {
-            **update, "seller_category": "agent", "seller_phone": "+1 829 555 0123", "business_name": "  Nueva Agencia  ",
-        }, token)
+        changed_phone = {
+            **update, "seller_category": "agent", "seller_phone": "+1 829 555 0123",
+            "business_name": "  Nueva Agencia  ",
+        }
+        self.assertEqual(self.call("PUT", "/users/me", changed_phone, token)[0], 400)
+        with patch("backend.services.user_service.consume_seller_phone_verification") as consume:
+            status, edited = self.call("PUT", "/users/me", {
+                **changed_phone, "phone_verification_token": "v" * 32,
+            }, token)
+        consume.assert_called_once()
         self.assertEqual(status, 200)
         self.assertEqual(edited["seller_phone"], "+18295550123")
         self.assertEqual(edited["seller_category"], "agent")
