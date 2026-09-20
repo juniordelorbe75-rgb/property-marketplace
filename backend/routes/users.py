@@ -280,6 +280,7 @@ def update_me(
         seller_category=user_data.seller_category,
         seller_phone=user_data.seller_phone,
         business_name=user_data.business_name,
+        phone_verification_token=user_data.phone_verification_token,
     )
     response = UserUpdateResponse.model_validate(updated_user).model_dump()
     if email_changed:
