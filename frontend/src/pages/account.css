@@ -277,3 +277,134 @@
     grid-template-columns: 1fr;
   }
 }
+
+.seller-phone-verification {
+  display: grid;
+  gap: 12px;
+
+  margin: 16px 0 22px;
+
+  padding: 16px;
+
+  border: 1px solid #f1cf8c;
+  border-radius: 12px;
+
+  background: #fffbeb;
+}
+
+
+.seller-phone-verification strong {
+  color: #7c4a13;
+
+  font-size: 0.95rem;
+}
+
+
+.seller-phone-verification p {
+  margin: 0;
+
+  color: #6b5a45;
+
+  line-height: 1.5;
+}
+
+
+.seller-phone-verification.is-current {
+  border-color: #c8ddd2;
+
+  background: #f3f8f5;
+}
+
+
+.seller-phone-verification.is-current strong {
+  color: #245b49;
+}
+
+
+.seller-phone-verification.is-verified {
+  border-color: #a7f3d0;
+
+  background: #ecfdf5;
+}
+
+
+.seller-phone-verification-success {
+  color: #047857 !important;
+
+  font-weight: 700;
+}
+
+
+.seller-phone-verification-message {
+  color: #475569 !important;
+
+  font-size: 0.9rem;
+}
+
+
+.seller-phone-verification-error {
+  padding: 10px 12px;
+
+  border-radius: 8px;
+
+  background: #fef2f2;
+
+  color: #b91c1c !important;
+
+  font-size: 0.9rem;
+}
+
+
+.seller-phone-code {
+  display: grid;
+  gap: 10px;
+
+  max-width: 360px;
+
+  padding-top: 4px;
+}
+
+
+.seller-phone-code label {
+  color: #304b40;
+
+  font-weight: 700;
+}
+
+
+.seller-phone-code input {
+  width: 100%;
+
+  padding: 11px 13px;
+
+  border: 1px solid #ccd9d2;
+  border-radius: 9px;
+
+  background: white;
+
+  font: inherit;
+}
+
+
+.seller-phone-code input:focus {
+  outline: none;
+
+  border-color: #3f8067;
+
+  box-shadow:
+    0 0 0 3px
+    rgba(63, 128, 103, .12);
+}
+
+
+@media (max-width: 600px) {
+
+  .seller-phone-verification {
+    padding: 14px;
+  }
+
+
+  .seller-phone-code {
+    max-width: none;
+  }
+}

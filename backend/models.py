@@ -3,7 +3,7 @@ from datetime import date, datetime, timezone
 from typing import Literal
 from urllib.parse import urlsplit
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from backend.location_data import normalize_dominican_province, normalize_location_part
 
@@ -344,6 +344,8 @@ class User(BaseModel):
 
 
 class UserCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     name: str | None = Field(default=None, min_length=2, max_length=300)
     first_name: str | None = Field(default=None, max_length=100)
     middle_name: str = Field(default="", max_length=100)
@@ -503,6 +505,8 @@ class UserUpdateResponse(UserResponse):
 
 
 class UserUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     name: str | None = Field(default=None, min_length=2, max_length=300)
     first_name: str | None = Field(default=None, max_length=100)
     middle_name: str = Field(default="", max_length=100)
@@ -517,6 +521,7 @@ class UserUpdate(BaseModel):
     seller_category: SellerCategory | None = None
     seller_phone: str | None = Field(default=None, max_length=25)
     business_name: str | None = Field(default=None, max_length=150)
+    phone_verification_token: str | None = Field(default=None, min_length=32, max_length=256)
 
     @field_validator("name")
     @classmethod
