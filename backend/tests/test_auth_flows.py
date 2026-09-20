@@ -97,6 +97,15 @@ class AuthenticationFlowTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             UserCreate(name="Test User", email="test@example.com", password="😀" * 19)
 
+    def test_registration_rejects_unknown_role_field(self):
+        with self.assertRaises(ValueError):
+            UserCreate(
+                name="Test User",
+                email="test@example.com",
+                password="password-123",
+                role="seller",
+            )
+
     def test_login_returns_access_token(self):
         user = self.make_user()
         result = login_user(self.session, "TEST@EXAMPLE.COM", "password-123")
