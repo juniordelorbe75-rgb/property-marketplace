@@ -6,6 +6,7 @@ import { getSellerRegistrationFields } from "../utils/sellerDetails"
 
 export default function SellerPhoneVerification({ details, verifiedPhone, onVerified }) {
   const [challengeToken, setChallengeToken] = useState("")
+  const [challengePhone, setChallengePhone] = useState("")
   const [code, setCode] = useState("")
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState("")
@@ -16,6 +17,7 @@ export default function SellerPhoneVerification({ details, verifiedPhone, onVeri
     setError("")
     setMessage("")
     setChallengeToken("")
+    setChallengePhone("")
     onVerified("", "")
 
     try {
@@ -31,6 +33,7 @@ export default function SellerPhoneVerification({ details, verifiedPhone, onVeri
         throw new Error(getApiError(data, "No pudimos enviar el código SMS."))
       }
       setChallengeToken(data.challenge_token)
+      setChallengePhone(phone)
       setCode("")
       setMessage("Le enviamos un código por SMS. Escríbalo aquí para validar su teléfono.")
     } catch (requestError) {
@@ -48,6 +51,9 @@ export default function SellerPhoneVerification({ details, verifiedPhone, onVeri
 
     try {
       const { seller_phone: phone } = getSellerRegistrationFields("seller", details)
+      if (phone !== challengePhone) {
+        throw new Error("El teléfono cambió. Solicite un código nuevo.")
+      }
       const response = await apiFetch("/users/seller-phone-verification/confirm", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -59,6 +65,7 @@ export default function SellerPhoneVerification({ details, verifiedPhone, onVeri
       }
       onVerified(phone, data.phone_verification_token)
       setChallengeToken("")
+      setChallengePhone("")
       setCode("")
       setMessage("Teléfono validado. Ya puede crear su cuenta.")
     } catch (confirmError) {
