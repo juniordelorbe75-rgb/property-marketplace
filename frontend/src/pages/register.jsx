@@ -11,9 +11,12 @@ import { readApiResponse } from "../utils/apiResponse"
 import { apiFetch } from "../utils/apiFetch"
 import { getSafeReturnPath } from "../utils/authRedirect"
 import { queueLoginWelcome } from "../utils/loginWelcomeSession"
+import { buildRegistrationPayload } from "../utils/registrationPayload"
 
 import PasswordInput from "../components/PasswordInput"
 import AuthLayout from "../components/AuthLayout"
+import SellerFields from "../components/SellerFields"
+import SellerPhoneVerification from "../components/SellerPhoneVerification"
 
 import "./auth.css"
 
@@ -28,7 +31,18 @@ function Register() {
     location.state?.returnTo
   )
 
-  const [role, setRole] = useState("buyer")
+  const [accountType, setAccountType] = useState("buyer")
+  const [sellerDetails, setSellerDetails] = useState({ seller_category: "", seller_phone: "", business_name: "" })
+  const [verifiedPhone, setVerifiedPhone] = useState("")
+  const [phoneVerificationToken, setPhoneVerificationToken] = useState("")
+
+  function changeSellerDetails(nextDetails) {
+    if (nextDetails.seller_phone !== sellerDetails.seller_phone) {
+      setVerifiedPhone("")
+      setPhoneVerificationToken("")
+    }
+    setSellerDetails(nextDetails)
+  }
 
   const [firstName, setFirstName] = useState("")
   const [middleName, setMiddleName] = useState("")
@@ -76,16 +90,19 @@ function Register() {
               "application/json",
           },
 
-          body: JSON.stringify({
-            role,
-            first_name: firstName,
-            middle_name: middleName,
-            last_name: lastName,
-            date_of_birth: dateOfBirth,
+          body: JSON.stringify(buildRegistrationPayload({
+            accountType,
+            firstName,
+            middleName,
+            lastName,
+            dateOfBirth,
             bio,
             email,
             password,
-          }),
+            sellerDetails,
+            verifiedPhone,
+            phoneVerificationToken,
+          })),
         }
       )
 
@@ -193,10 +210,12 @@ function Register() {
 
           <select
             id="register-role"
-            value={role}
-            onChange={(event) =>
-              setRole(event.target.value)
-            }
+            value={accountType}
+            onChange={(event) => {
+              setAccountType(event.target.value)
+              setVerifiedPhone("")
+              setPhoneVerificationToken("")
+            }}
             required
           >
 
@@ -211,7 +230,7 @@ function Register() {
           </select>
 
           <small>
-            {role === "seller"
+            {accountType === "seller"
               ? (
                 "Como vendedor podrá publicar " +
                 "y administrar sus propiedades. " +
@@ -228,6 +247,24 @@ function Register() {
 
         </div>
 
+
+        {accountType === "seller" && (
+          <>
+            <SellerFields
+              idPrefix="register"
+              details={sellerDetails}
+              onChange={changeSellerDetails}
+            />
+            <SellerPhoneVerification
+              details={sellerDetails}
+              verifiedPhone={verifiedPhone}
+              onVerified={(phone, token) => {
+                setVerifiedPhone(phone)
+                setPhoneVerificationToken(token)
+              }}
+            />
+          </>
+        )}
 
         <div className="auth-field">
 
