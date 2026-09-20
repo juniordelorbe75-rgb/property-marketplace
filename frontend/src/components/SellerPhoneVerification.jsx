@@ -76,7 +76,7 @@ export default function SellerPhoneVerification({ details, verifiedPhone, onVeri
   }
 
   const isVerified = Boolean(verifiedPhone) && verifiedPhone ===
-    (details.seller_phone || "").replace(/[\\s().-]/g, "")
+    (details.seller_phone || "").replace(/[\s().-]/g, "")
 
   return (
     <div className="auth-phone-verification">
