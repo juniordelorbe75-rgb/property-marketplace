@@ -1,0 +1,33 @@
+name: Habitard growth checks
+
+on:
+  pull_request:
+    paths:
+      - 'automation/habitard-growth/**'
+      - '.github/workflows/habitard-growth.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'automation/habitard-growth/**'
+      - '.github/workflows/habitard-growth.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  growth-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    defaults:
+      run:
+        working-directory: automation/habitard-growth
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      - name: Run isolated tests (no real sending)
+        run: python -m unittest -v
+      - name: Validate container build
+        run: docker build -t habitard-growth-check .

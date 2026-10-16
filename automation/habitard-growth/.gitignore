@@ -1,0 +1,8 @@
+.env
+data/
+*.db
+*.db-*
+__pycache__/
+*.pyc
+token.json
+client_secret*.json
