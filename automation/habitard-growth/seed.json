@@ -1,0 +1,17 @@
+{
+  "researched_on": "2026-10-15",
+  "country": "Dominican Republic",
+  "notes": "Business contact addresses published on the linked business websites and surfaced by web search. Mailbox delivery and permission for marketing have not been verified. No messages sent.",
+  "prospects": [
+    {"business":"Propiedades RD","market":"Santo Domingo / Punta Cana / La Romana / Juan Dolio","email":"info.propiedadesrd@gmail.com","source":"https://www.propiedadesrd.com.do/contact","status":"research_only"},
+    {"business":"Inmobiliaria Capellan","market":"Santiago","email":"info@inmobiliariacapellan.com.do","source":"https://inmobiliariacapellan.com.do/contacto","status":"research_only"},
+    {"business":"Alteco Inmobiliaria","market":"Santo Domingo","email":"info@alteco.com.do","source":"https://www.alteco.com.do/es/asesores","status":"research_only"},
+    {"business":"Property Partners Punta Cana","market":"Punta Cana","email":"victor.diaz@ppartnersgroup.com","source":"https://do.ppartnersgroup.com/contacto","status":"research_only"},
+    {"business":"Estrella Real Estate","market":"Santiago","email":"estrellarealestate01@gmail.com","source":"https://www.estrellarealestate.site/","status":"research_only"},
+    {"business":"CityMax Santiago","market":"Santiago","email":"contacto@citymax-sti.com","source":"https://www.citymax-sti.com/contactenos","status":"research_only"},
+    {"business":"Apartamentos RD","market":"Santo Domingo / Punta Cana / Santiago / Puerto Plata","email":"info@apartamentosrd.com.do","source":"https://apartamentosrd.com.do/contacto","status":"research_only"},
+    {"business":"ZuHouse RD","market":"Santiago","email":"zuhouserealestate@gmail.com","source":"https://zuhouserd.com/","status":"research_only"},
+    {"business":"Inmobiliaria Marioli","market":"Santiago","email":"info@inmobiliariamarioli.com","source":"https://inmobiliariamarioli.com/contactenos/","status":"research_only"},
+    {"business":"HC Real Estate","market":"Santo Domingo","email":"info@hcrealestate.com.do","source":"https://hcrealestate.com.do/contacto/","status":"research_only"}
+  ]
+}

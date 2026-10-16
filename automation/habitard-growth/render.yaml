@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: habitard-growth
+    runtime: docker
+    rootDir: automation/habitard-growth
+    plan: starter
+    healthCheckPath: /health
+    numInstances: 1
+    disk:
+      name: habitard-data
+      mountPath: /data
+      sizeGB: 1
+    envVars:
+      - key: ADMIN_PASSWORD
+        generateValue: true
+      - key: EMAIL_ENABLED
+        value: "false"
+      - key: INSTAGRAM_ENABLED
+        value: "false"
+      - key: DISCOVERY_ENABLED
+        value: "false"
+      - key: EMAIL_DAILY_LIMIT
+        value: "10"
