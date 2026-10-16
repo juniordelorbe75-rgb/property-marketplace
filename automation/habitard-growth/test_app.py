@@ -8,6 +8,8 @@ from urllib.request import Request, urlopen
 from urllib.error import HTTPError
 from unittest.mock import patch
 import app
+import run_local
+from xml.etree import ElementTree
 
 
 class WorkflowTests(unittest.TestCase):
@@ -87,6 +89,7 @@ class WorkflowTests(unittest.TestCase):
                 with self.assertRaises(HTTPError) as denied:
                     urlopen(base + '/api/state')
                 self.assertEqual(denied.exception.code, 401)
+                denied.exception.close()
                 with urlopen(Request(base + '/', headers={'Authorization': auth})) as response:
                     self.assertIn(b'Growth desk', response.read())
                 with urlopen(Request(base + '/api/state', headers={'Authorization': auth})) as response:
@@ -95,6 +98,7 @@ class WorkflowTests(unittest.TestCase):
                 with self.assertRaises(HTTPError) as denied:
                     urlopen(request)
                 self.assertEqual(denied.exception.code, 403)
+                denied.exception.close()
             finally:
                 server.shutdown()
                 server.server_close()
@@ -105,6 +109,27 @@ class WorkflowTests(unittest.TestCase):
             app.public_url('https://127.0.0.1/')
         with self.assertRaises(ValueError):
             app.public_url('http://example.com/')
+
+    def test_pycharm_launcher_pauses_channels_and_uses_local_database(self):
+        with patch.dict(os.environ, {'EMAIL_ENABLED': 'true', 'INSTAGRAM_ENABLED': 'true', 'DISCOVERY_ENABLED': 'true'}):
+            with patch('run_local.runpy.run_path') as run, patch('builtins.print'):
+                run_local.main()
+                self.assertEqual(os.environ['HOST'], '127.0.0.1')
+                self.assertEqual(os.environ['PORT'], '8010')
+                self.assertTrue(os.environ['DATABASE_PATH'].endswith('habitard-local.db'))
+                for channel in ('EMAIL_ENABLED', 'INSTAGRAM_ENABLED', 'DISCOVERY_ENABLED'):
+                    self.assertEqual(os.environ[channel], 'false')
+                self.assertGreaterEqual(len(os.environ['ADMIN_PASSWORD']), 20)
+                run.assert_called_once()
+
+    def test_pycharm_configuration_points_to_launcher(self):
+        project = app.ROOT.parents[1]
+        configuration = project / '.run' / 'Habitard Growth Local.run.xml'
+        if not configuration.exists():
+            self.skipTest('Run configuration is checked at repository root')
+        root = ElementTree.parse(configuration).getroot()
+        script = root.find(".//option[@name='SCRIPT_NAME']")
+        self.assertEqual(script.attrib['value'], '$PROJECT_DIR$/automation/habitard-growth/run_local.py')
 
     @patch('app.public_url', side_effect=lambda url: url)
     @patch('app.instagram_publish', return_value='media-1')

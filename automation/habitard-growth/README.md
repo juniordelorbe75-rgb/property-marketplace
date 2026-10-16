@@ -49,6 +49,10 @@ For daily search-assisted discovery set BRAVE_SEARCH_API_KEY and DISCOVERY_ENABL
 
 ## Local verification
 
+### PyCharm
+
+Open the existing project at `E:\property-marketplace`. Select **Habitard Growth — Local** in the Run configuration menu and click Run. The project Python interpreter is used; the bot needs no additional packages. Open `http://127.0.0.1:8010` and sign in as `admin` with the temporary password printed in the Run console. The password changes each launch. Local data stays in the ignored `automation/habitard-growth/data/habitard-local.db` file. Email, Instagram publishing and scheduled discovery are always disabled by this local launcher. Click Stop in PyCharm to stop the local dashboard; this does not stop a separately deployed cloud service.
+
 Run `python -m unittest -v` in this directory. Tests mock all sending/publishing and use a temporary database. To run locally set ADMIN_PASSWORD to a unique value of at least 20 characters, then run `python app.py` and open http://127.0.0.1:8000. Environment variables are configured by the host; `.env.example` is a reference and is not automatically loaded.
 
 ## Operations and limits
